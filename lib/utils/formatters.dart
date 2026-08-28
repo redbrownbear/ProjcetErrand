@@ -1,3 +1,5 @@
+import '../models/task_item.dart';
+
 String _comma(int n) {
   final s = n.abs().toString();
   final buf = StringBuffer();
@@ -10,10 +12,21 @@ String _comma(int n) {
 
 String won(int n) => '${_comma(n)}원';
 
-String fmtDist(double d) => d == d.roundToDouble() ? d.toInt().toString() : d.toString();
+String kwon(int n) => '${(n / 1000).round()}천원';
 
-String km(double d) {
-  if (d == 0) return '무료';
-  if (d < 1) return '${(d * 1000).round()}m';
-  return '${fmtDist(d)}km';
+String distLabel(TaskItem it) {
+  if (it.mode == 'sea') return it.country ?? '해외';
+  return it.distM >= 1000 ? '${(it.distM / 1000).round()}km' : '${it.distM.round()}m';
+}
+
+String metaOf(TaskItem it) {
+  if (it.mode == 'sea') {
+    return [it.country, it.place].where((s) => s != null && s.isNotEmpty).join(' · ');
+  }
+  final parts = [
+    distLabel(it),
+    it.mins > 0 ? '약 ${it.mins}분' : '',
+    it.region ?? '',
+  ].where((s) => s.isNotEmpty);
+  return parts.join(' · ');
 }

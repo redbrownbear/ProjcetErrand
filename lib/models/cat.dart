@@ -1,4 +1,4 @@
 class Cat {
-  final String k, label, icon, tone;
-  const Cat(this.k, this.label, this.icon, this.tone);
+  final String k, label, icon;
+  const Cat(this.k, this.label, this.icon);
 }

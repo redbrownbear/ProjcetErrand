@@ -4,112 +4,68 @@ import '../data/categories.dart';
 import '../models/task_item.dart';
 import '../theme/colors.dart';
 import '../utils/formatters.dart';
+import 'tag.dart';
+import 'trust_line.dart';
 
 class TaskCard extends StatelessWidget {
   final TaskItem it;
-  final VoidCallback onOpen, onApply;
-  final String? st;
-  const TaskCard({super.key, required this.it, required this.onOpen, required this.onApply, this.st});
+  final VoidCallback onOpen;
+  final bool done;
+  const TaskCard({super.key, required this.it, required this.onOpen, this.done = false});
   @override
   Widget build(BuildContext context) {
-    final paid = it.mode == 'ask';
-    final free = it.mode == 'together';
-    final share = it.mode == 'share';
-    final c = catOf(it.cat);
+    final sea = it.mode == 'sea';
     return InkWell(
       onTap: onOpen,
+      borderRadius: BorderRadius.circular(18),
       child: Container(
-        margin: const EdgeInsets.fromLTRB(20, 0, 20, 11),
-        padding: const EdgeInsets.all(15),
+        width: double.infinity,
+        margin: const EdgeInsets.only(bottom: 11),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
         decoration: BoxDecoration(
           color: AppColors.card,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: it.hot ? AppColors.hot : Colors.transparent, width: 1.5),
-          boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 4, offset: Offset(0, 1))],
+          border: Border.all(color: it.hot ? AppColors.redSoft : AppColors.line),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Container(
-                width: 46, height: 46,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: free ? AppColors.gray : share ? AppColors.greenSoft : AppColors.yellowSoft,
-                  borderRadius: BorderRadius.circular(13),
-                ),
-                child: Text(c?.icon ?? '🙌', style: const TextStyle(fontSize: 23)),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(children: [
-                      if (it.hot)
-                        Container(
-                          margin: const EdgeInsets.only(right: 6),
-                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                          decoration: BoxDecoration(color: AppColors.hot, borderRadius: BorderRadius.circular(6)),
-                          child: const Text('🔥 HOT', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800)),
-                        ),
-                      Expanded(child: Text(it.title, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppColors.ink))),
-                    ]),
-                    const SizedBox(height: 4),
-                    Text('${km(it.dist)}${paid ? ' · 약 ${it.mins}분' : ''} · ${it.place} · ${it.who}', style: const TextStyle(fontSize: 11.5, color: AppColors.sub)),
-                    if ((free || share) && it.extra != null)
-                      Padding(padding: const EdgeInsets.only(top: 3), child: Text(it.extra!, style: const TextStyle(fontSize: 11.5, color: AppColors.blue, fontWeight: FontWeight.w600))),
-                  ],
-                ),
-              ),
-            ]),
-            const SizedBox(height: 12),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  share ? '무료 나눔' : paid ? won(it.price) : '사례 없음',
-                  style: TextStyle(fontSize: paid ? 18 : 14, fontWeight: FontWeight.w900, color: share ? AppColors.green : AppColors.ink),
-                ),
-                StatusBtn(st: st, paid: paid, onApply: onApply),
+                if (it.hot) ...[
+                  const Tag(label: '🔥 급해요', c: AppColors.red, bg: AppColors.redSoft),
+                  const SizedBox(width: 6),
+                ],
+                if (sea) ...[
+                  const Tag(label: '해외대행', c: AppColors.purple, bg: AppColors.purpleSoft),
+                  const SizedBox(width: 6),
+                ],
+                Tag(label: catOf(it.cat).label, c: AppColors.sub, bg: AppColors.page),
+                if (done) ...[
+                  const Spacer(),
+                  const Text('지원함', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.green)),
+                ],
               ],
+            ),
+            const SizedBox(height: 8),
+            Text(it.title, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, color: AppColors.ink, height: 1.35)),
+            const SizedBox(height: 6),
+            Text(metaOf(it), style: const TextStyle(fontSize: 12.5, color: AppColors.sub)),
+            Container(
+              margin: const EdgeInsets.only(top: 13),
+              padding: const EdgeInsets.only(top: 12),
+              decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(child: TrustLine(it: it)),
+                  Text(won(it.price), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: AppColors.ink)),
+                ],
+              ),
             ),
           ],
         ),
       ),
     );
   }
-}
-
-class StatusBtn extends StatelessWidget {
-  final String? st;
-  final bool paid;
-  final VoidCallback onApply;
-  const StatusBtn({super.key, this.st, required this.paid, required this.onApply});
-  @override
-  Widget build(BuildContext context) {
-    if (st == 'pending') {
-      return _pill('매칭 중…', AppColors.yellowSoft, const Color(0xFFB8860B));
-    }
-    if (st == 'matched') {
-      return _pill('매칭 완료 ✓', AppColors.greenSoft, const Color(0xFF1B8A5A));
-    }
-    return ElevatedButton(
-      onPressed: onApply,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.black,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
-        elevation: 0,
-      ),
-      child: Text(paid ? '신청하기' : '같이 신청', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-    );
-  }
-
-  Widget _pill(String label, Color bg, Color fg) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(11)),
-        child: Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.w700, fontSize: 12.5)),
-      );
 }
