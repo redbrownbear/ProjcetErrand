@@ -1,11 +1,11 @@
 {
-    "name": "project_errand",
-    "short_name": "project_errand",
+    "name": "겸사겸사",
+    "short_name": "겸사겸사",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#FFD429",
     "theme_color": "#FFD429",
-    "description": "A new Flutter project.",
+    "description": "겸사겸사 - neighborhood errand/favor matching app.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1040355220585",
+    "project_id": "projecterrand",
+    "storage_bucket": "projecterrand.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1040355220585:android:181f8b0d73bdc8f13f16f8",
+        "android_client_info": {
+          "package_name": "com.gyeomsagyeomsa.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCztPQFenag8yuam43jafGCiX4w8_agdYc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

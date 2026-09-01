@@ -1,4 +1,4 @@
-package com.example.project_errand
+package com.gyeomsagyeomsa.app
 
 import io.flutter.embedding.android.FlutterActivity
 

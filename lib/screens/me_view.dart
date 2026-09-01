@@ -1,7 +1,9 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../models/coupon.dart';
 import '../models/screen_route.dart';
+import '../services/auth_service.dart';
 import '../theme/colors.dart';
 import '../utils/formatters.dart';
 
@@ -16,6 +18,8 @@ class MeView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final liveCoupons = coupons.where((c) => !c.used).length;
+    final user = FirebaseAuth.instance.currentUser;
+    final nickname = (user?.displayName?.isNotEmpty ?? false) ? user!.displayName! : '겸사겸사 이웃님';
     final rows = [
       ['🛡', '본인인증', '완료'],
       ['🌏', '해외 대행 활동', '가능'],
@@ -35,11 +39,11 @@ class MeView extends StatelessWidget {
               child: const Text('🙂', style: TextStyle(fontSize: 28)),
             ),
             const SizedBox(width: 14),
-            const Column(
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('겸사겸사 이웃님', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.ink)),
-                Padding(padding: EdgeInsets.only(top: 2), child: Text('✓ 본인인증 완료 · ★ 4.9', style: TextStyle(fontSize: 12.5, color: AppColors.green, fontWeight: FontWeight.w700))),
+                Text(nickname, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.ink)),
+                Padding(padding: const EdgeInsets.only(top: 2), child: Text(user?.email ?? '', style: const TextStyle(fontSize: 12.5, color: AppColors.sub, fontWeight: FontWeight.w600))),
               ],
             ),
           ]),
@@ -186,6 +190,17 @@ class MeView extends StatelessWidget {
               Text('${r[2]} ›', style: const TextStyle(fontSize: 12.5, color: AppColors.sub)),
             ]),
           ),
+        InkWell(
+          onTap: () => AuthService().signOut(),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+            child: const Row(children: [
+              Text('🚪', style: TextStyle(fontSize: 17)),
+              SizedBox(width: 12),
+              Text('로그아웃', style: TextStyle(fontSize: 14, color: AppColors.red, fontWeight: FontWeight.w700)),
+            ]),
+          ),
+        ),
       ],
     );
   }
