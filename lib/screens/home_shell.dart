@@ -17,6 +17,9 @@ import 'community_post_screen.dart';
 import 'community_screen.dart';
 import 'country_screen.dart';
 import 'detail_page.dart';
+import 'earn_hub_screen.dart';
+import 'gongu_detail_screen.dart';
+import 'gongu_screen.dart';
 import 'home_content.dart';
 import 'list_screen.dart';
 import 'map_view.dart';
@@ -218,6 +221,12 @@ class _HomeShellState extends State<HomeShell> {
           m: route.mission!, done: doneMissions.contains(route.mission!.id),
           onClose: pop, onComplete: completeMission,
         );
+      case 'earn':
+        return EarnHubScreen(doneMissions: doneMissions, onClose: pop, push: push);
+      case 'gongu':
+        return GonguScreen(onClose: pop, push: push);
+      case 'gongudetail':
+        return GonguDetailScreen(g: route.gongu!, onClose: pop, earn: earn);
       default:
         return null;
     }

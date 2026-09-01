@@ -1,7 +1,8 @@
+import 'gongu.dart';
 import 'partner_mission.dart';
 
 /// 홈 셸의 전체화면 스택에 쌓이는 라우트 설정.
-/// name: list | overseas | country | search | map | community | walk | shop | coupons | mission
+/// name: list | overseas | country | search | map | community | walk | shop | coupons | mission | earn | gongu | gongudetail
 class ScreenRoute {
   final String name;
   // list 화면 설정
@@ -19,6 +20,8 @@ class ScreenRoute {
   final String? cc;
   // mission 화면
   final PartnerMission? mission;
+  // gongudetail 화면
+  final Gongu? gongu;
 
   const ScreenRoute({
     required this.name,
@@ -34,5 +37,6 @@ class ScreenRoute {
     this.defaultSort,
     this.cc,
     this.mission,
+    this.gongu,
   });
 }

@@ -290,7 +290,8 @@ class _HomeContentState extends State<HomeContent> {
               children: [
                 _EarnTile(icon: '🤝', label: '근처 부탁', val: '+7,000원', valColor: AppColors.ink, bg: AppColors.yellowSoft, onTap: () => goList(const ScreenRoute(name: 'list', title: '근처에서 벌기', subtitle: '가까운 순', base: 'earn', sortable: true, defaultSort: 'dist', catChips: true, mapBtn: true))),
                 _EarnTile(icon: '🚶', label: '걷기', val: '+30P', valColor: AppColors.blue, bg: AppColors.blueSoft, onTap: () => widget.push(const ScreenRoute(name: 'walk'))),
-                _EarnTile(icon: '🎁', label: '신규 서비스 가입', val: '+1,500P', valColor: AppColors.blue, bg: AppColors.purpleSoft, onTap: widget.goPointsHub),
+                _EarnTile(icon: '🎁', label: '부업 (제휴·성과)', val: '+50,000원', valColor: AppColors.purple, bg: AppColors.purpleSoft, onTap: () => widget.push(const ScreenRoute(name: 'earn'))),
+                _EarnTile(icon: '🛍️', label: '공동구매', val: '성과보상', valColor: AppColors.yellowDeep, bg: AppColors.yellowSoft, onTap: () => widget.push(const ScreenRoute(name: 'gongu'))),
               ],
             ),
           ),

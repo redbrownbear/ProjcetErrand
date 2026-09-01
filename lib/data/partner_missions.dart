@@ -1,8 +1,7 @@
 import '../models/partner_mission.dart';
 
 const missionCats = [
-  ['all', '전체'], ['signup', '가입'], ['experience', '체험'], ['blog', '블로그'],
-  ['visit', '방문'], ['survey', '설문'], ['shopping', '쇼핑'],
+  ['all', '전체'], ['signup', '가입'], ['blog', '콘텐츠'], ['survey', '의견'], ['visit', '방문'],
 ];
 
 const partnerMissions = [
@@ -23,6 +22,9 @@ const partnerMissions = [
   PartnerMission(id: 'm15', cat: 'blog', brand: '맛집 체험단', icon: '✍️', title: '동네 맛집 방문 후기 작성', desc: '제공된 메뉴를 체험하고 블로그·SNS에 후기를 올리면 지급돼요. 사진 3장 이상 권장.', points: 5000, time: '방문+후기', cond: '블로그/SNS 보유', reason: '포인트 높은 순'),
   PartnerMission(id: 'm16', cat: 'blog', brand: '뷰티 체험단', icon: '💄', title: '신제품 체험 후기 작성', desc: '제품을 사용해보고 솔직한 사용 후기를 블로그에 올리면 지급돼요.', points: 4000, time: '체험+후기', cond: '블로그 보유', reason: '오늘 인기'),
   PartnerMission(id: 'm17', cat: 'blog', brand: '카페 체험단', icon: '☕', title: '신규 카페 방문 후기', desc: '제공 메뉴를 즐기고 방문 후기를 사진과 함께 올리면 지급돼요.', points: 3000, time: '방문+후기', cond: '블로그/SNS 보유', reason: '근처에서 가능'),
+  PartnerMission(id: 'm18', cat: 'survey', brand: '소비자 인터뷰', icon: '🎤', title: '소비자 인터뷰(온라인)', desc: '정해진 시간에 온라인 인터뷰에 참여하면 지급돼요.', points: 20000, time: '30분', cond: '대상 조건', reason: '고단가'),
+  PartnerMission(id: 'm19', cat: 'survey', brand: '좌담회(FGI)', icon: '🗣️', title: '오프라인 좌담회 참여', desc: '지정 장소에서 진행되는 좌담회에 참여하면 지급돼요.', points: 50000, time: '1~2시간', cond: '대상 조건 · 지역', reason: '포인트 높은 순'),
+  PartnerMission(id: 'm20', cat: 'survey', brand: 'UX 테스트', icon: '🧭', title: '앱 UX 테스트', desc: '지정 앱을 사용하며 피드백을 남기면 지급돼요.', points: 8000, time: '20분', cond: '누구나', reason: '오늘 인기'),
 ];
 
 List<PartnerMission> missionsByCat(String cat) {

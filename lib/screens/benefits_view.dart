@@ -8,6 +8,7 @@ import '../models/screen_route.dart';
 import '../models/task_item.dart';
 import '../theme/colors.dart';
 import '../utils/formatters.dart';
+import '../widgets/attend_streak.dart';
 import '../widgets/mission_row.dart';
 import '../widgets/partner_card.dart';
 import '../widgets/task_card.dart';
@@ -332,19 +333,81 @@ class _BenefitsViewState extends State<BenefitsView> {
           ]),
         ),
 
-        // C. 가입하고 벌기
-        _secTitle('🎁 가입하고 벌기', sub: '행동하면 포인트를 주는 제휴'),
+        // 연속 출석 현금 보상
+        _secTitle('📅 연속 출석하고 벌기', sub: '빠짐없이 오면 현금이 커져요'),
+        AttendStreak(earn: widget.earn),
+
+        // 같이 사고 벌기 (공동구매)
+        InkWell(
+          onTap: () => widget.push(const ScreenRoute(name: 'gongu')),
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(16, 14, 16, 2),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+            decoration: BoxDecoration(color: AppColors.yellowSoft, borderRadius: BorderRadius.circular(16)),
+            child: Row(children: [
+              Container(width: 42, height: 42, alignment: Alignment.center, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)), child: const Text('🛍️', style: TextStyle(fontSize: 22))),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('같이 사고 벌기 · 공동구매', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.ink)),
+                    Padding(padding: const EdgeInsets.only(top: 2), child: Text('공구를 안 만들어도 — 추천으로 같이 사면 보상', style: const TextStyle(fontSize: 11.5, color: AppColors.yellowDeep))),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+                decoration: BoxDecoration(color: AppColors.ink, borderRadius: BorderRadius.circular(9)),
+                child: const Text('공구 보기', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: Colors.white)),
+              ),
+            ]),
+          ),
+        ),
+
+        // B2B2C 부업 허브 진입
+        InkWell(
+          onTap: () => widget.push(const ScreenRoute(name: 'earn')),
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(16, 12, 16, 2),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+            decoration: BoxDecoration(color: AppColors.ink, borderRadius: BorderRadius.circular(16)),
+            child: Row(children: [
+              Container(width: 42, height: 42, alignment: Alignment.center, decoration: BoxDecoration(color: const Color(0xFF2A2C30), borderRadius: BorderRadius.circular(12)), child: const Text('💼', style: TextStyle(fontSize: 22))),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('부업 · 제휴 성과보상', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white)),
+                    Padding(padding: const EdgeInsets.only(top: 2), child: Text('가입·콘텐츠·의견·방문을 한곳에서', style: TextStyle(fontSize: 11.5, color: Colors.white.withValues(alpha: .6)))),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+                decoration: BoxDecoration(color: AppColors.yellow, borderRadius: BorderRadius.circular(9)),
+                child: const Text('전체보기', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: AppColors.ink)),
+              ),
+            ]),
+          ),
+        ),
+
+        // 가입하고 벌기
+        _secTitle('🎁 가입하고 벌기', sub: '카드·통신·서비스 가입 등'),
         _missionRowScroll('signup'),
 
-        // D. 체험하고 벌기
-        _secTitle('🧪 체험하고 벌기', sub: '3분이면 끝나는 미션'),
-        _missionRowScroll('experience'),
-
-        // D-2. 블로그 체험하고 벌기
-        _secTitle('✍️ 블로그 체험하고 벌기', sub: '체험단 · 후기로 사례비'),
+        // 콘텐츠로 벌기
+        _secTitle('✍️ 콘텐츠로 벌기', sub: '블로그·SNS·리뷰 콘텐츠로 사례비'),
         _missionRowScroll('blog'),
 
-        // E. 방문하고 벌기
+        // 의견 주고 벌기
+        _secTitle('🗣️ 의견 주고 벌기', sub: '설문·인터뷰·좌담회·UX 테스트'),
+        _missionRowScroll('survey'),
+
+        // 방문하고 벌기
         _secTitle('🏬 방문하고 벌기', sub: '가는 길에 들러서'),
         _missionRowScroll('visit'),
 
