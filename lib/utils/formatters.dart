@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import '../models/task_item.dart';
 
 String _comma(int n) {
@@ -11,6 +13,8 @@ String _comma(int n) {
 }
 
 String won(int n) => '${_comma(n)}원';
+
+String nf(int n) => _comma(n);
 
 String kwon(int n) => '${(n / 1000).round()}천원';
 
@@ -29,4 +33,18 @@ String metaOf(TaskItem it) {
     it.region ?? '',
   ].where((s) => s.isNotEmpty);
   return parts.join(' · ');
+}
+
+String shortRegion(String r) {
+  if (r == '전국') return '전국';
+  return r.replaceFirst(RegExp(r'^(서울|부산|대전|인천|대구|광주|울산) '), '');
+}
+
+final _rand = Random();
+String genCode() {
+  final buf = StringBuffer('GC');
+  for (var i = 0; i < 12; i++) {
+    buf.write(_rand.nextInt(10));
+  }
+  return buf.toString();
 }

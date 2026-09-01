@@ -1,17 +1,33 @@
 import 'package:flutter/material.dart';
 
 import '../data/items.dart';
+import '../data/point_rules.dart';
+import '../models/coupon.dart';
 import '../models/offer.dart';
+import '../models/partner_mission.dart';
+import '../models/reward_product.dart';
+import '../models/screen_route.dart';
 import '../models/task_item.dart';
 import '../theme/colors.dart';
+import '../utils/formatters.dart';
 import '../widgets/region_sheet.dart';
+import 'benefits_view.dart';
 import 'chat_view.dart';
+import 'community_post_screen.dart';
+import 'community_screen.dart';
+import 'country_screen.dart';
 import 'detail_page.dart';
 import 'home_content.dart';
 import 'list_screen.dart';
 import 'map_view.dart';
 import 'me_view.dart';
+import 'my_coupons_screen.dart';
+import 'overseas_screen.dart';
+import 'partner_mission_detail_screen.dart';
+import 'point_shop_screen.dart';
 import 'post_request.dart';
+import 'search_screen.dart';
+import 'walk_screen.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -20,8 +36,8 @@ class HomeShell extends StatefulWidget {
 }
 
 class _HomeShellState extends State<HomeShell> {
-  String tab = 'home'; // home | map | chat | me
-  String? listKind; // null | help | sea
+  String tab = 'home'; // home | benefits | chat | me
+  List<ScreenRoute> stack = [];
   TaskItem? detail;
   bool post = false;
   bool regionOpen = false;
@@ -30,6 +46,14 @@ class _HomeShellState extends State<HomeShell> {
   String? toast;
   late List<TaskItem> items;
   String scope = '서울 서초구';
+  int points = 3200;
+  final int steps = 6430;
+  List<Coupon> coupons = [];
+  final int tradeCount = 1; // 완료한 거래 수 (신규 첫 3회 수수료 0%)
+  int get freeLeft => (freeTrades - tradeCount).clamp(0, freeTrades);
+  final int monthEarn = 84500; // 이번 달 겸사 수익(원)
+  final int monthPoints = 4230; // 이번 달 적립 포인트
+  List<String> doneMissions = [];
 
   @override
   void initState() {
@@ -44,6 +68,41 @@ class _HomeShellState extends State<HomeShell> {
     });
   }
 
+  void push(ScreenRoute route) => setState(() => stack.add(route));
+  void pop() => setState(() => stack.removeLast());
+
+  void earn(int amt, String label) {
+    setState(() => points += amt);
+    flash('+${amt}P 적립됐어요 · $label');
+  }
+
+  void redeem(RewardProduct p) {
+    setState(() {
+      points -= p.points;
+      coupons.insert(
+        0,
+        Coupon(id: DateTime.now().millisecondsSinceEpoch, brandK: p.brand, name: p.name, points: p.points, exp: '2026.12.31', code: genCode()),
+      );
+    });
+  }
+
+  void useCoupon(int id) {
+    setState(() => coupons = coupons.map((c) => c.id == id ? c.copyWith(used: true) : c).toList());
+  }
+
+  void completeMission(PartnerMission m) {
+    if (doneMissions.contains(m.id)) return;
+    setState(() => doneMissions.add(m.id));
+    earn(m.points, m.title);
+  }
+
+  void goPointsHub() {
+    setState(() {
+      stack = [];
+      tab = 'benefits';
+    });
+  }
+
   void grab(TaskItem it) {
     setState(() {
       if (!grabbed.contains(it.id)) grabbed.add(it.id);
@@ -53,9 +112,7 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   void sendOffer(TaskItem it, int price, String msg) {
-    setState(() {
-      offers.putIfAbsent(it.id, () => []).add(Offer(price, msg));
-    });
+    setState(() => offers.putIfAbsent(it.id, () => []).add(Offer(price, msg)));
     flash('가격 제안을 보냈어요. 요청자에게만 보여요');
   }
 
@@ -66,10 +123,12 @@ class _HomeShellState extends State<HomeShell> {
       cat: data.cat,
       title: data.title,
       desc: data.desc,
-      place: data.place.isEmpty ? (data.mode == 'sea' ? null : '우리 동네') : data.place,
-      country: data.country.isEmpty ? null : data.country,
+      place: data.place.isEmpty ? null : data.place,
+      cc: data.cc,
+      city: data.city,
+      country: data.country,
       region: data.mode == 'sea' ? null : (scope == '전국' ? '우리 동네' : scope),
-      distM: 150,
+      distM: data.mode == 'sea' ? 9e9 : 150,
       mins: data.mode == 'sea' ? 0 : data.mins,
       price: data.price,
       who: '나',
@@ -94,31 +153,150 @@ class _HomeShellState extends State<HomeShell> {
 
   Widget _body() {
     switch (tab) {
-      case 'map':
-        return MapView(items: items, grabbed: grabbed, openDetail: (it) => setState(() => detail = it));
+      case 'benefits':
+        return BenefitsView(
+          points: points, steps: steps, coupons: coupons, earn: earn, push: push,
+          items: items, grabbed: grabbed, openDetail: (it) => setState(() => detail = it),
+          monthEarn: monthEarn, monthPoints: monthPoints, freeLeft: freeLeft,
+          doneMissions: doneMissions, goPointsHub: goPointsHub,
+        );
       case 'chat':
         return ChatView(items: items, grabbed: grabbed);
       case 'me':
-        return const MeView();
+        return MeView(points: points, coupons: coupons, push: push, freeLeft: freeLeft, monthPoints: monthPoints);
       default:
         return HomeContent(
           items: items,
           scope: scope,
           grabbed: grabbed,
+          points: points,
+          steps: steps,
           openDetail: (it) => setState(() => detail = it),
           openPost: () => setState(() => post = true),
-          openList: (k) => setState(() => listKind = k),
           openRegion: () => setState(() => regionOpen = true),
+          push: push,
+          earn: earn,
+          flash: flash,
+          goPointsHub: goPointsHub,
         );
     }
+  }
+
+  Widget? _buildRoute(ScreenRoute route) {
+    switch (route.name) {
+      case 'list':
+        return ListScreen(
+          config: route, items: items, scope: scope, grabbed: grabbed,
+          onClose: pop, onMap: () => push(const ScreenRoute(name: 'map')),
+          openDetail: (it) => setState(() => detail = it),
+        );
+      case 'overseas':
+        return OverseasScreen(
+          items: items, grabbed: grabbed, onClose: pop,
+          openCountry: (cc) => push(ScreenRoute(name: 'country', cc: cc)),
+          openDetail: (it) => setState(() => detail = it),
+        );
+      case 'country':
+        return CountryScreen(cc: route.cc!, items: items, grabbed: grabbed, onClose: pop, openDetail: (it) => setState(() => detail = it));
+      case 'search':
+        return SearchScreen(items: items, grabbed: grabbed, onClose: pop, openDetail: (it) => setState(() => detail = it));
+      case 'map':
+        return _mapScreen();
+      case 'community':
+        return CommunityScreen(items: items, scope: scope, initCat: route.cat, onClose: pop, openDetail: (it) => setState(() => detail = it));
+      case 'walk':
+        return WalkScreen(
+          items: items, scope: scope, steps: steps, points: points, grabbed: grabbed,
+          onClose: pop, earn: earn, push: push, openDetail: (it) => setState(() => detail = it),
+        );
+      case 'shop':
+        return PointShopScreen(points: points, redeem: redeem, onClose: pop, push: push, goPointsHub: goPointsHub);
+      case 'coupons':
+        return MyCouponsScreen(coupons: coupons, useCoupon: useCoupon, onClose: pop, push: push, goPointsHub: goPointsHub);
+      case 'mission':
+        return PartnerMissionDetailScreen(
+          m: route.mission!, done: doneMissions.contains(route.mission!.id),
+          onClose: pop, onComplete: completeMission,
+        );
+      default:
+        return null;
+    }
+  }
+
+  Widget _mapScreen() {
+    return Positioned.fill(
+      child: Material(
+        color: AppColors.page,
+        child: Column(children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 12),
+            decoration: const BoxDecoration(color: AppColors.card, border: Border(bottom: BorderSide(color: AppColors.line))),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  InkWell(onTap: pop, borderRadius: BorderRadius.circular(99), child: const Padding(padding: EdgeInsets.only(right: 2), child: Text('‹', style: TextStyle(fontSize: 24, color: AppColors.ink)))),
+                  const Text('지도', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.ink)),
+                ]),
+                Padding(padding: const EdgeInsets.only(left: 22, top: 4), child: Text('${shortRegion(scope)} 주변 부탁', style: const TextStyle(fontSize: 12, color: AppColors.sub))),
+              ],
+            ),
+          ),
+          Expanded(child: MapView(items: items, grabbed: grabbed, scope: scope, openDetail: (it) => setState(() => detail = it))),
+        ]),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final topRoute = stack.isNotEmpty ? stack.last : null;
+    return Scaffold(
+      backgroundColor: AppColors.page,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Column(children: [Expanded(child: _body()), _bottomNav()]),
+            if (topRoute != null) _buildRoute(topRoute) ?? const SizedBox.shrink(),
+            if (detail != null)
+              detail!.mode == 'together'
+                  ? CommunityPostScreen(it: detail!, grabbed: grabbed, onClose: () => setState(() => detail = null), onGrab: grab)
+                  : DetailPage(
+                      it: detail!, grabbed: grabbed, myOffers: offers[detail!.id] ?? const [],
+                      onClose: () => setState(() => detail = null), onGrab: grab, onOffer: sendOffer,
+                    ),
+            if (post) PostRequest(scope: scope, onClose: () => setState(() => post = false), onSubmit: addRequest),
+            if (regionOpen)
+              RegionSheet(
+                scope: scope,
+                onPick: (r) => setState(() {
+                  scope = r;
+                  regionOpen = false;
+                }),
+                onClose: () => setState(() => regionOpen = false),
+              ),
+            if (toast != null)
+              Positioned(
+                left: 22, right: 22, bottom: 92,
+                child: IgnorePointer(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                    decoration: BoxDecoration(color: AppColors.black, borderRadius: BorderRadius.circular(14)),
+                    child: Text(toast!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.w600)),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _bottomNav() {
     final tabs = [
       ['home', '홈', '🏠'],
-      ['map', '지도', '🗺️'],
-      ['chat', '채팅', '💬'],
-      ['me', '내정보', '👤'],
+      ['benefits', '혜택', '🎁'],
     ];
     return Container(
       decoration: const BoxDecoration(color: AppColors.card, border: Border(top: BorderSide(color: AppColors.line))),
@@ -148,8 +326,8 @@ class _HomeShellState extends State<HomeShell> {
               ],
             ),
           ),
-          _navBtn(tabs[2], badge: grabbed.length),
-          _navBtn(tabs[3]),
+          _navBtn(['chat', '채팅', '💬'], badge: grabbed.length),
+          _navBtn(['me', '내정보', '👤']),
         ],
       ),
     );
@@ -160,7 +338,10 @@ class _HomeShellState extends State<HomeShell> {
     final active = tab == k;
     return Expanded(
       child: InkWell(
-        onTap: () => setState(() => tab = k),
+        onTap: () => setState(() {
+          stack = [];
+          tab = k;
+        }),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 6),
           child: Column(
@@ -182,59 +363,6 @@ class _HomeShellState extends State<HomeShell> {
               Text(label, style: TextStyle(fontSize: 11, color: active ? AppColors.ink : AppColors.faint, fontWeight: active ? FontWeight.w700 : FontWeight.w500)),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.page,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Column(children: [Expanded(child: _body()), _bottomNav()]),
-            if (listKind != null)
-              ListScreen(
-                kind: listKind!,
-                items: items,
-                scope: scope,
-                grabbed: grabbed,
-                onClose: () => setState(() => listKind = null),
-                openDetail: (it) => setState(() => detail = it),
-              ),
-            if (detail != null)
-              DetailPage(
-                it: detail!,
-                grabbed: grabbed,
-                myOffers: offers[detail!.id] ?? const [],
-                onClose: () => setState(() => detail = null),
-                onGrab: grab,
-                onOffer: sendOffer,
-              ),
-            if (post) PostRequest(scope: scope, onClose: () => setState(() => post = false), onSubmit: addRequest),
-            if (regionOpen)
-              RegionSheet(
-                scope: scope,
-                onPick: (r) => setState(() {
-                  scope = r;
-                  regionOpen = false;
-                }),
-                onClose: () => setState(() => regionOpen = false),
-              ),
-            if (toast != null)
-              Positioned(
-                left: 22, right: 22, bottom: 92,
-                child: IgnorePointer(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                    decoration: BoxDecoration(color: AppColors.black, borderRadius: BorderRadius.circular(14)),
-                    child: Text(toast!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.w600)),
-                  ),
-                ),
-              ),
-          ],
         ),
       ),
     );

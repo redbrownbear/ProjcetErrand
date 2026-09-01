@@ -9,8 +9,9 @@ import '../widgets/tag.dart';
 class MapView extends StatefulWidget {
   final List<TaskItem> items;
   final List<int> grabbed;
+  final String scope;
   final void Function(TaskItem) openDetail;
-  const MapView({super.key, required this.items, required this.grabbed, required this.openDetail});
+  const MapView({super.key, required this.items, required this.grabbed, required this.scope, required this.openDetail});
   @override
   State<MapView> createState() => _MapViewState();
 }
@@ -19,10 +20,12 @@ class _MapViewState extends State<MapView> {
   String filter = 'all';
   TaskItem? preview;
 
+  bool _inScope(TaskItem i) => widget.scope == '전국' || i.region == widget.scope;
+
   @override
   Widget build(BuildContext context) {
     final pins = widget.items
-        .where((i) => i.mode != 'sea')
+        .where((i) => i.mode != 'sea' && _inScope(i))
         .where((i) => filter == 'all' ? true : i.mode == filter)
         .toList();
 

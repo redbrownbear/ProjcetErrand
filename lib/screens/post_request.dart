@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
 
 import '../data/categories.dart';
+import '../data/countries.dart';
+import '../data/point_rules.dart';
 import '../models/task_item.dart';
 import '../theme/colors.dart';
 import '../utils/formatters.dart';
 import '../widgets/task_card.dart';
 
 class NewRequestData {
-  final String mode, cat, title, desc, place, country;
+  final String mode, cat, title, desc, place;
+  final String? cc, city, country;
   final int mins, price;
   final bool hot;
   const NewRequestData({
     required this.mode, required this.cat, required this.title, required this.desc,
-    required this.place, required this.country, required this.mins, required this.price, required this.hot,
+    required this.place, this.cc, this.city, this.country, required this.mins, required this.price, required this.hot,
   });
 }
 
@@ -29,36 +32,48 @@ class _PostRequestState extends State<PostRequest> {
   int step = 0;
   String kind = 'ask'; // ask | sea
   String cat = 'buy';
+  String cc = 'jp';
+  String city = '';
   int mins = 30;
   int price = 10000;
   bool hot = false;
   final titleCtrl = TextEditingController();
   final descCtrl = TextEditingController();
   final placeCtrl = TextEditingController();
-  final countryCtrl = TextEditingController();
 
   bool get sea => kind == 'sea';
+  int get floor => sea ? seaMin : 0;
 
   @override
   void dispose() {
     titleCtrl.dispose();
     descCtrl.dispose();
     placeCtrl.dispose();
-    countryCtrl.dispose();
     super.dispose();
+  }
+
+  void _setKind(String k) {
+    setState(() {
+      kind = k;
+      if (k == 'sea' && price < seaMin) price = seaMin;
+    });
   }
 
   bool _readyAt(int s) {
     if (s == 0) return titleCtrl.text.trim().isNotEmpty && descCtrl.text.trim().isNotEmpty;
-    if (s == 1) return sea ? countryCtrl.text.trim().isNotEmpty : true;
     return true;
   }
 
   void _submit() {
+    final finalPrice = sea ? (price < seaMin ? seaMin : price) : price;
+    final country = countryOf(cc);
     widget.onSubmit(NewRequestData(
       mode: kind, cat: cat, title: titleCtrl.text.trim(), desc: descCtrl.text.trim(),
-      place: placeCtrl.text.trim(), country: countryCtrl.text.trim(),
-      mins: sea ? 0 : mins, price: price, hot: hot,
+      place: placeCtrl.text.trim().isEmpty ? (sea ? '' : '우리 동네') : placeCtrl.text.trim(),
+      cc: sea ? cc : null,
+      city: sea ? city : null,
+      country: sea ? '${country.flag} ${country.name}${city.isNotEmpty ? ' $city' : ''}' : null,
+      mins: sea ? 0 : mins, price: finalPrice, hot: hot,
     ));
   }
 
@@ -79,10 +94,7 @@ class _PostRequestState extends State<PostRequest> {
                   InkWell(
                     onTap: step == 0 ? widget.onClose : () => setState(() => step -= 1),
                     borderRadius: BorderRadius.circular(99),
-                    child: Padding(
-                      padding: const EdgeInsets.all(2),
-                      child: Text(step == 0 ? '✕' : '‹', style: const TextStyle(fontSize: 20, color: AppColors.ink)),
-                    ),
+                    child: Padding(padding: const EdgeInsets.all(2), child: Text(step == 0 ? '✕' : '‹', style: const TextStyle(fontSize: 20, color: AppColors.ink))),
                   ),
                   Text('${step + 1} / 3', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.sub)),
                   const SizedBox(width: 20),
@@ -103,12 +115,12 @@ class _PostRequestState extends State<PostRequest> {
           ),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(22, 22, 22, 24),
+              padding: const EdgeInsets.fromLTRB(18, 20, 18, 24),
               child: _stepBody(),
             ),
           ),
           Container(
-            padding: const EdgeInsets.fromLTRB(22, 12, 22, 16),
+            padding: const EdgeInsets.fromLTRB(18, 12, 18, 16),
             decoration: const BoxDecoration(color: AppColors.card, border: Border(top: BorderSide(color: AppColors.line))),
             child: SizedBox(
               width: double.infinity,
@@ -121,10 +133,7 @@ class _PostRequestState extends State<PostRequest> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   elevation: 0,
                 ),
-                child: Text(
-                  step < 2 ? '다음' : (hot ? '1,000원 결제하고 올리기' : '부탁 올리기'),
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-                ),
+                child: Text(step < 2 ? '다음' : (hot ? '1,000원 결제하고 올리기' : '부탁 올리기'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
               ),
             ),
           ),
@@ -139,7 +148,7 @@ class _PostRequestState extends State<PostRequest> {
     return _step3();
   }
 
-  Widget _stepTitle(String t) => Padding(padding: const EdgeInsets.only(bottom: 20), child: Text(t, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.ink, letterSpacing: -0.3)));
+  Widget _stepTitle(String t) => Padding(padding: const EdgeInsets.only(bottom: 18), child: Text(t, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800, color: AppColors.ink, letterSpacing: -0.3)));
   Widget _label(String t) => Padding(padding: const EdgeInsets.only(bottom: 9), child: Text(t, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: AppColors.ink)));
 
   InputDecoration _dec(String hint) => InputDecoration(
@@ -156,9 +165,9 @@ class _PostRequestState extends State<PostRequest> {
       children: [
         _stepTitle('무엇을 부탁할까요?'),
         Row(children: [
-          Expanded(child: _segBtn(!sea, () => setState(() => kind = 'ask'), '🇰🇷 우리 동네', AppColors.yellow, AppColors.yellowSoft)),
+          Expanded(child: _segBtn(!sea, () => _setKind('ask'), '🇰🇷 우리 동네', AppColors.yellow, AppColors.yellowSoft)),
           const SizedBox(width: 8),
-          Expanded(child: _segBtn(sea, () => setState(() => kind = 'sea'), '✈️ 해외 대행', AppColors.purple, AppColors.purpleSoft)),
+          Expanded(child: _segBtn(sea, () => _setKind('sea'), '✈️ 해외 대행', AppColors.purple, AppColors.purpleSoft)),
         ]),
         const SizedBox(height: 20),
         if (sea)
@@ -167,40 +176,40 @@ class _PostRequestState extends State<PostRequest> {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             margin: const EdgeInsets.only(bottom: 20),
             decoration: BoxDecoration(color: AppColors.purpleSoft, borderRadius: BorderRadius.circular(12)),
-            child: const Text('그 나라에 있는 이웃이 대신 사서 가져다줘요. 물건값은 영수증으로 정산, 사례비는 따로 정해요.', style: TextStyle(fontSize: 12, color: AppColors.purple, height: 1.55, fontWeight: FontWeight.w500)),
+            child: Text('그 나라에 있는 이웃이 대신 사서 가져다줘요. 물건값은 영수증으로 정산, 사례비는 최소 ${nf(seaMin)}원부터예요.', style: const TextStyle(fontSize: 12, color: AppColors.purple, height: 1.55, fontWeight: FontWeight.w500)),
           ),
         if (!sea) ...[
           _label('카테고리'),
           GridView.count(
-            crossAxisCount: 4,
+            crossAxisCount: 5,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             mainAxisSpacing: 8, crossAxisSpacing: 8,
-            childAspectRatio: 0.95,
+            childAspectRatio: 0.85,
             children: cats.map((c) {
               final on = cat == c.k;
               return InkWell(
                 onTap: () => setState(() => cat = c.k),
-                borderRadius: BorderRadius.circular(13),
+                borderRadius: BorderRadius.circular(12),
                 child: Container(
                   decoration: BoxDecoration(
                     color: on ? AppColors.yellowSoft : AppColors.card,
-                    borderRadius: BorderRadius.circular(13),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: on ? AppColors.yellow : AppColors.line, width: 1.5),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(c.icon, style: const TextStyle(fontSize: 20)),
-                      const SizedBox(height: 4),
-                      Text(c.label, style: TextStyle(fontSize: 10.5, color: AppColors.ink, fontWeight: on ? FontWeight.w700 : FontWeight.w500)),
+                      Text(c.icon, style: const TextStyle(fontSize: 19)),
+                      const SizedBox(height: 3),
+                      Text(c.label, style: TextStyle(fontSize: 10, color: AppColors.ink, fontWeight: on ? FontWeight.w700 : FontWeight.w500)),
                     ],
                   ),
                 ),
               );
             }).toList(),
           ),
-          const SizedBox(height: 22),
+          const SizedBox(height: 20),
         ],
         _label('제목'),
         TextField(
@@ -209,7 +218,6 @@ class _PostRequestState extends State<PostRequest> {
           onChanged: (_) => setState(() {}),
           decoration: _dec(sea ? '예: 돈키호테에서 곤약젤리 사다주세요' : '예: 성심당에서 빵 좀 사다 주세요'),
         ),
-        const SizedBox(height: 6),
         _label('간단 설명'),
         TextField(
           controller: descCtrl,
@@ -227,10 +235,60 @@ class _PostRequestState extends State<PostRequest> {
       children: [
         _stepTitle('언제 어디서요?'),
         if (sea) ...[
-          _label('어느 나라 · 도시'),
-          TextField(controller: countryCtrl, onChanged: (_) => setState(() {}), decoration: _dec('예: 🇯🇵 일본 도쿄')),
+          _label('어느 나라'),
+          Wrap(
+            spacing: 8, runSpacing: 8,
+            children: countries.map((c) {
+              final on = cc == c.cc;
+              return InkWell(
+                onTap: () => setState(() {
+                  cc = c.cc;
+                  city = '';
+                }),
+                borderRadius: BorderRadius.circular(11),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                  decoration: BoxDecoration(
+                    color: on ? AppColors.purpleSoft : AppColors.card,
+                    borderRadius: BorderRadius.circular(11),
+                    border: Border.all(color: on ? AppColors.purple : AppColors.line, width: 1.5),
+                  ),
+                  child: Text('${c.flag} ${c.name}', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.ink)),
+                ),
+              );
+            }).toList(),
+          ),
           const SizedBox(height: 16),
-          _label('구매 장소 (선택)'),
+          Text.rich(TextSpan(style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: AppColors.ink), children: const [
+            TextSpan(text: '도시 '),
+            TextSpan(text: '(선택)', style: TextStyle(color: AppColors.faint, fontWeight: FontWeight.w500)),
+          ])),
+          const SizedBox(height: 9),
+          Wrap(
+            spacing: 8, runSpacing: 8,
+            children: countryOf(cc).cities.map((ci) {
+              final on = city == ci;
+              return InkWell(
+                onTap: () => setState(() => city = city == ci ? '' : ci),
+                borderRadius: BorderRadius.circular(11),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                  decoration: BoxDecoration(
+                    color: on ? AppColors.ink : AppColors.card,
+                    borderRadius: BorderRadius.circular(11),
+                    border: Border.all(color: on ? AppColors.ink : AppColors.line, width: 1.5),
+                  ),
+                  child: Text(ci, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: on ? Colors.white : AppColors.ink)),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 16),
+          Text.rich(TextSpan(style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: AppColors.ink), children: const [
+            TextSpan(text: '구매 장소 '),
+            TextSpan(text: '(선택)', style: TextStyle(color: AppColors.faint, fontWeight: FontWeight.w500)),
+          ])),
+          const SizedBox(height: 9),
           TextField(controller: placeCtrl, decoration: _dec('예: 시부야 돈키호테')),
         ] else ...[
           _label('어디서요?'),
@@ -241,12 +299,7 @@ class _PostRequestState extends State<PostRequest> {
           const SizedBox(height: 10),
           Row(children: [
             for (final m in [10, 20, 30, 60])
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: _quickBtn('$m분', mins == m, () => setState(() => mins = m)),
-                ),
-              ),
+              Expanded(child: Padding(padding: const EdgeInsets.only(right: 8), child: _quickBtn('$m분', mins == m, () => setState(() => mins = m)))),
           ]),
         ],
       ],
@@ -254,14 +307,16 @@ class _PostRequestState extends State<PostRequest> {
   }
 
   Widget _step3() {
-    final quickPrices = sea ? [10000, 20000, 30000, 50000] : [5000, 10000, 15000, 20000];
+    final quickPrices = sea ? [20000, 30000, 50000, 100000] : [5000, 10000, 15000, 20000];
+    final country = countryOf(cc);
     final preview = TaskItem(
       id: -1, mode: kind, cat: cat,
       title: titleCtrl.text.trim().isEmpty ? '제목을 입력하세요' : titleCtrl.text.trim(),
-      price: price, hot: hot,
+      price: sea ? (price < seaMin ? seaMin : price) : price, hot: hot,
       distM: sea ? 9e9 : 150, mins: sea ? 0 : mins,
       region: sea ? null : (placeCtrl.text.trim().isEmpty ? '우리 동네' : placeCtrl.text.trim()),
-      country: sea ? (countryCtrl.text.trim().isEmpty ? '해외' : countryCtrl.text.trim()) : null,
+      cc: sea ? cc : null,
+      country: sea ? '${country.flag} ${country.name}${city.isNotEmpty ? ' $city' : ''}' : null,
       place: placeCtrl.text.trim(),
       who: '나', desc: descCtrl.text.trim(),
     );
@@ -269,29 +324,19 @@ class _PostRequestState extends State<PostRequest> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _stepTitle('얼마 드릴까요?'),
-        _label(sea ? '사례비 (물건값 별도)' : '사례비'),
-        _qtyStepper(won(price), () => setState(() => price = (price - 1000).clamp(0, 9999999)), () => setState(() => price += 1000), big: true),
+        _label(sea ? '사례비 (최소 ${nf(seaMin)}원, 물건값 별도)' : '사례비'),
+        _qtyStepper(won(price), () => setState(() => price = (price - 1000).clamp(floor, 9999999)), () => setState(() => price += 1000), big: true),
         const SizedBox(height: 10),
         Row(children: [
           for (final p in quickPrices)
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: _quickBtn('${p ~/ 1000}천', price == p, () => setState(() => price = p)),
-              ),
-            ),
+            Expanded(child: Padding(padding: const EdgeInsets.only(right: 8), child: _quickBtn('${p ~/ 1000}천', price == p, () => setState(() => price = p)))),
         ]),
         const SizedBox(height: 10),
-        Text.rich(
-          const TextSpan(
-            style: TextStyle(fontSize: 12, color: AppColors.sub, height: 1.5),
-            children: [
-              TextSpan(text: '애매하면 이대로 올려도 돼요. 이웃이 '),
-              TextSpan(text: '비공개로 가격을 제안', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w700)),
-              TextSpan(text: '할 수 있어요.'),
-            ],
-          ),
-        ),
+        Text.rich(const TextSpan(style: TextStyle(fontSize: 12, color: AppColors.sub, height: 1.5), children: [
+          TextSpan(text: '애매하면 이대로 올려도 돼요. 이웃이 '),
+          TextSpan(text: '비공개로 가격을 제안', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w700)),
+          TextSpan(text: '할 수 있어요.'),
+        ])),
         const SizedBox(height: 22),
         _label('급하게 올릴까요? (선택)'),
         InkWell(
@@ -299,12 +344,8 @@ class _PostRequestState extends State<PostRequest> {
           borderRadius: BorderRadius.circular(14),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-            margin: const EdgeInsets.only(bottom: 24),
-            decoration: BoxDecoration(
-              color: AppColors.card,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: hot ? AppColors.red : AppColors.line, width: 1.5),
-            ),
+            margin: const EdgeInsets.only(bottom: 22),
+            decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(14), border: Border.all(color: hot ? AppColors.red : AppColors.line, width: 1.5)),
             child: Row(children: [
               const Text('🔥', style: TextStyle(fontSize: 20)),
               const SizedBox(width: 12),
@@ -327,7 +368,7 @@ class _PostRequestState extends State<PostRequest> {
           ),
         ),
         _label('이렇게 올라가요'),
-        TaskCard(it: preview, onOpen: () {}),
+        TaskCard(it: preview, onOpen: () {}, rich: true),
       ],
     );
   }
@@ -339,11 +380,7 @@ class _PostRequestState extends State<PostRequest> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 13),
         alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: on ? bg : AppColors.card,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: on ? c : AppColors.line, width: 1.5),
-        ),
+        decoration: BoxDecoration(color: on ? bg : AppColors.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: on ? c : AppColors.line, width: 1.5)),
         child: Text(label, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: on ? (c == AppColors.yellow ? AppColors.ink : c) : AppColors.ink)),
       ),
     );
@@ -356,11 +393,7 @@ class _PostRequestState extends State<PostRequest> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
         alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: on ? AppColors.ink : AppColors.card,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: on ? AppColors.ink : AppColors.line),
-        ),
+        decoration: BoxDecoration(color: on ? AppColors.ink : AppColors.card, borderRadius: BorderRadius.circular(10), border: Border.all(color: on ? AppColors.ink : AppColors.line)),
         child: Text(label, style: TextStyle(color: on ? Colors.white : AppColors.ink, fontSize: 12.5, fontWeight: FontWeight.w700)),
       ),
     );
@@ -369,7 +402,7 @@ class _PostRequestState extends State<PostRequest> {
   Widget _qtyStepper(String value, VoidCallback onMinus, VoidCallback onPlus, {bool big = false}) {
     return Row(children: [
       _round('−', onMinus),
-      Expanded(child: Text(value, textAlign: TextAlign.center, style: TextStyle(fontSize: big ? 26 : 18, fontWeight: FontWeight.w900, color: AppColors.ink))),
+      Expanded(child: Text(value, textAlign: TextAlign.center, style: TextStyle(fontSize: big ? 26 : 18, fontWeight: FontWeight.w800, color: AppColors.ink))),
       _round('＋', onPlus),
     ]);
   }
