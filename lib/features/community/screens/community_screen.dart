@@ -6,6 +6,7 @@ import '../../../core/widgets/chip_widget.dart';
 import '../../../core/widgets/screen_frame.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../errand/models/task_item.dart';
+import '../../errand/navigation/errand_actions.dart';
 import '../data/categories.dart';
 import '../widgets/community_card.dart';
 
@@ -13,12 +14,8 @@ class CommunityScreen extends StatefulWidget {
   final List<TaskItem> items;
   final String scope;
   final String? initCat;
-  final VoidCallback onClose;
-  final void Function(TaskItem) openDetail;
-  const CommunityScreen({
-    super.key, required this.items, required this.scope, this.initCat,
-    required this.onClose, required this.openDetail,
-  });
+  final ErrandActions actions;
+  const CommunityScreen({super.key, required this.items, required this.scope, this.initCat, required this.actions});
   @override
   State<CommunityScreen> createState() => _CommunityScreenState();
 }
@@ -36,7 +33,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
     return ScreenFrame(
       title: '같이해요',
       subtitle: '${shortRegion(widget.scope)} 동네생활',
-      onBack: widget.onClose,
+      onBack: () => Navigator.of(context).pop(),
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
         children: [
@@ -60,7 +57,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
           if (feed.isEmpty)
             const EmptyState(msg: '이 카테고리엔 아직 글이 없어요.')
           else
-            for (final it in feed) CommunityCard(it: it, onOpen: () => widget.openDetail(it)),
+            for (final it in feed) CommunityCard(it: it, onOpen: () => widget.actions.open(context, it)),
         ],
       ),
     );

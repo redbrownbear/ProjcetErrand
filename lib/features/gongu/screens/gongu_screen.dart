@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/navigation/screen_route.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/screen_frame.dart';
 import '../repositories/gongu_repository.dart';
+import 'gongu_detail_screen.dart';
 
 class GonguScreen extends StatelessWidget {
-  final VoidCallback onClose;
-  final void Function(ScreenRoute) push;
-  const GonguScreen({super.key, required this.onClose, required this.push});
+  final void Function(int amt, String label) earn;
+  const GonguScreen({super.key, required this.earn});
 
   @override
   Widget build(BuildContext context) {
@@ -17,7 +16,7 @@ class GonguScreen extends StatelessWidget {
     return ScreenFrame(
       title: '공동구매',
       subtitle: '같이 사고 벌기 · 판매 성과가 곧 부수입',
-      onBack: onClose,
+      onBack: () => Navigator.of(context).pop(),
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
         children: [
@@ -38,7 +37,7 @@ class GonguScreen extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: 12),
               child: InkWell(
-                onTap: () => push(ScreenRoute(name: 'gongudetail', gongu: g)),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GonguDetailScreen(g: g, earn: earn))),
                 borderRadius: BorderRadius.circular(16),
                 child: Container(
                   padding: const EdgeInsets.all(14),

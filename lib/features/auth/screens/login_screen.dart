@@ -6,10 +6,7 @@ import '../services/auth_service.dart';
 import 'signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  /// 오버레이로 띄워졌을 때 닫기 버튼과 로그인 성공 시 호출됨. 전체 화면(AuthGate 스플래시
-  /// 이후 경로)에서 재사용할 수도 있으므로 optional로 둠.
-  final VoidCallback? onClose;
-  const LoginScreen({super.key, this.onClose});
+  const LoginScreen({super.key});
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
@@ -41,7 +38,7 @@ class _LoginScreenState extends State<LoginScreen> {
     });
     try {
       await _auth.signIn(email: email, password: password);
-      if (mounted) widget.onClose?.call();
+      if (mounted) Navigator.of(context).pop();
     } on FirebaseAuthException catch (e) {
       setState(() => _error = AuthService.messageFor(e));
     } catch (_) {
@@ -65,14 +62,13 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: AppColors.page,
       body: SafeArea(
         child: Stack(children: [
-          if (widget.onClose != null)
-            Positioned(
-              left: 8, top: 4,
-              child: IconButton(
-                onPressed: widget.onClose,
-                icon: const Icon(Icons.close, color: AppColors.ink),
-              ),
+          Positioned(
+            left: 8, top: 4,
+            child: IconButton(
+              onPressed: () => Navigator.of(context).pop(),
+              icon: const Icon(Icons.close, color: AppColors.ink),
             ),
+          ),
           Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),

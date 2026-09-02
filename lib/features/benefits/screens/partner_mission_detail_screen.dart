@@ -8,16 +8,15 @@ import '../models/partner_mission.dart';
 class PartnerMissionDetailScreen extends StatelessWidget {
   final PartnerMission m;
   final bool done;
-  final VoidCallback onClose;
   final void Function(PartnerMission) onComplete;
-  const PartnerMissionDetailScreen({super.key, required this.m, required this.done, required this.onClose, required this.onComplete});
+  const PartnerMissionDetailScreen({super.key, required this.m, required this.done, required this.onComplete});
 
   @override
   Widget build(BuildContext context) {
     return ScreenFrame(
       title: '제휴 미션',
       subtitle: '제휴 · ${m.brand}',
-      onBack: onClose,
+      onBack: () => Navigator.of(context).pop(),
       child: Stack(children: [
         ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 110),

@@ -1,21 +1,24 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/navigation/screen_route.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/chip_widget.dart';
 import '../../../core/widgets/screen_frame.dart';
 import '../data/reward_brands.dart';
+import '../models/coupon.dart';
 import '../models/reward_product.dart';
 import '../repositories/benefits_repository.dart';
+import 'my_coupons_screen.dart';
 
 class PointShopScreen extends StatefulWidget {
   final int points;
   final void Function(RewardProduct) redeem;
-  final VoidCallback onClose;
-  final void Function(ScreenRoute) push;
+  final List<Coupon> coupons;
+  final void Function(int id) useCoupon;
   final VoidCallback goPointsHub;
-  const PointShopScreen({super.key, required this.points, required this.redeem, required this.onClose, required this.push, required this.goPointsHub});
+  const PointShopScreen({
+    super.key, required this.points, required this.redeem, required this.coupons, required this.useCoupon, required this.goPointsHub,
+  });
   @override
   State<PointShopScreen> createState() => _PointShopScreenState();
 }
@@ -47,12 +50,14 @@ class _PointShopScreenState extends State<PointShopScreen> {
     final brandsInCat = rewardBrands.where((b) => cat == 'all' || b.cat == cat).toList();
 
     return Stack(children: [
-      ScreenFrame(
+      Positioned.fill(child: ScreenFrame(
         title: '포인트샵',
         subtitle: '모은 포인트를 생활 혜택으로',
-        onBack: widget.onClose,
+        onBack: () => Navigator.of(context).pop(),
         right: InkWell(
-          onTap: () => widget.push(const ScreenRoute(name: 'coupons')),
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => MyCouponsScreen(
+            coupons: widget.coupons, useCoupon: widget.useCoupon, goPointsHub: widget.goPointsHub,
+          ))),
           borderRadius: BorderRadius.circular(9),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
@@ -149,13 +154,15 @@ class _PointShopScreenState extends State<PointShopScreen> {
               ),
           ],
         ),
-      ),
+      )),
       if (confirm != null)
         _RedeemSheet(p: confirm!, points: widget.points, onClose: () => setState(() => confirm = null), onConfirm: () => _doRedeem(confirm!)),
       if (done != null)
         _RedeemDone(p: done!, onClose: () => setState(() => done = null), onCoupons: () {
           setState(() => done = null);
-          widget.push(const ScreenRoute(name: 'coupons'));
+          Navigator.push(context, MaterialPageRoute(builder: (_) => MyCouponsScreen(
+            coupons: widget.coupons, useCoupon: widget.useCoupon, goPointsHub: widget.goPointsHub,
+          )));
         }),
     ]);
   }

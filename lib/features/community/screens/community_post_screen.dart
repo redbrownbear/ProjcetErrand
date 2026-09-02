@@ -9,9 +9,8 @@ import '../data/categories.dart';
 class CommunityPostScreen extends StatefulWidget {
   final TaskItem it;
   final List<int> grabbed;
-  final VoidCallback onClose;
   final void Function(TaskItem) onGrab;
-  const CommunityPostScreen({super.key, required this.it, required this.grabbed, required this.onClose, required this.onGrab});
+  const CommunityPostScreen({super.key, required this.it, required this.grabbed, required this.onGrab});
   @override
   State<CommunityPostScreen> createState() => _CommunityPostScreenState();
 }
@@ -42,18 +41,17 @@ class _CommunityPostScreenState extends State<CommunityPostScreen> {
     final t = tcatOf(it.tcat);
     final done = widget.grabbed.contains(it.id);
 
-    return Positioned.fill(
-      child: Material(
-        color: AppColors.page,
-        child: Column(children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 18),
-            height: 52,
-            alignment: Alignment.centerLeft,
-            decoration: const BoxDecoration(color: AppColors.card, border: Border(bottom: BorderSide(color: AppColors.line))),
-            child: Row(children: [
-              InkWell(onTap: widget.onClose, borderRadius: BorderRadius.circular(99), child: const Padding(padding: EdgeInsets.only(right: 2), child: Text('‹', style: TextStyle(fontSize: 24, color: AppColors.ink)))),
+    return Material(
+      color: AppColors.page,
+      child: Column(children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          height: 52,
+          alignment: Alignment.centerLeft,
+          decoration: const BoxDecoration(color: AppColors.card, border: Border(bottom: BorderSide(color: AppColors.line))),
+          child: Row(children: [
+            InkWell(onTap: () => Navigator.of(context).pop(), borderRadius: BorderRadius.circular(99), child: const Padding(padding: EdgeInsets.only(right: 2), child: Text('‹', style: TextStyle(fontSize: 24, color: AppColors.ink)))),
               Text('같이해요 · ${t.label}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.ink)),
             ]),
           ),
@@ -227,7 +225,6 @@ class _CommunityPostScreenState extends State<CommunityPostScreen> {
                   ),
           ),
         ]),
-      ),
     );
   }
 }

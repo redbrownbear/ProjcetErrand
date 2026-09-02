@@ -5,28 +5,45 @@ import '../../../core/theme/colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../benefits/data/point_rules.dart';
+import '../../benefits/models/coupon.dart';
+import '../../benefits/models/partner_mission.dart';
+import '../../benefits/models/reward_product.dart';
+import '../../benefits/screens/earn_hub_screen.dart';
+import '../../benefits/screens/point_shop_screen.dart';
+import '../../benefits/screens/walk_screen.dart';
 import '../../benefits/widgets/walk_ring.dart';
+import '../../community/screens/community_screen.dart';
 import '../../community/widgets/community_card.dart';
+import '../../gongu/screens/gongu_screen.dart';
 import '../data/categories.dart';
 import '../data/countries.dart';
 import '../data/home_ads.dart';
 import '../models/task_item.dart';
+import '../navigation/errand_actions.dart';
 import '../widgets/ad_banner.dart';
 import '../widgets/featured_card.dart';
 import '../widgets/reco_card.dart';
 import '../widgets/task_card.dart';
+import 'country_screen.dart';
+import 'list_screen.dart';
+import 'map_screen.dart';
+import 'overseas_screen.dart';
+import 'search_screen.dart';
 
 class HomeContent extends StatefulWidget {
   final List<TaskItem> items;
   final String scope;
-  final List<int> grabbed;
+  final ErrandActions actions;
   final int points;
   final int steps;
-  final void Function(TaskItem) openDetail;
+  final List<Coupon> coupons;
+  final List<String> doneMissions;
   final VoidCallback openPost;
   final VoidCallback openRegion;
-  final void Function(ScreenRoute) push;
   final void Function(int amt, String label) earn;
+  final void Function(RewardProduct) redeem;
+  final void Function(int id) useCoupon;
+  final void Function(PartnerMission) completeMission;
   final void Function(String) flash;
   final VoidCallback goPointsHub;
 
@@ -34,14 +51,17 @@ class HomeContent extends StatefulWidget {
     super.key,
     required this.items,
     required this.scope,
-    required this.grabbed,
+    required this.actions,
     required this.points,
     required this.steps,
-    required this.openDetail,
+    required this.coupons,
+    required this.doneMissions,
     required this.openPost,
     required this.openRegion,
-    required this.push,
     required this.earn,
+    required this.redeem,
+    required this.useCoupon,
+    required this.completeMission,
     required this.flash,
     required this.goPointsHub,
   });
@@ -54,6 +74,35 @@ class _HomeContentState extends State<HomeContent> {
   bool walkGot = false;
 
   bool _inScope(TaskItem i) => widget.scope == '전국' || i.region == widget.scope;
+
+  void goList(ScreenRoute config) => Navigator.push(context, MaterialPageRoute(builder: (_) => ListScreen(config: config, items: widget.items, scope: widget.scope, actions: widget.actions)));
+  void goMap() => Navigator.push(context, MaterialPageRoute(builder: (_) => MapScreen(items: widget.items, scope: widget.scope, actions: widget.actions)));
+  void goSearch() => Navigator.push(context, MaterialPageRoute(builder: (_) => SearchScreen(items: widget.items, actions: widget.actions)));
+  void goOverseas() => Navigator.push(context, MaterialPageRoute(builder: (_) => OverseasScreen(items: widget.items, actions: widget.actions)));
+  void goCommunity() => Navigator.push(context, MaterialPageRoute(builder: (_) => CommunityScreen(items: widget.items, scope: widget.scope, actions: widget.actions)));
+  void goWalk() => Navigator.push(context, MaterialPageRoute(builder: (_) => WalkScreen(
+        items: widget.items, scope: widget.scope, steps: widget.steps, points: widget.points, coupons: widget.coupons,
+        actions: widget.actions, earn: widget.earn, redeem: widget.redeem, useCoupon: widget.useCoupon, goPointsHub: widget.goPointsHub,
+      )));
+  void goShop() => Navigator.push(context, MaterialPageRoute(builder: (_) => PointShopScreen(
+        points: widget.points, redeem: widget.redeem, coupons: widget.coupons, useCoupon: widget.useCoupon, goPointsHub: widget.goPointsHub,
+      )));
+  void goGongu() => Navigator.push(context, MaterialPageRoute(builder: (_) => GonguScreen(earn: widget.earn)));
+  void goEarnHub() => Navigator.push(context, MaterialPageRoute(builder: (_) => EarnHubScreen(doneMissions: widget.doneMissions, completeMission: widget.completeMission)));
+  void goCountry(String cc) => Navigator.push(context, MaterialPageRoute(builder: (_) => CountryScreen(cc: cc, items: widget.items, actions: widget.actions)));
+  void openDetail(TaskItem it) => widget.actions.open(context, it);
+  void openAd(ScreenRoute route) {
+    switch (route.name) {
+      case 'shop':
+        goShop();
+      case 'overseas':
+        goOverseas();
+      case 'walk':
+        goWalk();
+      default:
+        goList(route);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -90,8 +139,6 @@ class _HomeContentState extends State<HomeContent> {
 
     final claimable = walkClaimable(widget.steps);
 
-    void goList(ScreenRoute r) => widget.push(r);
-
     return SingleChildScrollView(
       padding: const EdgeInsets.only(bottom: 26),
       child: Column(
@@ -116,7 +163,7 @@ class _HomeContentState extends State<HomeContent> {
                   ),
                 ]),
                 Row(children: [
-                  InkWell(onTap: () => widget.push(const ScreenRoute(name: 'map')), child: const Padding(padding: EdgeInsets.all(4), child: Text('🗺️', style: TextStyle(fontSize: 18)))),
+                  InkWell(onTap: () => goMap(), child: const Padding(padding: EdgeInsets.all(4), child: Text('🗺️', style: TextStyle(fontSize: 18)))),
                   InkWell(onTap: () => widget.flash('새 알림이 없어요'), child: const Padding(padding: EdgeInsets.all(4), child: Text('🔔', style: TextStyle(fontSize: 18)))),
                 ]),
               ],
@@ -136,7 +183,7 @@ class _HomeContentState extends State<HomeContent> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
             child: InkWell(
-              onTap: () => widget.push(const ScreenRoute(name: 'search')),
+              onTap: () => goSearch(),
               borderRadius: BorderRadius.circular(12),
               child: Container(
                 width: double.infinity,
@@ -147,16 +194,16 @@ class _HomeContentState extends State<HomeContent> {
             ),
           ),
           // ②-b 광고 배너 (스와이프 캐러셀)
-          AdBanner(ads: homeAds, onTap: widget.push),
+          AdBanner(ads: homeAds, onTap: openAd),
           // ③ 주요 서비스 바로가기
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
             child: Row(children: [
               _Shortcut(icon: '🙋', label: '부탁해요', onTap: widget.openPost),
               _Shortcut(icon: '🤝', label: '돈벌기', onTap: () => goList(const ScreenRoute(name: 'list', title: '돈벌기', subtitle: '가는 길에 부탁 해결하고 사례비 받기', base: 'earn', sortable: true, catChips: true, mapBtn: true))),
-              _Shortcut(icon: '🌏', label: '해외', onTap: () => widget.push(const ScreenRoute(name: 'overseas'))),
-              _Shortcut(icon: '👋', label: '같이해요', onTap: () => widget.push(const ScreenRoute(name: 'community'))),
-              _Shortcut(icon: '🗺️', label: '지도', onTap: () => widget.push(const ScreenRoute(name: 'map'))),
+              _Shortcut(icon: '🌏', label: '해외', onTap: () => goOverseas()),
+              _Shortcut(icon: '👋', label: '같이해요', onTap: () => goCommunity()),
+              _Shortcut(icon: '🗺️', label: '지도', onTap: () => goMap()),
             ]),
           ),
           // ④ 업무 카테고리
@@ -191,7 +238,7 @@ class _HomeContentState extends State<HomeContent> {
               children: [
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                   const Text('오늘도 겸사겸사 혜택', style: TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.w700)),
-                  InkWell(onTap: () => widget.push(const ScreenRoute(name: 'walk')), child: const Text('걷기 전체 ›', style: TextStyle(color: AppColors.yellow, fontSize: 12, fontWeight: FontWeight.w700))),
+                  InkWell(onTap: () => goWalk(), child: const Text('걷기 전체 ›', style: TextStyle(color: AppColors.yellow, fontSize: 12, fontWeight: FontWeight.w700))),
                 ]),
                 const SizedBox(height: 12),
                 Row(children: [
@@ -246,7 +293,7 @@ class _HomeContentState extends State<HomeContent> {
             ),
           ),
           InkWell(
-            onTap: () => widget.push(const ScreenRoute(name: 'shop')),
+            onTap: () => goShop(),
             borderRadius: BorderRadius.circular(12),
             child: Container(
               margin: const EdgeInsets.fromLTRB(16, 0, 16, 6),
@@ -272,7 +319,7 @@ class _HomeContentState extends State<HomeContent> {
           if (nearbyTop.isEmpty)
             const EmptyState(msg: '이 지역엔 아직 부탁이 없어요. 지역을 ‘전국’으로 바꿔보세요.')
           else
-            Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Column(children: [for (final it in nearbyTop) TaskCard(it: it, onOpen: () => widget.openDetail(it), done: widget.grabbed.contains(it.id))])),
+            Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Column(children: [for (final it in nearbyTop) TaskCard(it: it, onOpen: () => openDetail(it), done: widget.actions.grabbed.contains(it.id))])),
 
           // ⑥-b 오늘 더 벌 수 있어요 (짧게 · 혜택으로 연결)
           Padding(
@@ -289,9 +336,9 @@ class _HomeContentState extends State<HomeContent> {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
               children: [
                 _EarnTile(icon: '🤝', label: '근처 부탁', val: '+7,000원', valColor: AppColors.ink, bg: AppColors.yellowSoft, onTap: () => goList(const ScreenRoute(name: 'list', title: '근처에서 벌기', subtitle: '가까운 순', base: 'earn', sortable: true, defaultSort: 'dist', catChips: true, mapBtn: true))),
-                _EarnTile(icon: '🚶', label: '걷기', val: '+30P', valColor: AppColors.blue, bg: AppColors.blueSoft, onTap: () => widget.push(const ScreenRoute(name: 'walk'))),
-                _EarnTile(icon: '🎁', label: '부업 (제휴·성과)', val: '+50,000원', valColor: AppColors.purple, bg: AppColors.purpleSoft, onTap: () => widget.push(const ScreenRoute(name: 'earn'))),
-                _EarnTile(icon: '🛍️', label: '공동구매', val: '성과보상', valColor: AppColors.yellowDeep, bg: AppColors.yellowSoft, onTap: () => widget.push(const ScreenRoute(name: 'gongu'))),
+                _EarnTile(icon: '🚶', label: '걷기', val: '+30P', valColor: AppColors.blue, bg: AppColors.blueSoft, onTap: () => goWalk()),
+                _EarnTile(icon: '🎁', label: '부업 (제휴·성과)', val: '+50,000원', valColor: AppColors.purple, bg: AppColors.purpleSoft, onTap: () => goEarnHub()),
+                _EarnTile(icon: '🛍️', label: '공동구매', val: '성과보상', valColor: AppColors.yellowDeep, bg: AppColors.yellowSoft, onTap: () => goGongu()),
               ],
             ),
           ),
@@ -320,13 +367,13 @@ class _HomeContentState extends State<HomeContent> {
               sub: '빨리 매칭되면 좋은 부탁',
               onAction: () => goList(const ScreenRoute(name: 'list', title: '지금 급해요', subtitle: 'HOT으로 올라온 부탁', base: 'earn', onlyHot: true, sortable: true, mapBtn: true)),
             ),
-            Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Column(children: [for (final it in hotItems) TaskCard(it: it, onOpen: () => widget.openDetail(it), done: widget.grabbed.contains(it.id))])),
+            Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Column(children: [for (final it in hotItems) TaskCard(it: it, onOpen: () => openDetail(it), done: widget.actions.grabbed.contains(it.id))])),
           ],
 
           // ⑩ 걷고 포인트 받기
           const Padding(padding: EdgeInsets.fromLTRB(16, 18, 16, 4), child: Text('🚶 걷고 포인트 받기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink))),
           InkWell(
-            onTap: () => widget.push(const ScreenRoute(name: 'walk')),
+            onTap: () => goWalk(),
             borderRadius: BorderRadius.circular(16),
             child: Container(
               margin: const EdgeInsets.fromLTRB(16, 8, 16, 6),
@@ -354,7 +401,7 @@ class _HomeContentState extends State<HomeContent> {
           // ⑪ 가는 길에 겸사겸사
           const Padding(padding: EdgeInsets.fromLTRB(16, 18, 16, 3), child: Text('🚶 가는 길에 겸사겸사', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.ink))),
           const Padding(padding: EdgeInsets.fromLTRB(16, 0, 16, 10), child: Text('지금 위치에서 가까운 부탁 — "여기 근처니까 해볼까?"', style: TextStyle(fontSize: 12.5, color: AppColors.sub))),
-          if (onTheWayTop.isNotEmpty) FeaturedCard(it: onTheWayTop.first, onOpen: () => widget.openDetail(onTheWayTop.first), done: widget.grabbed.contains(onTheWayTop.first.id)),
+          if (onTheWayTop.isNotEmpty) FeaturedCard(it: onTheWayTop.first, onOpen: () => openDetail(onTheWayTop.first), done: widget.actions.grabbed.contains(onTheWayTop.first.id)),
           _hScroll(onTheWayTop.skip(1).toList()),
 
           const HDivider(thick: true),
@@ -364,7 +411,7 @@ class _HomeContentState extends State<HomeContent> {
             padding: const EdgeInsets.fromLTRB(16, 18, 16, 3),
             child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
               const Text('🌏 해외에서 사다드려요', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.ink)),
-              InkWell(onTap: () => widget.push(const ScreenRoute(name: 'overseas')), child: const Text('전체 국가 ›', style: TextStyle(color: AppColors.purple, fontSize: 12, fontWeight: FontWeight.w700))),
+              InkWell(onTap: () => goOverseas(), child: const Text('전체 국가 ›', style: TextStyle(color: AppColors.purple, fontSize: 12, fontWeight: FontWeight.w700))),
             ]),
           ),
           Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 10), child: Text('여행·출장 중인 이웃에게 · 최소 사례비 ${nf(seaMin)}원', style: const TextStyle(fontSize: 12.5, color: AppColors.sub))),
@@ -378,7 +425,7 @@ class _HomeContentState extends State<HomeContent> {
               itemBuilder: (context, i) {
                 final c = countries[i];
                 return InkWell(
-                  onTap: () => widget.push(ScreenRoute(name: 'country', cc: c.cc)),
+                  onTap: () => goCountry(c.cc),
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
                     width: 62,
@@ -407,11 +454,11 @@ class _HomeContentState extends State<HomeContent> {
             padding: const EdgeInsets.fromLTRB(16, 18, 16, 3),
             child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
               const Text('👋 같이해요', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.ink)),
-              InkWell(onTap: () => widget.push(const ScreenRoute(name: 'community')), child: const Text('동네생활 ›', style: TextStyle(color: AppColors.sub, fontSize: 12))),
+              InkWell(onTap: () => goCommunity(), child: const Text('동네생활 ›', style: TextStyle(color: AppColors.sub, fontSize: 12))),
             ]),
           ),
           const Padding(padding: EdgeInsets.fromLTRB(16, 0, 16, 10), child: Text('본인인증 이웃과 함께 · 공개 장소 권장', style: TextStyle(fontSize: 12.5, color: AppColors.sub))),
-          Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Column(children: [for (final it in community.take(3)) CommunityCard(it: it, onOpen: () => widget.openDetail(it), compact: true)])),
+          Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Column(children: [for (final it in community.take(3)) CommunityCard(it: it, onOpen: () => openDetail(it), compact: true)])),
 
           const HDivider(),
 
@@ -422,7 +469,7 @@ class _HomeContentState extends State<HomeContent> {
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(children: [for (int i = 0; i < popularTop.length; i++) TaskCard(it: popularTop[i], onOpen: () => widget.openDetail(popularTop[i]), done: widget.grabbed.contains(popularTop[i].id), rank: i + 1)]),
+            child: Column(children: [for (int i = 0; i < popularTop.length; i++) TaskCard(it: popularTop[i], onOpen: () => openDetail(popularTop[i]), done: widget.actions.grabbed.contains(popularTop[i].id), rank: i + 1)]),
           ),
 
           // ⑮ 처음이라면 이 일부터
@@ -436,7 +483,7 @@ class _HomeContentState extends State<HomeContent> {
             title: '🆕 새로 올라온 부탁',
             onAction: () => goList(const ScreenRoute(name: 'list', title: '새로 올라온 부탁', subtitle: '최신 순', base: 'ask', sortable: true, defaultSort: 'new', mapBtn: true)),
           ),
-          Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Column(children: [for (final it in newTop) TaskCard(it: it, onOpen: () => widget.openDetail(it), done: widget.grabbed.contains(it.id))])),
+          Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Column(children: [for (final it in newTop) TaskCard(it: it, onOpen: () => openDetail(it), done: widget.actions.grabbed.contains(it.id))])),
 
           // ⑰ 안전 거래
           Container(
@@ -475,7 +522,7 @@ class _HomeContentState extends State<HomeContent> {
         separatorBuilder: (_, _) => const SizedBox(width: 10),
         itemBuilder: (context, i) {
           final it = list[i];
-          return RecoCard(it: it, onOpen: () => widget.openDetail(it), done: widget.grabbed.contains(it.id));
+          return RecoCard(it: it, onOpen: () => openDetail(it), done: widget.actions.grabbed.contains(it.id));
         },
       ),
     );

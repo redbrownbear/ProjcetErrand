@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/navigation/screen_route.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/chip_widget.dart';
 import '../../../core/widgets/screen_frame.dart';
 import '../data/partner_missions.dart';
+import '../models/partner_mission.dart';
 import '../widgets/earn_row_full.dart';
+import 'partner_mission_detail_screen.dart';
 
 class EarnHubScreen extends StatefulWidget {
   final List<String> doneMissions;
-  final VoidCallback onClose;
-  final void Function(ScreenRoute) push;
-  const EarnHubScreen({super.key, required this.doneMissions, required this.onClose, required this.push});
+  final void Function(PartnerMission) completeMission;
+  const EarnHubScreen({super.key, required this.doneMissions, required this.completeMission});
   @override
   State<EarnHubScreen> createState() => _EarnHubScreenState();
 }
@@ -29,7 +29,7 @@ class _EarnHubScreenState extends State<EarnHubScreen> {
     return ScreenFrame(
       title: '부업',
       subtitle: '제휴 성과보상 · 행동하고 벌기',
-      onBack: widget.onClose,
+      onBack: () => Navigator.of(context).pop(),
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
         children: [
@@ -69,7 +69,9 @@ class _EarnHubScreenState extends State<EarnHubScreen> {
             ])),
           ),
           for (final m in sorted)
-            EarnRowFull(m: m, done: widget.doneMissions.contains(m.id), onOpen: () => widget.push(ScreenRoute(name: 'mission', mission: m))),
+            EarnRowFull(m: m, done: widget.doneMissions.contains(m.id), onOpen: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PartnerMissionDetailScreen(
+              m: m, done: widget.doneMissions.contains(m.id), onComplete: widget.completeMission,
+            )))),
           Container(
             margin: const EdgeInsets.only(top: 4),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),

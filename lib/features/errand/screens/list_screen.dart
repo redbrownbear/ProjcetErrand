@@ -6,19 +6,17 @@ import '../../../core/widgets/chip_widget.dart';
 import '../../../core/widgets/section_header.dart';
 import '../data/categories.dart';
 import '../models/task_item.dart';
+import '../navigation/errand_actions.dart';
 import '../widgets/task_card.dart';
+import 'map_screen.dart';
 
 class ListScreen extends StatefulWidget {
   final ScreenRoute config;
   final List<TaskItem> items;
   final String scope;
-  final List<int> grabbed;
-  final VoidCallback onClose;
-  final VoidCallback onMap;
-  final void Function(TaskItem) openDetail;
+  final ErrandActions actions;
   const ListScreen({
-    super.key, required this.config, required this.items, required this.scope,
-    required this.grabbed, required this.onClose, required this.onMap, required this.openDetail,
+    super.key, required this.config, required this.items, required this.scope, required this.actions,
   });
   @override
   State<ListScreen> createState() => _ListScreenState();
@@ -78,27 +76,26 @@ class _ListScreenState extends State<ListScreen> {
       ['recommend', '추천순'], ['dist', '가까운 순'], ['price', '높은 사례비'], ['time', '짧은 시간순'], ['new', '최신순'],
     ];
 
-    return Positioned.fill(
-      child: Material(
-        color: AppColors.page,
-        child: Column(children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
-            decoration: const BoxDecoration(color: AppColors.card, border: Border(bottom: BorderSide(color: AppColors.line))),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(children: [
+    return Material(
+      color: AppColors.page,
+      child: Column(children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+          decoration: const BoxDecoration(color: AppColors.card, border: Border(bottom: BorderSide(color: AppColors.line))),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                InkWell(
+                  onTap: () => Navigator.of(context).pop(),
+                  borderRadius: BorderRadius.circular(99),
+                  child: const Padding(padding: EdgeInsets.only(right: 2), child: Text('‹', style: TextStyle(fontSize: 24, color: AppColors.ink))),
+                ),
+                Expanded(child: Text(config.title ?? '', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.ink))),
+                if (config.mapBtn)
                   InkWell(
-                    onTap: widget.onClose,
-                    borderRadius: BorderRadius.circular(99),
-                    child: const Padding(padding: EdgeInsets.only(right: 2), child: Text('‹', style: TextStyle(fontSize: 24, color: AppColors.ink))),
-                  ),
-                  Expanded(child: Text(config.title ?? '', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.ink))),
-                  if (config.mapBtn)
-                    InkWell(
-                      onTap: widget.onMap,
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => MapScreen(items: widget.items, scope: widget.scope, actions: widget.actions))),
                       borderRadius: BorderRadius.circular(9),
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
@@ -168,13 +165,12 @@ class _ListScreenState extends State<ListScreen> {
                   padding: const EdgeInsets.only(top: 10),
                   child: base.isEmpty
                       ? const EmptyState(msg: '조건에 맞는 부탁이 없어요.')
-                      : Column(children: [for (final it in base) TaskCard(it: it, onOpen: () => widget.openDetail(it), done: widget.grabbed.contains(it.id), rich: true)]),
+                      : Column(children: [for (final it in base) TaskCard(it: it, onOpen: () => widget.actions.open(context, it), done: widget.actions.grabbed.contains(it.id), rich: true)]),
                 ),
               ],
             ),
           ),
         ]),
-      ),
     );
   }
 }

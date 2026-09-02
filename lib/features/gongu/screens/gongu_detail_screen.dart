@@ -7,9 +7,8 @@ import '../models/gongu.dart';
 
 class GonguDetailScreen extends StatefulWidget {
   final Gongu g;
-  final VoidCallback onClose;
   final void Function(int amt, String label) earn;
-  const GonguDetailScreen({super.key, required this.g, required this.onClose, required this.earn});
+  const GonguDetailScreen({super.key, required this.g, required this.earn});
   @override
   State<GonguDetailScreen> createState() => _GonguDetailScreenState();
 }
@@ -24,7 +23,7 @@ class _GonguDetailScreenState extends State<GonguDetailScreen> {
     return ScreenFrame(
       title: '공동구매 상세',
       subtitle: '공동구매 · ${g.brand}',
-      onBack: widget.onClose,
+      onBack: () => Navigator.of(context).pop(),
       child: Stack(children: [
         ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 110),

@@ -12,12 +12,11 @@ class DetailPage extends StatefulWidget {
   final TaskItem it;
   final List<int> grabbed;
   final List<Offer> myOffers;
-  final VoidCallback onClose;
   final void Function(TaskItem) onGrab;
   final void Function(TaskItem, int, String) onOffer;
   const DetailPage({
     super.key, required this.it, required this.grabbed, required this.myOffers,
-    required this.onClose, required this.onGrab, required this.onOffer,
+    required this.onGrab, required this.onOffer,
   });
   @override
   State<DetailPage> createState() => _DetailPageState();
@@ -33,19 +32,18 @@ class _DetailPageState extends State<DetailPage> {
     final paid = it.mode == 'ask' || sea;
     final done = widget.grabbed.contains(it.id);
 
-    return Positioned.fill(
-      child: Material(
-        color: AppColors.page,
-        child: Stack(children: [
-          Column(children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              height: 52,
-              alignment: Alignment.centerLeft,
-              decoration: const BoxDecoration(color: AppColors.card, border: Border(bottom: BorderSide(color: AppColors.line))),
-              child: Row(children: [
-                InkWell(onTap: widget.onClose, borderRadius: BorderRadius.circular(99), child: const Padding(padding: EdgeInsets.only(right: 2), child: Text('‹', style: TextStyle(fontSize: 24, color: AppColors.ink)))),
+    return Material(
+      color: AppColors.page,
+      child: Stack(children: [
+        Column(children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            height: 52,
+            alignment: Alignment.centerLeft,
+            decoration: const BoxDecoration(color: AppColors.card, border: Border(bottom: BorderSide(color: AppColors.line))),
+            child: Row(children: [
+              InkWell(onTap: () => Navigator.of(context).pop(), borderRadius: BorderRadius.circular(99), child: const Padding(padding: EdgeInsets.only(right: 2), child: Text('‹', style: TextStyle(fontSize: 24, color: AppColors.ink)))),
                 Text(sea ? '해외 대행구매' : paid ? '부탁해요' : '같이해요', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.ink)),
               ]),
             ),
@@ -218,7 +216,6 @@ class _DetailPageState extends State<DetailPage> {
               },
             ),
         ]),
-      ),
     );
   }
 

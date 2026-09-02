@@ -7,18 +7,14 @@ import '../../../core/widgets/section_header.dart';
 import '../../benefits/data/point_rules.dart';
 import '../data/countries.dart';
 import '../models/task_item.dart';
+import '../navigation/errand_actions.dart';
 import '../widgets/task_card.dart';
+import 'country_screen.dart';
 
 class OverseasScreen extends StatefulWidget {
   final List<TaskItem> items;
-  final List<int> grabbed;
-  final VoidCallback onClose;
-  final void Function(String cc) openCountry;
-  final void Function(TaskItem) openDetail;
-  const OverseasScreen({
-    super.key, required this.items, required this.grabbed, required this.onClose,
-    required this.openCountry, required this.openDetail,
-  });
+  final ErrandActions actions;
+  const OverseasScreen({super.key, required this.items, required this.actions});
   @override
   State<OverseasScreen> createState() => _OverseasScreenState();
 }
@@ -43,7 +39,7 @@ class _OverseasScreenState extends State<OverseasScreen> {
     return ScreenFrame(
       title: '해외 대행',
       subtitle: '여행·출장 중인 이웃이 대신 사다줘요 · 최소 ${nf(seaMin)}원',
-      onBack: widget.onClose,
+      onBack: () => Navigator.of(context).pop(),
       accent: AppColors.purple,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
@@ -69,7 +65,7 @@ class _OverseasScreenState extends State<OverseasScreen> {
             children: countries.map((c) {
               final cnt = sea.where((i) => i.cc == c.cc).length;
               return InkWell(
-                onTap: () => widget.openCountry(c.cc),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CountryScreen(cc: c.cc, items: widget.items, actions: widget.actions))),
                 borderRadius: BorderRadius.circular(12),
                 child: Stack(children: [
                   Container(
@@ -105,7 +101,7 @@ class _OverseasScreenState extends State<OverseasScreen> {
           if (results.isEmpty)
             const EmptyState(msg: '검색 결과가 없어요.')
           else
-            for (final it in results) TaskCard(it: it, onOpen: () => widget.openDetail(it), done: widget.grabbed.contains(it.id), rich: true),
+            for (final it in results) TaskCard(it: it, onOpen: () => widget.actions.open(context, it), done: widget.actions.grabbed.contains(it.id), rich: true),
         ],
       ),
     );

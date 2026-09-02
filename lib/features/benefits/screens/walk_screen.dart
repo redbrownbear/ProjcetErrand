@@ -1,28 +1,33 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/navigation/screen_route.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/screen_frame.dart';
 import '../../errand/models/task_item.dart';
+import '../../errand/navigation/errand_actions.dart';
+import '../../errand/screens/map_screen.dart';
 import '../../errand/widgets/task_card.dart';
 import '../data/point_rules.dart';
 import '../data/reward_products.dart';
+import '../models/coupon.dart';
+import '../models/reward_product.dart';
 import '../widgets/walk_ring.dart';
+import 'point_shop_screen.dart';
 
 class WalkScreen extends StatefulWidget {
   final List<TaskItem> items;
   final String scope;
   final int steps;
   final int points;
-  final List<int> grabbed;
-  final VoidCallback onClose;
+  final List<Coupon> coupons;
+  final ErrandActions actions;
   final void Function(int amt, String label) earn;
-  final void Function(ScreenRoute) push;
-  final void Function(TaskItem) openDetail;
+  final void Function(RewardProduct) redeem;
+  final void Function(int id) useCoupon;
+  final VoidCallback goPointsHub;
   const WalkScreen({
-    super.key, required this.items, required this.scope, required this.steps, required this.points,
-    required this.grabbed, required this.onClose, required this.earn, required this.push, required this.openDetail,
+    super.key, required this.items, required this.scope, required this.steps, required this.points, required this.coupons,
+    required this.actions, required this.earn, required this.redeem, required this.useCoupon, required this.goPointsHub,
   });
   @override
   State<WalkScreen> createState() => _WalkScreenState();
@@ -45,7 +50,7 @@ class _WalkScreenState extends State<WalkScreen> {
     return ScreenFrame(
       title: '걷기 챌린지',
       subtitle: '걷다가 근처 부탁도 겸사겸사',
-      onBack: widget.onClose,
+      onBack: () => Navigator.of(context).pop(),
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
         children: [
@@ -75,7 +80,9 @@ class _WalkScreenState extends State<WalkScreen> {
             Padding(
               padding: const EdgeInsets.only(top: 14),
               child: InkWell(
-                onTap: () => widget.push(const ScreenRoute(name: 'shop')),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PointShopScreen(
+                  points: widget.points, redeem: widget.redeem, coupons: widget.coupons, useCoupon: widget.useCoupon, goPointsHub: widget.goPointsHub,
+                ))),
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
                   width: double.infinity,
@@ -101,19 +108,19 @@ class _WalkScreenState extends State<WalkScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text('🚶 500m 더 걸으면 이 부탁도 할 수 있어요', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF1B8A5A))),
-                  Padding(padding: const EdgeInsets.only(top: 10), child: TaskCard(it: next, onOpen: () => widget.openDetail(next), done: widget.grabbed.contains(next.id))),
+                  Padding(padding: const EdgeInsets.only(top: 10), child: TaskCard(it: next, onOpen: () => widget.actions.open(context, next), done: widget.actions.grabbed.contains(next.id))),
                 ],
               ),
             ),
           const Padding(padding: EdgeInsets.fromLTRB(0, 14, 0, 4), child: Text('근처에서 할 수 있는 부탁', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.ink))),
           Padding(
             padding: const EdgeInsets.only(top: 8),
-            child: Column(children: [for (final it in nearTop) TaskCard(it: it, onOpen: () => widget.openDetail(it), done: widget.grabbed.contains(it.id))]),
+            child: Column(children: [for (final it in nearTop) TaskCard(it: it, onOpen: () => widget.actions.open(context, it), done: widget.actions.grabbed.contains(it.id))]),
           ),
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: OutlinedButton(
-              onPressed: () => widget.push(const ScreenRoute(name: 'map')),
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => MapScreen(items: widget.items, scope: widget.scope, actions: widget.actions))),
               style: OutlinedButton.styleFrom(foregroundColor: AppColors.ink, side: const BorderSide(color: AppColors.line), padding: const EdgeInsets.symmetric(vertical: 13), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), minimumSize: const Size(double.infinity, 0)),
               child: const Text('🗺️ 지도에서 주변 부탁 보기', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
             ),

@@ -5,13 +5,13 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/tag.dart';
 import '../data/categories.dart';
 import '../models/task_item.dart';
+import '../navigation/errand_actions.dart';
 
 class MapView extends StatefulWidget {
   final List<TaskItem> items;
-  final List<int> grabbed;
   final String scope;
-  final void Function(TaskItem) openDetail;
-  const MapView({super.key, required this.items, required this.grabbed, required this.scope, required this.openDetail});
+  final ErrandActions actions;
+  const MapView({super.key, required this.items, required this.scope, required this.actions});
   @override
   State<MapView> createState() => _MapViewState();
 }
@@ -52,7 +52,7 @@ class _MapViewState extends State<MapView> {
                 top: box.maxHeight * (it.y / 100) - 40,
                 child: _Pin(
                   it: it,
-                  done: widget.grabbed.contains(it.id),
+                  done: widget.actions.grabbed.contains(it.id),
                   selected: preview?.id == it.id,
                   onTap: () => setState(() => preview = it),
                 ),
@@ -90,12 +90,12 @@ class _MapViewState extends State<MapView> {
       if (preview != null)
         _MapPreview(
           it: preview!,
-          done: widget.grabbed.contains(preview!.id),
+          done: widget.actions.grabbed.contains(preview!.id),
           onClose: () => setState(() => preview = null),
           onOpen: () {
             final p = preview!;
             setState(() => preview = null);
-            widget.openDetail(p);
+            widget.actions.open(context, p);
           },
         )
       else

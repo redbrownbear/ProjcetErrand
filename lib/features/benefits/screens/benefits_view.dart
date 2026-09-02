@@ -4,29 +4,42 @@ import '../../../core/navigation/screen_route.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../errand/models/task_item.dart';
+import '../../errand/navigation/errand_actions.dart';
+import '../../errand/screens/list_screen.dart';
+import '../../errand/screens/overseas_screen.dart';
 import '../../errand/widgets/task_card.dart';
 import '../data/partner_missions.dart';
 import '../data/point_rules.dart';
 import '../data/reward_products.dart';
 import '../models/coupon.dart';
+import '../models/partner_mission.dart';
+import '../models/reward_product.dart';
 import '../widgets/attend_streak.dart';
 import '../widgets/mission_row.dart';
 import '../widgets/partner_card.dart';
 import '../widgets/walk_ring.dart';
+import '../../gongu/screens/gongu_screen.dart';
+import 'earn_hub_screen.dart';
+import 'my_coupons_screen.dart';
+import 'partner_mission_detail_screen.dart';
+import 'point_shop_screen.dart';
+import 'walk_screen.dart';
 
 class BenefitsView extends StatefulWidget {
   final int points;
   final int steps;
   final List<Coupon> coupons;
   final List<TaskItem> items;
-  final List<int> grabbed;
+  final String scope;
+  final ErrandActions actions;
   final int monthEarn;
   final int monthPoints;
   final int freeLeft;
   final List<String> doneMissions;
   final void Function(int amt, String label) earn;
-  final void Function(ScreenRoute) push;
-  final void Function(TaskItem) openDetail;
+  final void Function(RewardProduct) redeem;
+  final void Function(int id) useCoupon;
+  final void Function(PartnerMission) completeMission;
   final VoidCallback goPointsHub;
   const BenefitsView({
     super.key,
@@ -34,14 +47,16 @@ class BenefitsView extends StatefulWidget {
     required this.steps,
     required this.coupons,
     required this.items,
-    required this.grabbed,
+    required this.scope,
+    required this.actions,
     required this.monthEarn,
     required this.monthPoints,
     required this.freeLeft,
     required this.doneMissions,
     required this.earn,
-    required this.push,
-    required this.openDetail,
+    required this.redeem,
+    required this.useCoupon,
+    required this.completeMission,
     required this.goPointsHub,
   });
   @override
@@ -99,7 +114,9 @@ class _BenefitsViewState extends State<BenefitsView> {
           final m = list[i];
           return PartnerCard(
             m: m, done: widget.doneMissions.contains(m.id),
-            onOpen: () => widget.push(ScreenRoute(name: 'mission', mission: m)),
+            onOpen: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PartnerMissionDetailScreen(
+              m: m, done: widget.doneMissions.contains(m.id), onComplete: widget.completeMission,
+            ))),
           );
         },
       ),
@@ -159,7 +176,9 @@ class _BenefitsViewState extends State<BenefitsView> {
                   Expanded(
                     flex: 14,
                     child: ElevatedButton(
-                      onPressed: () => widget.push(const ScreenRoute(name: 'shop')),
+                      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PointShopScreen(
+                        points: widget.points, redeem: widget.redeem, coupons: widget.coupons, useCoupon: widget.useCoupon, goPointsHub: widget.goPointsHub,
+                      ))),
                       style: ElevatedButton.styleFrom(backgroundColor: AppColors.yellow, foregroundColor: AppColors.ink, padding: const EdgeInsets.symmetric(vertical: 11), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)), elevation: 0),
                       child: const Text('포인트 사용하기', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
                     ),
@@ -168,7 +187,9 @@ class _BenefitsViewState extends State<BenefitsView> {
                   Expanded(
                     flex: 10,
                     child: OutlinedButton(
-                      onPressed: () => widget.push(const ScreenRoute(name: 'coupons')),
+                      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => MyCouponsScreen(
+                        coupons: widget.coupons, useCoupon: widget.useCoupon, goPointsHub: widget.goPointsHub,
+                      ))),
                       style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white24), padding: const EdgeInsets.symmetric(vertical: 11), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11))),
                       child: Text('🎟 내 쿠폰${liveCoupons > 0 ? ' $liveCoupons' : ''}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
                     ),
@@ -257,10 +278,13 @@ class _BenefitsViewState extends State<BenefitsView> {
         // A. 근처에서 벌기
         _secTitle('📍 근처에서 벌기',
             action: InkWell(
-              onTap: () => widget.push(const ScreenRoute(name: 'list', title: '근처에서 벌기', subtitle: '가까운 순', base: 'earn', sortable: true, defaultSort: 'dist', catChips: true, mapBtn: true)),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ListScreen(
+                config: const ScreenRoute(name: 'list', title: '근처에서 벌기', subtitle: '가까운 순', base: 'earn', sortable: true, defaultSort: 'dist', catChips: true, mapBtn: true),
+                items: widget.items, scope: widget.scope, actions: widget.actions,
+              ))),
               child: const Text('더 보기 ›', style: TextStyle(color: AppColors.sub, fontSize: 12, fontWeight: FontWeight.w700)),
             )),
-        Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Column(children: [for (final it in nearby) TaskCard(it: it, onOpen: () => widget.openDetail(it), done: widget.grabbed.contains(it.id))])),
+        Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Column(children: [for (final it in nearby) TaskCard(it: it, onOpen: () => widget.actions.open(context, it), done: widget.actions.grabbed.contains(it.id))])),
 
         // B. 걸어서 벌기
         _secTitle('🚶 걸어서 벌기', sub: '걷다가 근처 부탁까지'),
@@ -324,7 +348,10 @@ class _BenefitsViewState extends State<BenefitsView> {
               child: SizedBox(
                 width: double.infinity,
                 child: OutlinedButton(
-                  onPressed: () => widget.push(const ScreenRoute(name: 'walk')),
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => WalkScreen(
+                    items: widget.items, scope: widget.scope, steps: widget.steps, points: widget.points, coupons: widget.coupons,
+                    actions: widget.actions, earn: widget.earn, redeem: widget.redeem, useCoupon: widget.useCoupon, goPointsHub: widget.goPointsHub,
+                  ))),
                   style: OutlinedButton.styleFrom(foregroundColor: AppColors.ink, side: const BorderSide(color: AppColors.line), padding: const EdgeInsets.symmetric(vertical: 11), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11))),
                   child: const Text('걸으면서 할 수 있는 근처 부탁 보기 ›', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
                 ),
@@ -339,7 +366,7 @@ class _BenefitsViewState extends State<BenefitsView> {
 
         // 같이 사고 벌기 (공동구매)
         InkWell(
-          onTap: () => widget.push(const ScreenRoute(name: 'gongu')),
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GonguScreen(earn: widget.earn))),
           borderRadius: BorderRadius.circular(16),
           child: Container(
             margin: const EdgeInsets.fromLTRB(16, 14, 16, 2),
@@ -368,7 +395,9 @@ class _BenefitsViewState extends State<BenefitsView> {
 
         // B2B2C 부업 허브 진입
         InkWell(
-          onTap: () => widget.push(const ScreenRoute(name: 'earn')),
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EarnHubScreen(
+            doneMissions: widget.doneMissions, completeMission: widget.completeMission,
+          ))),
           borderRadius: BorderRadius.circular(16),
           child: Container(
             margin: const EdgeInsets.fromLTRB(16, 12, 16, 2),
@@ -414,7 +443,7 @@ class _BenefitsViewState extends State<BenefitsView> {
         // G. 여행하며 벌기
         _secTitle('✈️ 여행하며 벌기'),
         InkWell(
-          onTap: () => widget.push(const ScreenRoute(name: 'overseas')),
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OverseasScreen(items: widget.items, actions: widget.actions))),
           borderRadius: BorderRadius.circular(16),
           child: Container(
             margin: const EdgeInsets.fromLTRB(16, 4, 16, 2),

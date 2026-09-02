@@ -21,9 +21,8 @@ class NewRequestData {
 
 class PostRequest extends StatefulWidget {
   final String scope;
-  final VoidCallback onClose;
   final void Function(NewRequestData) onSubmit;
-  const PostRequest({super.key, required this.scope, required this.onClose, required this.onSubmit});
+  const PostRequest({super.key, required this.scope, required this.onSubmit});
   @override
   State<PostRequest> createState() => _PostRequestState();
 }
@@ -75,24 +74,24 @@ class _PostRequestState extends State<PostRequest> {
       country: sea ? '${country.flag} ${country.name}${city.isNotEmpty ? ' $city' : ''}' : null,
       mins: sea ? 0 : mins, price: finalPrice, hot: hot,
     ));
+    Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
     final canNext = _readyAt(step);
-    return Positioned.fill(
-      child: Material(
-        color: AppColors.page,
-        child: Column(children: [
-          Container(
-            padding: const EdgeInsets.fromLTRB(18, 15, 18, 14),
-            decoration: const BoxDecoration(color: AppColors.card, border: Border(bottom: BorderSide(color: AppColors.line))),
-            child: Column(children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  InkWell(
-                    onTap: step == 0 ? widget.onClose : () => setState(() => step -= 1),
+    return Material(
+      color: AppColors.page,
+      child: Column(children: [
+        Container(
+          padding: const EdgeInsets.fromLTRB(18, 15, 18, 14),
+          decoration: const BoxDecoration(color: AppColors.card, border: Border(bottom: BorderSide(color: AppColors.line))),
+          child: Column(children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                InkWell(
+                  onTap: step == 0 ? () => Navigator.of(context).pop() : () => setState(() => step -= 1),
                     borderRadius: BorderRadius.circular(99),
                     child: Padding(padding: const EdgeInsets.all(2), child: Text(step == 0 ? '✕' : '‹', style: const TextStyle(fontSize: 20, color: AppColors.ink))),
                   ),
@@ -138,7 +137,6 @@ class _PostRequestState extends State<PostRequest> {
             ),
           ),
         ]),
-      ),
     );
   }
 

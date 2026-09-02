@@ -6,14 +6,13 @@ import '../../../core/widgets/section_header.dart';
 import '../../community/widgets/community_card.dart';
 import '../data/categories.dart';
 import '../models/task_item.dart';
+import '../navigation/errand_actions.dart';
 import '../widgets/task_card.dart';
 
 class SearchScreen extends StatefulWidget {
   final List<TaskItem> items;
-  final List<int> grabbed;
-  final VoidCallback onClose;
-  final void Function(TaskItem) openDetail;
-  const SearchScreen({super.key, required this.items, required this.grabbed, required this.onClose, required this.openDetail});
+  final ErrandActions actions;
+  const SearchScreen({super.key, required this.items, required this.actions});
   @override
   State<SearchScreen> createState() => _SearchScreenState();
 }
@@ -37,7 +36,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
     return ScreenFrame(
       title: '검색',
-      onBack: widget.onClose,
+      onBack: () => Navigator.of(context).pop(),
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
         children: [
@@ -78,8 +77,8 @@ class _SearchScreenState extends State<SearchScreen> {
           if (term.isNotEmpty && results.isEmpty) const EmptyState(msg: '검색 결과가 없어요. 다른 키워드로 찾아보세요.'),
           for (final it in results)
             it.mode == 'together'
-                ? CommunityCard(it: it, onOpen: () => widget.openDetail(it))
-                : TaskCard(it: it, onOpen: () => widget.openDetail(it), done: widget.grabbed.contains(it.id), rich: true),
+                ? CommunityCard(it: it, onOpen: () => widget.actions.open(context, it))
+                : TaskCard(it: it, onOpen: () => widget.actions.open(context, it), done: widget.actions.grabbed.contains(it.id), rich: true),
         ],
       ),
     );

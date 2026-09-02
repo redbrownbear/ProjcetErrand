@@ -6,18 +6,14 @@ import '../../../core/widgets/screen_frame.dart';
 import '../../../core/widgets/section_header.dart';
 import '../data/countries.dart';
 import '../models/task_item.dart';
+import '../navigation/errand_actions.dart';
 import '../widgets/task_card.dart';
 
 class CountryScreen extends StatefulWidget {
   final String cc;
   final List<TaskItem> items;
-  final List<int> grabbed;
-  final VoidCallback onClose;
-  final void Function(TaskItem) openDetail;
-  const CountryScreen({
-    super.key, required this.cc, required this.items, required this.grabbed,
-    required this.onClose, required this.openDetail,
-  });
+  final ErrandActions actions;
+  const CountryScreen({super.key, required this.cc, required this.items, required this.actions});
   @override
   State<CountryScreen> createState() => _CountryScreenState();
 }
@@ -34,7 +30,7 @@ class _CountryScreenState extends State<CountryScreen> {
     return ScreenFrame(
       title: '${country.flag} ${country.name}',
       subtitle: '해외 대행 마켓',
-      onBack: widget.onClose,
+      onBack: () => Navigator.of(context).pop(),
       accent: AppColors.purple,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
@@ -54,7 +50,7 @@ class _CountryScreenState extends State<CountryScreen> {
           if (list.isEmpty)
             EmptyState(msg: '${country.name}${city != 'all' ? ' $city' : ''}에 아직 올라온 부탁이 없어요.\n첫 부탁을 올려보세요!')
           else
-            for (final it in list) TaskCard(it: it, onOpen: () => widget.openDetail(it), done: widget.grabbed.contains(it.id), rich: true),
+            for (final it in list) TaskCard(it: it, onOpen: () => widget.actions.open(context, it), done: widget.actions.grabbed.contains(it.id), rich: true),
         ],
       ),
     );

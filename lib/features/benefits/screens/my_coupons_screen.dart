@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/navigation/screen_route.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/widgets/screen_frame.dart';
 import '../data/reward_brands.dart';
@@ -9,10 +8,8 @@ import '../models/coupon.dart';
 class MyCouponsScreen extends StatefulWidget {
   final List<Coupon> coupons;
   final void Function(int id) useCoupon;
-  final VoidCallback onClose;
-  final void Function(ScreenRoute) push;
   final VoidCallback goPointsHub;
-  const MyCouponsScreen({super.key, required this.coupons, required this.useCoupon, required this.onClose, required this.push, required this.goPointsHub});
+  const MyCouponsScreen({super.key, required this.coupons, required this.useCoupon, required this.goPointsHub});
   @override
   State<MyCouponsScreen> createState() => _MyCouponsScreenState();
 }
@@ -28,9 +25,9 @@ class _MyCouponsScreenState extends State<MyCouponsScreen> {
     final list = tab == 'live' ? live : used;
 
     return Stack(children: [
-      ScreenFrame(
+      Positioned.fill(child: ScreenFrame(
         title: '내 쿠폰',
-        onBack: widget.onClose,
+        onBack: () => Navigator.of(context).pop(),
         child: Column(children: [
           Container(
             decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))),
@@ -68,7 +65,7 @@ class _MyCouponsScreenState extends State<MyCouponsScreen> {
                   ),
           ),
         ]),
-      ),
+      )),
       if (sel != null)
         _CouponDetail(c: sel!, onClose: () => setState(() => sel = null), onUse: () {
           widget.useCoupon(sel!.id);

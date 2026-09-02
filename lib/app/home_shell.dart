@@ -3,38 +3,23 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-import '../core/navigation/screen_route.dart';
 import '../core/theme/colors.dart';
 import '../core/utils/formatters.dart';
-import '../features/auth/services/auth_service.dart';
 import '../features/auth/screens/login_screen.dart';
+import '../features/auth/services/auth_service.dart';
 import '../features/benefits/data/point_rules.dart';
 import '../features/benefits/models/coupon.dart';
 import '../features/benefits/models/partner_mission.dart';
 import '../features/benefits/models/reward_product.dart';
 import '../features/benefits/screens/benefits_view.dart';
-import '../features/benefits/screens/earn_hub_screen.dart';
-import '../features/benefits/screens/my_coupons_screen.dart';
-import '../features/benefits/screens/partner_mission_detail_screen.dart';
-import '../features/benefits/screens/point_shop_screen.dart';
-import '../features/benefits/screens/walk_screen.dart';
 import '../features/chat/screens/chat_view.dart';
-import '../features/community/screens/community_post_screen.dart';
-import '../features/community/screens/community_screen.dart';
 import '../features/errand/models/offer.dart';
 import '../features/errand/models/task_item.dart';
+import '../features/errand/navigation/errand_actions.dart';
 import '../features/errand/repositories/errand_repository.dart';
-import '../features/errand/screens/country_screen.dart';
-import '../features/errand/screens/detail_page.dart';
 import '../features/errand/screens/home_content.dart';
-import '../features/errand/screens/list_screen.dart';
-import '../features/errand/screens/map_view.dart';
-import '../features/errand/screens/overseas_screen.dart';
 import '../features/errand/screens/post_request.dart';
-import '../features/errand/screens/search_screen.dart';
 import '../features/errand/widgets/region_sheet.dart';
-import '../features/gongu/screens/gongu_detail_screen.dart';
-import '../features/gongu/screens/gongu_screen.dart';
 import '../features/profile/screens/me_view.dart';
 
 class HomeShell extends StatefulWidget {
@@ -46,11 +31,6 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   final ErrandRepository _errandRepository = LocalErrandRepository();
   String tab = 'home'; // home | benefits | chat | me
-  List<ScreenRoute> stack = [];
-  TaskItem? detail;
-  bool post = false;
-  bool regionOpen = false;
-  bool showLogin = false;
   List<int> grabbed = [];
   Map<int, List<Offer>> offers = {};
   String? toast;
@@ -68,13 +48,15 @@ class _HomeShellState extends State<HomeShell> {
   bool get isLoggedIn => AuthService().currentUser != null;
   StreamSubscription<User?>? _authSub;
 
+  ErrandActions get actions => ErrandActions(grabbed: grabbed, onGrab: grab, onOffer: sendOffer, offers: offers);
+
   /// 콘텐츠 열람은 항상 허용하되, 실제 참여 행동(지원/제안/등록/적립/교환 등)만
-  /// 로그인 여부로 막아 로그인 오버레이로 유도함.
+  /// 로그인 여부로 막아 로그인 화면으로 유도함.
   void requireLogin(VoidCallback action) {
     if (isLoggedIn) {
       action();
     } else {
-      setState(() => showLogin = true);
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
     }
   }
 
@@ -99,9 +81,6 @@ class _HomeShellState extends State<HomeShell> {
       if (mounted) setState(() => toast = null);
     });
   }
-
-  void push(ScreenRoute route) => setState(() => stack.add(route));
-  void pop() => setState(() => stack.removeLast());
 
   void earn(int amt, String label) => requireLogin(() {
         setState(() => points += amt);
@@ -129,16 +108,13 @@ class _HomeShellState extends State<HomeShell> {
       });
 
   void goPointsHub() {
-    setState(() {
-      stack = [];
-      tab = 'benefits';
-    });
+    Navigator.of(context).popUntil((r) => r.isFirst);
+    setState(() => tab = 'benefits');
   }
 
   void grab(TaskItem it) => requireLogin(() {
         setState(() {
           if (!grabbed.contains(it.id)) grabbed.add(it.id);
-          detail = null;
         });
         flash(it.mode == 'together' ? '신청했어요. 채팅으로 이어드릴게요' : '지원했어요. 요청자가 확인하면 매칭돼요');
       });
@@ -178,146 +154,58 @@ class _HomeShellState extends State<HomeShell> {
           items.insert(i, it);
         }
       }
-      post = false;
     });
     flash(it.hot ? '급해요로 목록 맨 위에 올렸어요' : '부탁을 올렸어요');
+  }
+
+  void openPost() => requireLogin(() {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => PostRequest(scope: scope, onSubmit: addRequest)));
+      });
+
+  Future<void> openRegion() async {
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => RegionSheet(scope: scope),
+    );
+    if (picked != null) setState(() => scope = picked);
   }
 
   Widget _body() {
     switch (tab) {
       case 'benefits':
         return BenefitsView(
-          points: points, steps: steps, coupons: coupons, earn: earn, push: push,
-          items: items, grabbed: grabbed, openDetail: (it) => setState(() => detail = it),
-          monthEarn: monthEarn, monthPoints: monthPoints, freeLeft: freeLeft,
-          doneMissions: doneMissions, goPointsHub: goPointsHub,
+          points: points, steps: steps, coupons: coupons, items: items, scope: scope, actions: actions,
+          monthEarn: monthEarn, monthPoints: monthPoints, freeLeft: freeLeft, doneMissions: doneMissions,
+          earn: earn, redeem: redeem, useCoupon: useCoupon, completeMission: completeMission, goPointsHub: goPointsHub,
         );
       case 'chat':
         return ChatView(items: items, grabbed: grabbed);
       case 'me':
         return MeView(
-          points: points, coupons: coupons, push: push, freeLeft: freeLeft, monthPoints: monthPoints,
-          isLoggedIn: isLoggedIn, onLogin: () => requireLogin(() {}),
+          points: points, coupons: coupons, useCoupon: useCoupon, goPointsHub: goPointsHub,
+          freeLeft: freeLeft, monthPoints: monthPoints, isLoggedIn: isLoggedIn, onLogin: () => requireLogin(() {}),
         );
       default:
         return HomeContent(
-          items: items,
-          scope: scope,
-          grabbed: grabbed,
-          points: points,
-          steps: steps,
-          openDetail: (it) => setState(() => detail = it),
-          openPost: () => requireLogin(() => setState(() => post = true)),
-          openRegion: () => setState(() => regionOpen = true),
-          push: push,
-          earn: earn,
-          flash: flash,
-          goPointsHub: goPointsHub,
+          items: items, scope: scope, actions: actions, points: points, steps: steps,
+          coupons: coupons, doneMissions: doneMissions,
+          openPost: openPost, openRegion: openRegion,
+          earn: earn, redeem: redeem, useCoupon: useCoupon, completeMission: completeMission,
+          flash: flash, goPointsHub: goPointsHub,
         );
     }
-  }
-
-  Widget? _buildRoute(ScreenRoute route) {
-    switch (route.name) {
-      case 'list':
-        return ListScreen(
-          config: route, items: items, scope: scope, grabbed: grabbed,
-          onClose: pop, onMap: () => push(const ScreenRoute(name: 'map')),
-          openDetail: (it) => setState(() => detail = it),
-        );
-      case 'overseas':
-        return OverseasScreen(
-          items: items, grabbed: grabbed, onClose: pop,
-          openCountry: (cc) => push(ScreenRoute(name: 'country', cc: cc)),
-          openDetail: (it) => setState(() => detail = it),
-        );
-      case 'country':
-        return CountryScreen(cc: route.cc!, items: items, grabbed: grabbed, onClose: pop, openDetail: (it) => setState(() => detail = it));
-      case 'search':
-        return SearchScreen(items: items, grabbed: grabbed, onClose: pop, openDetail: (it) => setState(() => detail = it));
-      case 'map':
-        return _mapScreen();
-      case 'community':
-        return CommunityScreen(items: items, scope: scope, initCat: route.cat, onClose: pop, openDetail: (it) => setState(() => detail = it));
-      case 'walk':
-        return WalkScreen(
-          items: items, scope: scope, steps: steps, points: points, grabbed: grabbed,
-          onClose: pop, earn: earn, push: push, openDetail: (it) => setState(() => detail = it),
-        );
-      case 'shop':
-        return PointShopScreen(points: points, redeem: redeem, onClose: pop, push: push, goPointsHub: goPointsHub);
-      case 'coupons':
-        return MyCouponsScreen(coupons: coupons, useCoupon: useCoupon, onClose: pop, push: push, goPointsHub: goPointsHub);
-      case 'mission':
-        return PartnerMissionDetailScreen(
-          m: route.mission!, done: doneMissions.contains(route.mission!.id),
-          onClose: pop, onComplete: completeMission,
-        );
-      case 'earn':
-        return EarnHubScreen(doneMissions: doneMissions, onClose: pop, push: push);
-      case 'gongu':
-        return GonguScreen(onClose: pop, push: push);
-      case 'gongudetail':
-        return GonguDetailScreen(g: route.gongu!, onClose: pop, earn: earn);
-      default:
-        return null;
-    }
-  }
-
-  Widget _mapScreen() {
-    return Positioned.fill(
-      child: Material(
-        color: AppColors.page,
-        child: Column(children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(18, 14, 18, 12),
-            decoration: const BoxDecoration(color: AppColors.card, border: Border(bottom: BorderSide(color: AppColors.line))),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(children: [
-                  InkWell(onTap: pop, borderRadius: BorderRadius.circular(99), child: const Padding(padding: EdgeInsets.only(right: 2), child: Text('‹', style: TextStyle(fontSize: 24, color: AppColors.ink)))),
-                  const Text('지도', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.ink)),
-                ]),
-                Padding(padding: const EdgeInsets.only(left: 22, top: 4), child: Text('${shortRegion(scope)} 주변 부탁', style: const TextStyle(fontSize: 12, color: AppColors.sub))),
-              ],
-            ),
-          ),
-          Expanded(child: MapView(items: items, grabbed: grabbed, scope: scope, openDetail: (it) => setState(() => detail = it))),
-        ]),
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final topRoute = stack.isNotEmpty ? stack.last : null;
     return Scaffold(
       backgroundColor: AppColors.page,
       body: SafeArea(
         child: Stack(
           children: [
             Column(children: [Expanded(child: _body()), _bottomNav()]),
-            if (topRoute != null) _buildRoute(topRoute) ?? const SizedBox.shrink(),
-            if (detail != null)
-              detail!.mode == 'together'
-                  ? CommunityPostScreen(it: detail!, grabbed: grabbed, onClose: () => setState(() => detail = null), onGrab: grab)
-                  : DetailPage(
-                      it: detail!, grabbed: grabbed, myOffers: offers[detail!.id] ?? const [],
-                      onClose: () => setState(() => detail = null), onGrab: grab, onOffer: sendOffer,
-                    ),
-            if (post) PostRequest(scope: scope, onClose: () => setState(() => post = false), onSubmit: addRequest),
-            if (regionOpen)
-              RegionSheet(
-                scope: scope,
-                onPick: (r) => setState(() {
-                  scope = r;
-                  regionOpen = false;
-                }),
-                onClose: () => setState(() => regionOpen = false),
-              ),
-            if (showLogin) LoginScreen(onClose: () => setState(() => showLogin = false)),
             if (toast != null)
               Positioned(
                 left: 22, right: 22, bottom: 92,
@@ -333,6 +221,11 @@ class _HomeShellState extends State<HomeShell> {
         ),
       ),
     );
+  }
+
+  void _switchTab(String k) {
+    Navigator.of(context).popUntil((r) => r.isFirst);
+    setState(() => tab = k);
   }
 
   Widget _bottomNav() {
@@ -354,7 +247,7 @@ class _HomeShellState extends State<HomeShell> {
                 Transform.translate(
                   offset: const Offset(0, -10),
                   child: InkWell(
-                    onTap: () => requireLogin(() => setState(() => post = true)),
+                    onTap: openPost,
                     borderRadius: BorderRadius.circular(18),
                     child: Container(
                       width: 52, height: 52, alignment: Alignment.center,
@@ -380,10 +273,7 @@ class _HomeShellState extends State<HomeShell> {
     final active = tab == k;
     return Expanded(
       child: InkWell(
-        onTap: () => setState(() {
-          stack = [];
-          tab = k;
-        }),
+        onTap: () => _switchTab(k),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 6),
           child: Column(

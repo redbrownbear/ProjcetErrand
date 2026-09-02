@@ -1,23 +1,24 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-import '../../../core/navigation/screen_route.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../auth/services/auth_service.dart';
 import '../../benefits/models/coupon.dart';
+import '../../benefits/screens/my_coupons_screen.dart';
 
 class MeView extends StatelessWidget {
   final int points;
   final List<Coupon> coupons;
-  final void Function(ScreenRoute) push;
+  final void Function(int id) useCoupon;
+  final VoidCallback goPointsHub;
   final int freeLeft;
   final int monthPoints;
   final bool isLoggedIn;
   final VoidCallback onLogin;
   const MeView({
-    super.key, required this.points, required this.coupons, required this.push, required this.freeLeft, required this.monthPoints,
-    required this.isLoggedIn, required this.onLogin,
+    super.key, required this.points, required this.coupons, required this.useCoupon, required this.goPointsHub,
+    required this.freeLeft, required this.monthPoints, required this.isLoggedIn, required this.onLogin,
   });
 
   @override
@@ -182,7 +183,9 @@ class MeView extends StatelessWidget {
           ]),
         ),
         InkWell(
-          onTap: () => push(const ScreenRoute(name: 'coupons')),
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => MyCouponsScreen(
+            coupons: coupons, useCoupon: useCoupon, goPointsHub: goPointsHub,
+          ))),
           borderRadius: BorderRadius.circular(14),
           child: Container(
             margin: const EdgeInsets.fromLTRB(16, 0, 16, 6),
