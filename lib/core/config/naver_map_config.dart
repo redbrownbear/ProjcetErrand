@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 /// 네이버클라우드플랫폼(NCP) 콘솔에서 발급받은 Maps Client ID를 넣으세요.
 ///
 /// 발급 방법:
@@ -8,3 +10,8 @@
 ///    iOS Bundle ID를 등록
 /// 5. 발급된 Client ID를 아래 값에 붙여넣기
 const naverMapClientId = 'y4pzwzjsed';
+
+/// flutter_naver_map은 Android/iOS 네이티브 SDK만 지원한다.
+/// 웹·데스크톱에서는 초기화도, NaverMap 위젯도 사용할 수 없다.
+final bool naverMapSupported = !kIsWeb &&
+    (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS);

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 
+import '../../../core/config/naver_map_config.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/tag.dart';
@@ -98,16 +99,18 @@ class _MapViewState extends State<MapView> {
         bottom: safeBottom + mapMargin,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(22),
-          child: NaverMap(
-            options: NaverMapViewOptions(
-              initialCameraPosition: NCameraPosition(target: center, zoom: zoom),
-              locationButtonEnable: false,
-            ),
-            onMapReady: (controller) {
-              setState(() => _controller = controller);
-              _syncMarkers();
-            },
-          ),
+          child: naverMapSupported
+              ? NaverMap(
+                  options: NaverMapViewOptions(
+                    initialCameraPosition: NCameraPosition(target: center, zoom: zoom),
+                    locationButtonEnable: false,
+                  ),
+                  onMapReady: (controller) {
+                    setState(() => _controller = controller);
+                    _syncMarkers();
+                  },
+                )
+              : const _UnsupportedPlatformMap(),
         ),
       ),
       Positioned(
@@ -191,6 +194,23 @@ class _MapViewState extends State<MapView> {
           ),
         ),
     ]);
+  }
+}
+
+class _UnsupportedPlatformMap extends StatelessWidget {
+  const _UnsupportedPlatformMap();
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: const Color(0xFFE7ECE4),
+      alignment: Alignment.center,
+      padding: const EdgeInsets.all(24),
+      child: const Text(
+        '지도는 모바일 앱(Android · iOS)에서만 볼 수 있어요',
+        textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 13, color: AppColors.sub),
+      ),
+    );
   }
 }
 

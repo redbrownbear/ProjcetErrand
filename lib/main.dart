@@ -10,10 +10,12 @@ import 'firebase_options.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  await FlutterNaverMap().init(
-    clientId: naverMapClientId,
-    onAuthFailed: (ex) => debugPrint('네이버 지도 인증 실패: $ex'),
-  );
+  if (naverMapSupported) {
+    await FlutterNaverMap().init(
+      clientId: naverMapClientId,
+      onAuthFailed: (ex) => debugPrint('네이버 지도 인증 실패: $ex'),
+    );
+  }
   runApp(const BureumApp());
 }
 
