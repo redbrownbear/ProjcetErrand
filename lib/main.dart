@@ -1,6 +1,8 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_naver_map/flutter_naver_map.dart';
 
+import 'core/config/naver_map_config.dart';
 import 'core/theme/colors.dart';
 import 'features/auth/screens/auth_gate.dart';
 import 'firebase_options.dart';
@@ -8,6 +10,10 @@ import 'firebase_options.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await FlutterNaverMap().init(
+    clientId: naverMapClientId,
+    onAuthFailed: (ex) => debugPrint('네이버 지도 인증 실패: $ex'),
+  );
   runApp(const BureumApp());
 }
 

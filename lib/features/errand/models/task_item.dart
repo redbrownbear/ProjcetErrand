@@ -31,6 +31,7 @@ class TaskItem {
   final int joinCur;
   final int joinMax;
   final List<Comment> comments;
+  final double? lat, lng;
 
   const TaskItem({
     required this.id,
@@ -64,5 +65,7 @@ class TaskItem {
     this.joinCur = 0,
     this.joinMax = 0,
     this.comments = const [],
+    this.lat,
+    this.lng,
   });
 }

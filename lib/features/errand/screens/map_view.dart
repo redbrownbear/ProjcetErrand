@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_naver_map/flutter_naver_map.dart';
 
 import '../../../core/theme/colors.dart';
 import '../../../core/utils/formatters.dart';
@@ -6,6 +8,15 @@ import '../../../core/widgets/tag.dart';
 import '../data/categories.dart';
 import '../models/task_item.dart';
 import '../navigation/errand_actions.dart';
+
+const _regionCenters = {
+  '서울 서초구': NLatLng(37.4837, 127.0324),
+  '서울 강남구': NLatLng(37.5172, 127.0473),
+  '서울 성동구': NLatLng(37.5634, 127.0367),
+  '부산 수영구': NLatLng(35.1455, 129.1132),
+  '대전 유성구': NLatLng(36.3623, 127.3560),
+};
+const _koreaCenter = NLatLng(36.5, 127.8);
 
 class MapView extends StatefulWidget {
   final List<TaskItem> items;
@@ -19,79 +30,151 @@ class MapView extends StatefulWidget {
 class _MapViewState extends State<MapView> {
   String filter = 'all';
   TaskItem? preview;
+  NaverMapController? _controller;
+  bool _following = false;
 
   bool _inScope(TaskItem i) => widget.scope == '전국' || i.region == widget.scope;
 
+  List<TaskItem> get _pins => widget.items
+      .where((i) => i.mode != 'sea' && i.lat != null && i.lng != null && _inScope(i))
+      .where((i) => filter == 'all' ? true : i.mode == filter)
+      .toList();
+
+  Future<void> _syncMarkers() async {
+    final controller = _controller;
+    if (controller == null) return;
+    await controller.clearOverlays(type: NOverlayType.marker);
+    await controller.addOverlayAll({
+      for (final it in _pins)
+        NMarker(
+          id: it.id.toString(),
+          position: NLatLng(it.lat!, it.lng!),
+          iconTintColor: _markerColor(it),
+          caption: NOverlayCaption(text: _markerLabel(it), textSize: 12.5),
+        )..setOnTapListener((_) {
+            setState(() => preview = it);
+            _syncMarkers();
+          }),
+    });
+  }
+
+  Color _markerColor(TaskItem it) {
+    final done = widget.actions.grabbed.contains(it.id);
+    if (preview?.id == it.id) return AppColors.yellowDeep;
+    if (done) return AppColors.faint;
+    if (it.hot) return AppColors.red;
+    return it.mode == 'ask' ? AppColors.black : AppColors.green;
+  }
+
+  String _markerLabel(TaskItem it) {
+    if (it.mode != 'ask') return '같이해요';
+    final done = widget.actions.grabbed.contains(it.id);
+    return done ? '지원함' : (it.hot ? '🔥' : '') + kwon(it.price);
+  }
+
+  void _toggleFollow() {
+    final controller = _controller;
+    if (controller == null) return;
+    final next = !_following;
+    setState(() => _following = next);
+    // follow만 사용 — face 모드는 나침반 방위에 따라 지도가 계속 회전해서 쓰지 않음.
+    // 지도 회전은 오직 사용자의 두 손가락 제스처로만 일어나게 둔다.
+    controller.setLocationTrackingMode(next ? NLocationTrackingMode.follow : NLocationTrackingMode.none);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final pins = widget.items
-        .where((i) => i.mode != 'sea' && _inScope(i))
-        .where((i) => filter == 'all' ? true : i.mode == filter)
-        .toList();
+    final center = _regionCenters[widget.scope] ?? _koreaCenter;
+    final zoom = _regionCenters.containsKey(widget.scope) ? 13.5 : 7.0;
+    final safeTop = MediaQuery.of(context).padding.top;
+    final safeBottom = MediaQuery.of(context).padding.bottom;
+
+    const mapMargin = 14.0;
 
     return Stack(children: [
-      Container(color: const Color(0xFFE7ECE4)),
-      Positioned.fill(
-        child: LayoutBuilder(builder: (context, box) {
-          return Stack(children: [
-            Positioned(left: box.maxWidth * .5, top: box.maxHeight * .35, child: Container(width: box.maxWidth * .25, height: 90, decoration: const BoxDecoration(color: Color(0xFFCDE6CD), shape: BoxShape.circle))),
-            Positioned(left: box.maxWidth * .05, top: 30, child: Container(width: box.maxWidth * .35, height: 120, decoration: BoxDecoration(color: const Color(0xFFDDE4D6), borderRadius: BorderRadius.circular(6)))),
-            Positioned(right: box.maxWidth * .05, top: 60, child: Container(width: box.maxWidth * .35, height: 100, decoration: BoxDecoration(color: const Color(0xFFDDE4D6), borderRadius: BorderRadius.circular(6)))),
-            Positioned(left: box.maxWidth * .1, bottom: 60, child: Container(width: box.maxWidth * .3, height: 140, decoration: BoxDecoration(color: const Color(0xFFDDE4D6), borderRadius: BorderRadius.circular(6)))),
-            Positioned(
-              left: box.maxWidth * .5 - 20, top: box.maxHeight * .44 - 20,
-              child: Container(
-                width: 40, height: 40, alignment: Alignment.center,
-                decoration: const BoxDecoration(color: AppColors.blue, shape: BoxShape.circle),
-                child: Container(width: 15, height: 15, decoration: BoxDecoration(color: AppColors.blue, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 3))),
-              ),
+      Positioned(
+        top: safeTop + mapMargin,
+        left: 0, right: 0,
+        bottom: safeBottom + mapMargin,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(22),
+          child: NaverMap(
+            options: NaverMapViewOptions(
+              initialCameraPosition: NCameraPosition(target: center, zoom: zoom),
+              locationButtonEnable: false,
             ),
-            for (final it in pins)
-              Positioned(
-                left: box.maxWidth * (it.x / 100) - 24,
-                top: box.maxHeight * (it.y / 100) - 40,
-                child: _Pin(
-                  it: it,
-                  done: widget.actions.grabbed.contains(it.id),
-                  selected: preview?.id == it.id,
-                  onTap: () => setState(() => preview = it),
-                ),
-              ),
-          ]);
-        }),
+            onMapReady: (controller) {
+              setState(() => _controller = controller);
+              _syncMarkers();
+            },
+          ),
+        ),
       ),
       Positioned(
-        top: 16, left: 16, right: 16,
-        child: Row(
-          children: [
-            for (final e in [['all', '전체'], ['ask', '부탁해요'], ['together', '같이해요']])
-              Padding(
-                padding: const EdgeInsets.only(right: 7),
-                child: InkWell(
-                  onTap: () => setState(() {
-                    filter = e[0];
-                    preview = null;
-                  }),
+        top: safeTop + mapMargin + 10, left: 16, right: 16,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: const [BoxShadow(color: Color(0x1F000000), blurRadius: 10)],
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                InkWell(
+                  onTap: () => Navigator.of(context).pop(),
                   borderRadius: BorderRadius.circular(99),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: filter == e[0] ? AppColors.black : Colors.white,
-                      borderRadius: BorderRadius.circular(99),
-                      boxShadow: const [BoxShadow(color: Color(0x1F000000), blurRadius: 8)],
+                  child: const Padding(padding: EdgeInsets.only(right: 6), child: Text('‹', style: TextStyle(fontSize: 22, color: AppColors.ink))),
+                ),
+                Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                  const Text('지도', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.ink)),
+                  Text('${shortRegion(widget.scope)} 주변 부탁', style: const TextStyle(fontSize: 11, color: AppColors.sub)),
+                ]),
+              ]),
+            ),
+            const Spacer(),
+            _LocationButton(following: _following, loading: _controller?.myLocationTracker.isLoading, onTap: _toggleFollow),
+          ]),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              for (final e in [['all', '전체'], ['ask', '부탁해요'], ['together', '같이해요']])
+                Padding(
+                  padding: const EdgeInsets.only(right: 7),
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        filter = e[0];
+                        preview = null;
+                      });
+                      _syncMarkers();
+                    },
+                    borderRadius: BorderRadius.circular(99),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: filter == e[0] ? AppColors.black : Colors.white,
+                        borderRadius: BorderRadius.circular(99),
+                        boxShadow: const [BoxShadow(color: Color(0x1F000000), blurRadius: 8)],
+                      ),
+                      child: Text(e[1], style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: filter == e[0] ? Colors.white : AppColors.ink)),
                     ),
-                    child: Text(e[1], style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: filter == e[0] ? Colors.white : AppColors.ink)),
                   ),
                 ),
-              ),
-          ],
-        ),
+            ],
+          ),
+        ]),
       ),
       if (preview != null)
         _MapPreview(
           it: preview!,
           done: widget.actions.grabbed.contains(preview!.id),
-          onClose: () => setState(() => preview = null),
+          safeBottom: safeBottom + mapMargin,
+          onClose: () {
+            setState(() => preview = null);
+            _syncMarkers();
+          },
           onOpen: () {
             final p = preview!;
             setState(() => preview = null);
@@ -100,7 +183,7 @@ class _MapViewState extends State<MapView> {
         )
       else
         Positioned(
-          bottom: 16, left: 16, right: 16,
+          bottom: 16 + safeBottom + mapMargin, left: 16, right: 16,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
             decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), boxShadow: const [BoxShadow(color: Color(0x24000000), blurRadius: 16)]),
@@ -111,59 +194,51 @@ class _MapViewState extends State<MapView> {
   }
 }
 
-class _Pin extends StatelessWidget {
-  final TaskItem it;
-  final bool done, selected;
+class _LocationButton extends StatelessWidget {
+  final bool following;
+  final ValueListenable<bool>? loading;
   final VoidCallback onTap;
-  const _Pin({required this.it, required this.done, required this.selected, required this.onTap});
+  const _LocationButton({required this.following, required this.loading, required this.onTap});
+
   @override
   Widget build(BuildContext context) {
-    final paid = it.mode == 'ask';
-    final bg = selected ? AppColors.yellow : done ? AppColors.faint : it.hot ? AppColors.red : paid ? AppColors.black : AppColors.card;
-    final fg = selected ? AppColors.ink : (paid || it.hot || done) ? Colors.white : AppColors.ink;
-    final label = paid ? (done ? '지원함' : (it.hot ? '🔥' : '') + kwon(it.price)) : '같이해요';
-    return InkWell(
-      onTap: onTap,
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-          decoration: BoxDecoration(
-            color: bg, borderRadius: BorderRadius.circular(12),
-            border: (!paid && !it.hot && !done && !selected) ? Border.all(color: AppColors.line, width: 1.5) : null,
-            boxShadow: const [BoxShadow(color: Color(0x38000000), blurRadius: 10, offset: Offset(0, 3))],
-          ),
-          child: Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.w800, fontSize: 12.5)),
+    return Material(
+      color: Colors.white,
+      shape: const CircleBorder(),
+      elevation: 2,
+      shadowColor: const Color(0x1F000000),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: SizedBox(
+          width: 42, height: 42,
+          child: loading == null
+              ? _icon()
+              : ValueListenableBuilder<bool>(
+                  valueListenable: loading!,
+                  builder: (context, isLoading, _) => isLoading
+                      ? const Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.blue))
+                      : _icon(),
+                ),
         ),
-        CustomPaint(size: const Size(12, 7), painter: _TrianglePainter(bg)),
-      ]),
+      ),
     );
   }
-}
 
-class _TrianglePainter extends CustomPainter {
-  final Color color;
-  _TrianglePainter(this.color);
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = color;
-    final path = Path()..moveTo(0, 0)..lineTo(size.width, 0)..lineTo(size.width / 2, size.height)..close();
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _TrianglePainter oldDelegate) => oldDelegate.color != color;
+  Widget _icon() => Icon(Icons.my_location, size: 20, color: following ? AppColors.blue : AppColors.sub);
 }
 
 class _MapPreview extends StatelessWidget {
   final TaskItem it;
   final bool done;
+  final double safeBottom;
   final VoidCallback onClose, onOpen;
-  const _MapPreview({required this.it, required this.done, required this.onClose, required this.onOpen});
+  const _MapPreview({required this.it, required this.done, required this.safeBottom, required this.onClose, required this.onOpen});
   @override
   Widget build(BuildContext context) {
     final paid = it.mode == 'ask';
     return Positioned(
-      bottom: 16, left: 16, right: 16,
+      bottom: 16 + safeBottom, left: 16, right: 16,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), boxShadow: const [BoxShadow(color: Color(0x38000000), blurRadius: 28)]),
