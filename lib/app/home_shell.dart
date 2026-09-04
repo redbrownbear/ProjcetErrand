@@ -52,12 +52,17 @@ class _HomeShellState extends State<HomeShell> {
 
   /// 콘텐츠 열람은 항상 허용하되, 실제 참여 행동(지원/제안/등록/적립/교환 등)만
   /// 로그인 여부로 막아 로그인 화면으로 유도함.
-  void requireLogin(VoidCallback action) {
+  ///
+  /// 로그인이 필요해서 화면을 띄운 경우, 로그인에 성공하면 **원래 하려던 동작을
+  /// 이어서 실행**한다. (예: 부탁 등록을 누름 -> 로그인 -> 바로 등록 화면으로)
+  Future<void> requireLogin(VoidCallback action) async {
     if (isLoggedIn) {
       action();
-    } else {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+      return;
     }
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+    if (!mounted || !isLoggedIn) return; // 로그인 안 하고 뒤로 나온 경우
+    action();
   }
 
   @override
@@ -200,24 +205,35 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.page,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Column(children: [Expanded(child: _body()), _bottomNav()]),
-            if (toast != null)
-              Positioned(
-                left: 22, right: 22, bottom: 92,
-                child: IgnorePointer(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                    decoration: BoxDecoration(color: AppColors.black, borderRadius: BorderRadius.circular(14)),
-                    child: Text(toast!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.w600)),
+    // 탭은 Navigator 라우트가 아니라 상태값이라, 그대로 두면 홈이 아닌 탭에서
+    // 시스템 뒤로가기(갤럭시 하단 버튼/제스처)를 눌렀을 때 앱이 그냥 종료된다.
+    // 홈이 아닌 탭에서는 뒤로가기를 홈 탭 복귀로 소비하고, 홈에서만 종료되게 한다.
+    // (푸시된 상세·목록 화면은 각자 라우트라 기존대로 정상 pop 된다)
+    return PopScope(
+      canPop: tab == 'home',
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        setState(() => tab = 'home');
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.page,
+        body: SafeArea(
+          child: Stack(
+            children: [
+              Column(children: [Expanded(child: _body()), _bottomNav()]),
+              if (toast != null)
+                Positioned(
+                  left: 22, right: 22, bottom: 92,
+                  child: IgnorePointer(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                      decoration: BoxDecoration(color: AppColors.black, borderRadius: BorderRadius.circular(14)),
+                      child: Text(toast!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.w600)),
+                    ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -252,7 +268,7 @@ class _HomeShellState extends State<HomeShell> {
                     child: Container(
                       width: 52, height: 52, alignment: Alignment.center,
                       decoration: BoxDecoration(color: AppColors.yellow, borderRadius: BorderRadius.circular(18)),
-                      child: const Text('＋', style: TextStyle(fontSize: 26, color: AppColors.ink)),
+                      child: const Icon(Icons.add_rounded, size: 30, color: AppColors.ink),
                     ),
                   ),
                 ),

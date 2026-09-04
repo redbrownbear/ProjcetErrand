@@ -113,12 +113,16 @@ class _PointShopScreenState extends State<PointShopScreen> {
                 ),
               ),
               const Padding(padding: EdgeInsets.fromLTRB(0, 16, 0, 8), child: Text('브랜드별 보기', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.ink))),
-              GridView.count(
-                crossAxisCount: 4,
+              GridView(
+                // 비율이 아니라 픽셀로 높이를 고정한다. 비율을 쓰면 넓은 화면에서 셀이 같이 커진다.
+                // 내용물 = 아이콘 24 + 간격 4 + 라벨 14 + 상하 여백
+                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: 86,
+                  mainAxisSpacing: 8, crossAxisSpacing: 8,
+                  mainAxisExtent: 62,
+                ),
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                mainAxisSpacing: 8, crossAxisSpacing: 8,
-                childAspectRatio: 0.95,
                 children: brandsInCat.map((b) {
                   return InkWell(
                     onTap: () => setState(() => brand = b.k),

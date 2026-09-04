@@ -178,12 +178,16 @@ class _PostRequestState extends State<PostRequest> {
           ),
         if (!sea) ...[
           _label('카테고리'),
-          GridView.count(
-            crossAxisCount: 5,
+          GridView(
+            // 비율이 아니라 픽셀로 높이를 고정한다. 비율을 쓰면 넓은 화면에서 셀이 같이 커진다.
+            // 내용물 = 아이콘 22 + 간격 3 + 라벨 14 + 상하 여백
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 68,
+              mainAxisSpacing: 8, crossAxisSpacing: 8,
+              mainAxisExtent: 58,
+            ),
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 8, crossAxisSpacing: 8,
-            childAspectRatio: 0.85,
             children: cats.map((c) {
               final on = cat == c.k;
               return InkWell(
@@ -198,9 +202,9 @@ class _PostRequestState extends State<PostRequest> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(c.icon, style: const TextStyle(fontSize: 19)),
+                      Text(c.icon, style: const TextStyle(fontSize: 22)),
                       const SizedBox(height: 3),
-                      Text(c.label, style: TextStyle(fontSize: 10, color: AppColors.ink, fontWeight: on ? FontWeight.w700 : FontWeight.w500)),
+                      Text(c.label, style: TextStyle(fontSize: 10.5, color: AppColors.ink, fontWeight: on ? FontWeight.w700 : FontWeight.w500)),
                     ],
                   ),
                 ),

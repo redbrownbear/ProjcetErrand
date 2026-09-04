@@ -210,17 +210,23 @@ class _HomeContentState extends State<HomeContent> {
           const Padding(padding: EdgeInsets.fromLTRB(16, 6, 16, 6), child: Text('할 수 있는 일', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.ink))),
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 14),
-            child: GridView.count(
-              crossAxisCount: 5,
+            child: GridView(
+              // 열 개수를 고정하면 폴더블·태블릿처럼 폭이 넓은 기기에서 셀이 그만큼
+              // 옆으로 늘어나 버튼 사이가 벌어진다. 셀 크기를 고정하고 열 개수가
+              // 폭에 따라 늘어나게 한다. (폰 375px에서는 5열이 된다)
+              // 높이 = 타일 40 + 간격 5 + 라벨 14
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 76,
+                mainAxisSpacing: 10,
+                mainAxisExtent: 62,
+              ),
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 12,
-              childAspectRatio: 0.8,
               children: cats.map((c) {
                 return InkWell(
                   onTap: () => goList(ScreenRoute(name: 'list', title: c.label, subtitle: '${c.label} 부탁 모아보기', base: 'ask', cat: c.k, sortable: true, catChips: true, mapBtn: true)),
                   child: Column(children: [
-                    Container(width: 42, height: 42, alignment: Alignment.center, decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(13)), child: Text(c.icon, style: const TextStyle(fontSize: 20))),
+                    Container(width: 40, height: 40, alignment: Alignment.center, decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(12)), child: Text(c.icon, style: const TextStyle(fontSize: 23))),
                     const SizedBox(height: 5),
                     Text(c.label, style: const TextStyle(fontSize: 11, color: AppColors.ink)),
                   ]),
@@ -275,6 +281,9 @@ class _HomeContentState extends State<HomeContent> {
                   ),
                   const SizedBox(width: 8),
                   Expanded(
+                    // flex를 생략하면 1이 되어 왼쪽(14)과 14:1로 갈리는 바람에
+                    // 이 타일이 20~30px만 받아 글자가 세로로 쪼개졌다.
+                    flex: 10,
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
                       decoration: BoxDecoration(color: Colors.white.withValues(alpha: .08), borderRadius: BorderRadius.circular(12)),
@@ -542,7 +551,7 @@ class _Shortcut extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 4),
           child: Column(children: [
-            Container(width: 48, height: 48, alignment: Alignment.center, decoration: BoxDecoration(color: AppColors.yellowSoft, borderRadius: BorderRadius.circular(15)), child: Text(icon, style: const TextStyle(fontSize: 22))),
+            Container(width: 48, height: 48, alignment: Alignment.center, decoration: BoxDecoration(color: AppColors.yellowSoft, borderRadius: BorderRadius.circular(15)), child: Text(icon, style: const TextStyle(fontSize: 26))),
             const SizedBox(height: 6),
             Text(label, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.ink)),
           ]),

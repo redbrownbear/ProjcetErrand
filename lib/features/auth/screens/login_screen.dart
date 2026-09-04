@@ -48,6 +48,14 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  /// 회원가입은 성공하면 그대로 로그인된 상태가 되므로,
+  /// 가입 후 로그인 화면을 다시 보여주지 않고 같이 닫는다.
+  Future<void> _openSignup() async {
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SignupScreen()));
+    if (!mounted || _auth.currentUser == null) return;
+    Navigator.of(context).pop();
+  }
+
   InputDecoration _dec(String hint) => InputDecoration(
         hintText: hint,
         filled: true, fillColor: AppColors.card,
@@ -107,9 +115,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 16),
                 TextButton(
-                  onPressed: _loading
-                      ? null
-                      : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SignupScreen())),
+                  onPressed: _loading ? null : _openSignup,
                   child: const Text.rich(TextSpan(children: [
                     TextSpan(text: '계정이 없으신가요? ', style: TextStyle(color: AppColors.sub, fontSize: 13)),
                     TextSpan(text: '회원가입', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w800, fontSize: 13)),

@@ -1,23 +1,22 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_naver_map/flutter_naver_map.dart';
 
-import '../../../core/config/naver_map_config.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/tag.dart';
 import '../data/categories.dart';
 import '../models/task_item.dart';
 import '../navigation/errand_actions.dart';
+import 'map/map_canvas.dart';
 
+/// 지역별 지도 초기 중심 좌표.
 const _regionCenters = {
-  '서울 서초구': NLatLng(37.4837, 127.0324),
-  '서울 강남구': NLatLng(37.5172, 127.0473),
-  '서울 성동구': NLatLng(37.5634, 127.0367),
-  '부산 수영구': NLatLng(35.1455, 129.1132),
-  '대전 유성구': NLatLng(36.3623, 127.3560),
+  '서울 서초구': (37.4837, 127.0324),
+  '서울 강남구': (37.5172, 127.0473),
+  '서울 성동구': (37.5634, 127.0367),
+  '부산 수영구': (35.1455, 129.1132),
+  '대전 유성구': (36.3623, 127.3560),
 };
-const _koreaCenter = NLatLng(36.5, 127.8);
+const _koreaCenter = (36.5, 127.8);
 
 class MapView extends StatefulWidget {
   final List<TaskItem> items;
@@ -31,33 +30,18 @@ class MapView extends StatefulWidget {
 class _MapViewState extends State<MapView> {
   String filter = 'all';
   TaskItem? preview;
-  NaverMapController? _controller;
-  bool _following = false;
 
   bool _inScope(TaskItem i) => widget.scope == '전국' || i.region == widget.scope;
 
-  List<TaskItem> get _pins => widget.items
+  List<TaskItem> get _pinItems => widget.items
       .where((i) => i.mode != 'sea' && i.lat != null && i.lng != null && _inScope(i))
       .where((i) => filter == 'all' ? true : i.mode == filter)
       .toList();
 
-  Future<void> _syncMarkers() async {
-    final controller = _controller;
-    if (controller == null) return;
-    await controller.clearOverlays(type: NOverlayType.marker);
-    await controller.addOverlayAll({
-      for (final it in _pins)
-        NMarker(
-          id: it.id.toString(),
-          position: NLatLng(it.lat!, it.lng!),
-          iconTintColor: _markerColor(it),
-          caption: NOverlayCaption(text: _markerLabel(it), textSize: 12.5),
-        )..setOnTapListener((_) {
-            setState(() => preview = it);
-            _syncMarkers();
-          }),
-    });
-  }
+  List<MapPin> get _pins => [
+        for (final it in _pinItems)
+          MapPin(item: it, lat: it.lat!, lng: it.lng!, label: _markerLabel(it), color: _markerColor(it)),
+      ];
 
   Color _markerColor(TaskItem it) {
     final done = widget.actions.grabbed.contains(it.id);
@@ -73,14 +57,9 @@ class _MapViewState extends State<MapView> {
     return done ? '지원함' : (it.hot ? '🔥' : '') + kwon(it.price);
   }
 
-  void _toggleFollow() {
-    final controller = _controller;
-    if (controller == null) return;
-    final next = !_following;
-    setState(() => _following = next);
-    // follow만 사용 — face 모드는 나침반 방위에 따라 지도가 계속 회전해서 쓰지 않음.
-    // 지도 회전은 오직 사용자의 두 손가락 제스처로만 일어나게 둔다.
-    controller.setLocationTrackingMode(next ? NLocationTrackingMode.follow : NLocationTrackingMode.none);
+  void _select(TaskItem? it) {
+    if (preview?.id == it?.id) return;
+    setState(() => preview = it);
   }
 
   @override
@@ -99,46 +78,38 @@ class _MapViewState extends State<MapView> {
         bottom: safeBottom + mapMargin,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(22),
-          child: naverMapSupported
-              ? NaverMap(
-                  options: NaverMapViewOptions(
-                    initialCameraPosition: NCameraPosition(target: center, zoom: zoom),
-                    locationButtonEnable: false,
-                  ),
-                  onMapReady: (controller) {
-                    setState(() => _controller = controller);
-                    _syncMarkers();
-                  },
-                )
-              : const _UnsupportedPlatformMap(),
+          child: MapCanvas(
+            pins: _pins,
+            selectedId: preview?.id,
+            centerLat: center.$1,
+            centerLng: center.$2,
+            zoom: zoom,
+            onPinTap: _select,
+          ),
         ),
       ),
       Positioned(
         top: safeTop + mapMargin + 10, left: 16, right: 16,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: const [BoxShadow(color: Color(0x1F000000), blurRadius: 10)],
-              ),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                InkWell(
-                  onTap: () => Navigator.of(context).pop(),
-                  borderRadius: BorderRadius.circular(99),
-                  child: const Padding(padding: EdgeInsets.only(right: 6), child: Text('‹', style: TextStyle(fontSize: 22, color: AppColors.ink))),
-                ),
-                Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                  const Text('지도', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.ink)),
-                  Text('${shortRegion(widget.scope)} 주변 부탁', style: const TextStyle(fontSize: 11, color: AppColors.sub)),
-                ]),
-              ]),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: const [BoxShadow(color: Color(0x1F000000), blurRadius: 10)],
             ),
-            const Spacer(),
-            _LocationButton(following: _following, loading: _controller?.myLocationTracker.isLoading, onTap: _toggleFollow),
-          ]),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              InkWell(
+                onTap: () => Navigator.of(context).pop(),
+                borderRadius: BorderRadius.circular(99),
+                child: const Padding(padding: EdgeInsets.only(right: 4), child: Icon(Icons.chevron_left_rounded, size: 24, color: AppColors.ink)),
+              ),
+              Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                const Text('지도', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.ink)),
+                Text('${shortRegion(widget.scope)} 주변 부탁', style: const TextStyle(fontSize: 11, color: AppColors.sub)),
+              ]),
+            ]),
+          ),
           const SizedBox(height: 10),
           Row(
             children: [
@@ -146,16 +117,13 @@ class _MapViewState extends State<MapView> {
                 Padding(
                   padding: const EdgeInsets.only(right: 7),
                   child: InkWell(
-                    onTap: () {
-                      setState(() {
-                        filter = e[0];
-                        preview = null;
-                      });
-                      _syncMarkers();
-                    },
+                    onTap: () => setState(() {
+                      filter = e[0];
+                      preview = null;
+                    }),
                     borderRadius: BorderRadius.circular(99),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
                       decoration: BoxDecoration(
                         color: filter == e[0] ? AppColors.black : Colors.white,
                         borderRadius: BorderRadius.circular(99),
@@ -174,13 +142,10 @@ class _MapViewState extends State<MapView> {
           it: preview!,
           done: widget.actions.grabbed.contains(preview!.id),
           safeBottom: safeBottom + mapMargin,
-          onClose: () {
-            setState(() => preview = null);
-            _syncMarkers();
-          },
+          onClose: () => _select(null),
           onOpen: () {
             final p = preview!;
-            setState(() => preview = null);
+            _select(null);
             widget.actions.open(context, p);
           },
         )
@@ -195,57 +160,6 @@ class _MapViewState extends State<MapView> {
         ),
     ]);
   }
-}
-
-class _UnsupportedPlatformMap extends StatelessWidget {
-  const _UnsupportedPlatformMap();
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: const Color(0xFFE7ECE4),
-      alignment: Alignment.center,
-      padding: const EdgeInsets.all(24),
-      child: const Text(
-        '지도는 모바일 앱(Android · iOS)에서만 볼 수 있어요',
-        textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 13, color: AppColors.sub),
-      ),
-    );
-  }
-}
-
-class _LocationButton extends StatelessWidget {
-  final bool following;
-  final ValueListenable<bool>? loading;
-  final VoidCallback onTap;
-  const _LocationButton({required this.following, required this.loading, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      shape: const CircleBorder(),
-      elevation: 2,
-      shadowColor: const Color(0x1F000000),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: SizedBox(
-          width: 42, height: 42,
-          child: loading == null
-              ? _icon()
-              : ValueListenableBuilder<bool>(
-                  valueListenable: loading!,
-                  builder: (context, isLoading, _) => isLoading
-                      ? const Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.blue))
-                      : _icon(),
-                ),
-        ),
-      ),
-    );
-  }
-
-  Widget _icon() => Icon(Icons.my_location, size: 20, color: following ? AppColors.blue : AppColors.sub);
 }
 
 class _MapPreview extends StatelessWidget {
@@ -269,7 +183,11 @@ class _MapPreview extends StatelessWidget {
               if (it.hot) ...[const Tag(label: '🔥 급해요', c: AppColors.red, bg: AppColors.redSoft), const SizedBox(width: 6)],
               Tag(label: paid ? catOf(it.cat).label : '같이해요', c: AppColors.sub, bg: AppColors.page),
               const Spacer(),
-              InkWell(onTap: onClose, child: const Text('✕', style: TextStyle(fontSize: 18, color: AppColors.faint))),
+              InkWell(
+                onTap: onClose,
+                borderRadius: BorderRadius.circular(99),
+                child: const Padding(padding: EdgeInsets.all(3), child: Icon(Icons.close_rounded, size: 18, color: AppColors.faint)),
+              ),
             ]),
             const SizedBox(height: 8),
             Text(it.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink)),
