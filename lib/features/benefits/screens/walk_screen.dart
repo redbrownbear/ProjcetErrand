@@ -10,6 +10,7 @@ import '../../errand/widgets/task_card.dart';
 import '../data/point_rules.dart';
 import '../data/reward_products.dart';
 import '../models/coupon.dart';
+import '../models/reward_ledger.dart';
 import '../models/reward_product.dart';
 import '../widgets/walk_ring.dart';
 import 'point_shop_screen.dart';
@@ -21,26 +22,27 @@ class WalkScreen extends StatefulWidget {
   final int points;
   final List<Coupon> coupons;
   final ErrandActions actions;
-  final void Function(int amt, String label) earn;
+  final EarnFn earn;
+  final IsClaimedFn isClaimed;
   final void Function(RewardProduct) redeem;
   final void Function(int id) useCoupon;
   final VoidCallback goPointsHub;
   const WalkScreen({
     super.key, required this.items, required this.scope, required this.steps, required this.points, required this.coupons,
-    required this.actions, required this.earn, required this.redeem, required this.useCoupon, required this.goPointsHub,
+    required this.actions, required this.earn, required this.isClaimed, required this.redeem, required this.useCoupon, required this.goPointsHub,
   });
   @override
   State<WalkScreen> createState() => _WalkScreenState();
 }
 
 class _WalkScreenState extends State<WalkScreen> {
-  bool got = false;
 
   bool _inScope(TaskItem i) => widget.scope == '전국' || i.region == widget.scope;
 
   @override
   Widget build(BuildContext context) {
     final claimable = walkClaimable(widget.steps);
+    final got = widget.isClaimed(walkRewardKey);
     final goal = nextRewardGoal(widget.points);
     final near = widget.items.where((i) => i.mode == 'ask' && _inScope(i) && i.distM < 100000).toList()
       ..sort((a, b) => a.distM.compareTo(b.distM));
@@ -61,11 +63,10 @@ class _WalkScreenState extends State<WalkScreen> {
             Padding(
               padding: const EdgeInsets.only(top: 14),
               child: InkWell(
-                onTap: () {
-                  if (!got) {
-                    widget.earn(claimable, '걸음 적립');
-                    setState(() => got = true);
-                  }
+                onTap: () async {
+                  if (got) return;
+                  await widget.earn(claimable, '걸음 적립', key: walkRewardKey);
+                  if (mounted) setState(() {}); // 원장이 바뀐 걸 이 화면에도 반영
                 },
                 borderRadius: BorderRadius.circular(12),
                 child: Container(

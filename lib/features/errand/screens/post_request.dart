@@ -41,7 +41,8 @@ class _PostRequestState extends State<PostRequest> {
   final placeCtrl = TextEditingController();
 
   bool get sea => kind == 'sea';
-  int get floor => sea ? seaMin : 0;
+  // 사례비 하한. 0원짜리 부탁이 올라가지 않도록 동네 부탁도 최소 1,000원을 받는다.
+  int get floor => sea ? seaMin : 1000;
 
   @override
   void dispose() {
@@ -58,17 +59,40 @@ class _PostRequestState extends State<PostRequest> {
     });
   }
 
+  /// 각 단계를 넘어갈 수 있는지. 예전에는 1·2단계가 무조건 통과라, 장소를 비우거나
+  /// 0원짜리 부탁도 그대로 올라갔다.
   bool _readyAt(int s) {
-    if (s == 0) return titleCtrl.text.trim().isNotEmpty && descCtrl.text.trim().isNotEmpty;
-    return true;
+    switch (s) {
+      case 0:
+        return titleCtrl.text.trim().length >= 2 && descCtrl.text.trim().length >= 10;
+      case 1:
+        // 해외 대행은 도시·구매 장소가 UI상 (선택) 항목이라 국가만 확인한다.
+        return sea ? cc.isNotEmpty : (placeCtrl.text.trim().isNotEmpty && mins > 0);
+      default:
+        return price >= floor;
+    }
+  }
+
+  /// 넘어갈 수 없을 때 버튼 위에 띄울 안내. 통과 상태면 null.
+  String? _hintAt(int s) {
+    if (_readyAt(s)) return null;
+    switch (s) {
+      case 0:
+        return '제목은 2자, 설명은 10자 이상 적어주세요';
+      case 1:
+        return sea ? '어느 나라에서 필요한지 골라주세요' : '만날 장소를 적어주세요';
+      default:
+        return '사례비를 ${nf(floor)}원 이상으로 정해주세요';
+    }
   }
 
   void _submit() {
+    if (!_readyAt(0) || !_readyAt(1) || !_readyAt(2)) return;
     final finalPrice = sea ? (price < seaMin ? seaMin : price) : price;
     final country = countryOf(cc);
     widget.onSubmit(NewRequestData(
       mode: kind, cat: cat, title: titleCtrl.text.trim(), desc: descCtrl.text.trim(),
-      place: placeCtrl.text.trim().isEmpty ? (sea ? '' : '우리 동네') : placeCtrl.text.trim(),
+      place: placeCtrl.text.trim(),
       cc: sea ? cc : null,
       city: sea ? city : null,
       country: sea ? '${country.flag} ${country.name}${city.isNotEmpty ? ' $city' : ''}' : null,
@@ -80,6 +104,7 @@ class _PostRequestState extends State<PostRequest> {
   @override
   Widget build(BuildContext context) {
     final canNext = _readyAt(step);
+    final hint = _hintAt(step);
     return Material(
       color: AppColors.page,
       child: Column(children: [
@@ -121,19 +146,31 @@ class _PostRequestState extends State<PostRequest> {
           Container(
             padding: const EdgeInsets.fromLTRB(18, 12, 18, 16),
             decoration: const BoxDecoration(color: AppColors.card, border: Border(top: BorderSide(color: AppColors.line))),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: step < 2 ? (canNext ? () => setState(() => step += 1) : null) : _submit,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: step < 2 ? (canNext ? AppColors.black : AppColors.line) : AppColors.black,
-                  foregroundColor: step < 2 && !canNext ? AppColors.faint : Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  elevation: 0,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (hint != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Text(hint, style: const TextStyle(fontSize: 12, color: AppColors.sub, fontWeight: FontWeight.w600)),
+                  ),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: !canNext ? null : (step < 2 ? () => setState(() => step += 1) : _submit),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: canNext ? AppColors.black : AppColors.line,
+                      foregroundColor: canNext ? Colors.white : AppColors.faint,
+                      disabledBackgroundColor: AppColors.line,
+                      disabledForegroundColor: AppColors.faint,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      elevation: 0,
+                    ),
+                    child: Text(step < 2 ? '다음' : (hot ? '1,000원 결제하고 올리기' : '부탁 올리기'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                  ),
                 ),
-                child: Text(step < 2 ? '다음' : (hot ? '1,000원 결제하고 올리기' : '부탁 올리기'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-              ),
+              ],
             ),
           ),
         ]),
@@ -294,7 +331,11 @@ class _PostRequestState extends State<PostRequest> {
           TextField(controller: placeCtrl, decoration: _dec('예: 시부야 돈키호테')),
         ] else ...[
           _label('어디서요?'),
-          TextField(controller: placeCtrl, decoration: _dec('예: 역삼동 / 강남역 3번출구')),
+          TextField(
+            controller: placeCtrl,
+            onChanged: (_) => setState(() {}),
+            decoration: _dec('예: 역삼동 / 강남역 3번출구'),
+          ),
           const SizedBox(height: 18),
           _label('예상 소요시간'),
           _qtyStepper('약 $mins분', () => setState(() => mins = (mins - 5).clamp(5, 999)), () => setState(() => mins += 5)),

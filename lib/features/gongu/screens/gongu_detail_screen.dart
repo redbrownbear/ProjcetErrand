@@ -3,23 +3,25 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/screen_frame.dart';
+import '../../benefits/models/reward_ledger.dart';
 import '../models/gongu.dart';
 
 class GonguDetailScreen extends StatefulWidget {
   final Gongu g;
-  final void Function(int amt, String label) earn;
-  const GonguDetailScreen({super.key, required this.g, required this.earn});
+  final EarnFn earn;
+  final IsClaimedFn isClaimed;
+  const GonguDetailScreen({super.key, required this.g, required this.earn, required this.isClaimed});
   @override
   State<GonguDetailScreen> createState() => _GonguDetailScreenState();
 }
 
 class _GonguDetailScreenState extends State<GonguDetailScreen> {
-  bool made = false;
-  bool shared = false;
-
   @override
   Widget build(BuildContext context) {
     final g = widget.g;
+    // 공구당 1회성 보상. 화면을 나갔다 다시 들어와도 중복 지급되지 않는다.
+    final made = widget.isClaimed('gongu:${g.id}:make', daily: false);
+    final shared = widget.isClaimed('gongu:${g.id}:refer', daily: false);
     return ScreenFrame(
       title: '공동구매 상세',
       subtitle: '공동구매 · ${g.brand}',
@@ -130,9 +132,9 @@ class _GonguDetailScreenState extends State<GonguDetailScreen> {
                 child: ElevatedButton(
                   onPressed: made
                       ? null
-                      : () {
-                          widget.earn(500, '공구 성과 보상');
-                          setState(() => made = true);
+                      : () async {
+                          await widget.earn(500, '공구 성과 보상', key: 'gongu:${g.id}:make', daily: false);
+                          if (mounted) setState(() {});
                         },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: made ? AppColors.greenSoft : AppColors.ink,
@@ -151,9 +153,9 @@ class _GonguDetailScreenState extends State<GonguDetailScreen> {
                 child: OutlinedButton(
                   onPressed: shared
                       ? null
-                      : () {
-                          widget.earn(1000, '공구 추천 보상');
-                          setState(() => shared = true);
+                      : () async {
+                          await widget.earn(1000, '공구 추천 보상', key: 'gongu:${g.id}:refer', daily: false);
+                          if (mounted) setState(() {});
                         },
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.blue,

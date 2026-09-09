@@ -7,6 +7,7 @@ import '../../../core/widgets/section_header.dart';
 import '../../benefits/data/point_rules.dart';
 import '../../benefits/models/coupon.dart';
 import '../../benefits/models/partner_mission.dart';
+import '../../benefits/models/reward_ledger.dart';
 import '../../benefits/models/reward_product.dart';
 import '../../benefits/screens/earn_hub_screen.dart';
 import '../../benefits/screens/point_shop_screen.dart';
@@ -40,7 +41,8 @@ class HomeContent extends StatefulWidget {
   final List<String> doneMissions;
   final VoidCallback openPost;
   final VoidCallback openRegion;
-  final void Function(int amt, String label) earn;
+  final EarnFn earn;
+  final IsClaimedFn isClaimed;
   final void Function(RewardProduct) redeem;
   final void Function(int id) useCoupon;
   final void Function(PartnerMission) completeMission;
@@ -56,6 +58,7 @@ class HomeContent extends StatefulWidget {
     required this.steps,
     required this.coupons,
     required this.doneMissions,
+    required this.isClaimed,
     required this.openPost,
     required this.openRegion,
     required this.earn,
@@ -71,7 +74,6 @@ class HomeContent extends StatefulWidget {
 }
 
 class _HomeContentState extends State<HomeContent> {
-  bool walkGot = false;
 
   bool _inScope(TaskItem i) => widget.scope == '전국' || i.region == widget.scope;
 
@@ -82,12 +84,12 @@ class _HomeContentState extends State<HomeContent> {
   void goCommunity() => Navigator.push(context, MaterialPageRoute(builder: (_) => CommunityScreen(items: widget.items, scope: widget.scope, actions: widget.actions)));
   void goWalk() => Navigator.push(context, MaterialPageRoute(builder: (_) => WalkScreen(
         items: widget.items, scope: widget.scope, steps: widget.steps, points: widget.points, coupons: widget.coupons,
-        actions: widget.actions, earn: widget.earn, redeem: widget.redeem, useCoupon: widget.useCoupon, goPointsHub: widget.goPointsHub,
+        actions: widget.actions, earn: widget.earn, isClaimed: widget.isClaimed, redeem: widget.redeem, useCoupon: widget.useCoupon, goPointsHub: widget.goPointsHub,
       )));
   void goShop() => Navigator.push(context, MaterialPageRoute(builder: (_) => PointShopScreen(
         points: widget.points, redeem: widget.redeem, coupons: widget.coupons, useCoupon: widget.useCoupon, goPointsHub: widget.goPointsHub,
       )));
-  void goGongu() => Navigator.push(context, MaterialPageRoute(builder: (_) => GonguScreen(earn: widget.earn)));
+  void goGongu() => Navigator.push(context, MaterialPageRoute(builder: (_) => GonguScreen(earn: widget.earn, isClaimed: widget.isClaimed)));
   void goEarnHub() => Navigator.push(context, MaterialPageRoute(builder: (_) => EarnHubScreen(doneMissions: widget.doneMissions, completeMission: widget.completeMission)));
   void goCountry(String cc) => Navigator.push(context, MaterialPageRoute(builder: (_) => CountryScreen(cc: cc, items: widget.items, actions: widget.actions)));
   void openDetail(TaskItem it) => widget.actions.open(context, it);
@@ -138,6 +140,7 @@ class _HomeContentState extends State<HomeContent> {
     final beginnerTop = beginner.take(5).toList();
 
     final claimable = walkClaimable(widget.steps);
+    final walkGot = widget.isClaimed(walkRewardKey);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.only(bottom: 26),
@@ -193,8 +196,6 @@ class _HomeContentState extends State<HomeContent> {
               ),
             ),
           ),
-          // ②-b 광고 배너 (스와이프 캐러셀)
-          AdBanner(ads: homeAds, onTap: openAd),
           // ③ 주요 서비스 바로가기
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
@@ -234,7 +235,22 @@ class _HomeContentState extends State<HomeContent> {
               }).toList(),
             ),
           ),
-          // ⑤ 혜택/포인트 배너
+          // ⑤ 내 주변 지금 할 일
+          SectionHeader(
+            title: '📍 내 주변 지금 할 일',
+            onAction: () => goList(const ScreenRoute(name: 'list', title: '내 주변 할 일', subtitle: '가까운 순', base: 'ask', sortable: true, defaultSort: 'dist', catChips: true, mapBtn: true)),
+          ),
+          if (nearbyTop.isEmpty)
+            const EmptyState(msg: '이 지역엔 아직 부탁이 없어요. 지역을 ‘전국’으로 바꿔보세요.')
+          else
+            Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Column(children: [for (final it in nearbyTop) TaskCard(it: it, onOpen: () => openDetail(it), done: widget.actions.grabbed.contains(it.id))])),
+
+          const HDivider(),
+
+          // ⑥ 광고 배너 (스와이프 캐러셀)
+          AdBanner(ads: homeAds, onTap: openAd),
+
+          // ⑦ 혜택/포인트 배너
           Container(
             margin: const EdgeInsets.fromLTRB(16, 4, 16, 6),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -261,11 +277,10 @@ class _HomeContentState extends State<HomeContent> {
                           Padding(
                             padding: const EdgeInsets.only(top: 8),
                             child: InkWell(
-                              onTap: () {
-                                if (!walkGot) {
-                                  widget.earn(claimable, '걸음 적립');
-                                  setState(() => walkGot = true);
-                                }
+                              onTap: () async {
+                                if (walkGot) return;
+                                await widget.earn(claimable, '걸음 적립', key: walkRewardKey);
+                                if (mounted) setState(() {});
                               },
                               borderRadius: BorderRadius.circular(8),
                               child: Container(
@@ -318,19 +333,7 @@ class _HomeContentState extends State<HomeContent> {
           ),
           const Padding(padding: EdgeInsets.fromLTRB(16, 4, 16, 14), child: Text('혜택 탭에서 더 많은 포인트를 모을 수 있어요', style: TextStyle(fontSize: 11, color: AppColors.faint))),
 
-          const HDivider(),
-
-          // ⑥ 내 주변 지금 할 일
-          SectionHeader(
-            title: '📍 내 주변 지금 할 일',
-            onAction: () => goList(const ScreenRoute(name: 'list', title: '내 주변 할 일', subtitle: '가까운 순', base: 'ask', sortable: true, defaultSort: 'dist', catChips: true, mapBtn: true)),
-          ),
-          if (nearbyTop.isEmpty)
-            const EmptyState(msg: '이 지역엔 아직 부탁이 없어요. 지역을 ‘전국’으로 바꿔보세요.')
-          else
-            Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Column(children: [for (final it in nearbyTop) TaskCard(it: it, onOpen: () => openDetail(it), done: widget.actions.grabbed.contains(it.id))])),
-
-          // ⑥-b 오늘 더 벌 수 있어요 (짧게 · 혜택으로 연결)
+          // ⑧ 오늘 더 벌 수 있어요 (짧게 · 혜택으로 연결)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 2, 16, 0),
             child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -352,7 +355,7 @@ class _HomeContentState extends State<HomeContent> {
             ),
           ),
 
-          // ⑦ 30분 안에 끝나요
+          // ⑨ 30분 안에 끝나요
           if (quick30Top.isNotEmpty) ...[
             SectionHeader(
               title: '⚡ 30분 안에 끝나요',
@@ -362,14 +365,14 @@ class _HomeContentState extends State<HomeContent> {
             _hScroll(quick30Top),
           ],
 
-          // ⑧ 사례비 높은 부탁
+          // ⑩ 사례비 높은 부탁
           SectionHeader(
             title: '💰 사례비 높은 부탁',
             onAction: () => goList(const ScreenRoute(name: 'list', title: '사례비 높은 부탁', subtitle: '높은 사례비 순', base: 'earn', sortable: true, defaultSort: 'price', mapBtn: true)),
           ),
           _hScroll(highPayTop),
 
-          // ⑨ 급해요
+          // ⑪ 급해요
           if (hotItems.isNotEmpty) ...[
             SectionHeader(
               title: '🔥 지금 급해요',
@@ -379,7 +382,7 @@ class _HomeContentState extends State<HomeContent> {
             Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Column(children: [for (final it in hotItems) TaskCard(it: it, onOpen: () => openDetail(it), done: widget.actions.grabbed.contains(it.id))])),
           ],
 
-          // ⑩ 걷고 포인트 받기
+          // ⑫ 걷고 포인트 받기
           const Padding(padding: EdgeInsets.fromLTRB(16, 18, 16, 4), child: Text('🚶 걷고 포인트 받기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink))),
           InkWell(
             onTap: () => goWalk(),
@@ -396,7 +399,7 @@ class _HomeContentState extends State<HomeContent> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('${nf(widget.steps)}걸음', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.ink)),
-                      Padding(padding: const EdgeInsets.only(top: 2), child: Text('목표 ${nf(walkGoal)}걸음 · 오늘 +$claimable P 적립 가능', style: const TextStyle(fontSize: 12, color: AppColors.sub))),
+                      Padding(padding: const EdgeInsets.only(top: 2), child: Text(walkGot ? '목표 ${nf(walkGoal)}걸음 · 오늘 적립 완료' : '목표 ${nf(walkGoal)}걸음 · 오늘 +$claimable P 적립 가능', style: const TextStyle(fontSize: 12, color: AppColors.sub))),
                       const Padding(padding: EdgeInsets.only(top: 5), child: Text('500m 더 걸으면 근처 부탁도 할 수 있어요 ›', style: TextStyle(fontSize: 12, color: AppColors.green, fontWeight: FontWeight.w700))),
                     ],
                   ),
@@ -407,7 +410,7 @@ class _HomeContentState extends State<HomeContent> {
 
           const HDivider(thick: true),
 
-          // ⑪ 가는 길에 겸사겸사
+          // ⑬ 가는 길에 겸사겸사
           const Padding(padding: EdgeInsets.fromLTRB(16, 18, 16, 3), child: Text('🚶 가는 길에 겸사겸사', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.ink))),
           const Padding(padding: EdgeInsets.fromLTRB(16, 0, 16, 10), child: Text('지금 위치에서 가까운 부탁 — "여기 근처니까 해볼까?"', style: TextStyle(fontSize: 12.5, color: AppColors.sub))),
           if (onTheWayTop.isNotEmpty) FeaturedCard(it: onTheWayTop.first, onOpen: () => openDetail(onTheWayTop.first), done: widget.actions.grabbed.contains(onTheWayTop.first.id)),
@@ -415,7 +418,7 @@ class _HomeContentState extends State<HomeContent> {
 
           const HDivider(thick: true),
 
-          // ⑫ 해외 대행
+          // ⑭ 해외 대행
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 18, 16, 3),
             child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -458,7 +461,7 @@ class _HomeContentState extends State<HomeContent> {
 
           const HDivider(thick: true),
 
-          // ⑬ 같이해요
+          // ⑮ 같이해요
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 18, 16, 3),
             child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -471,7 +474,7 @@ class _HomeContentState extends State<HomeContent> {
 
           const HDivider(),
 
-          // ⑭ 이번 주 인기
+          // ⑯ 이번 주 인기
           SectionHeader(
             title: '🏆 이번 주 인기 부탁',
             onAction: () => goList(const ScreenRoute(name: 'list', title: '이번 주 인기', subtitle: '많이 거래된 순', base: 'ask', sortable: true, defaultSort: 'deals', mapBtn: true)),
@@ -481,20 +484,20 @@ class _HomeContentState extends State<HomeContent> {
             child: Column(children: [for (int i = 0; i < popularTop.length; i++) TaskCard(it: popularTop[i], onOpen: () => openDetail(popularTop[i]), done: widget.actions.grabbed.contains(popularTop[i].id), rank: i + 1)]),
           ),
 
-          // ⑮ 처음이라면 이 일부터
+          // ⑰ 처음이라면 이 일부터
           if (beginnerTop.isNotEmpty) ...[
             const SectionHeader(title: '🌱 처음이라면 이 일부터', sub: '초보도 부담 없는 짧고 쉬운 일'),
             _hScroll(beginnerTop),
           ],
 
-          // ⑯ 새로 올라온 부탁
+          // ⑱ 새로 올라온 부탁
           SectionHeader(
             title: '🆕 새로 올라온 부탁',
             onAction: () => goList(const ScreenRoute(name: 'list', title: '새로 올라온 부탁', subtitle: '최신 순', base: 'ask', sortable: true, defaultSort: 'new', mapBtn: true)),
           ),
           Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Column(children: [for (final it in newTop) TaskCard(it: it, onOpen: () => openDetail(it), done: widget.actions.grabbed.contains(it.id))])),
 
-          // ⑰ 안전 거래
+          // ⑲ 안전 거래
           Container(
             margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
             padding: const EdgeInsets.all(16),

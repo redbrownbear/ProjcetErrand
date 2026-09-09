@@ -1,6 +1,7 @@
+/// 연속 출석 보상. 지급 단위는 원이 아니라 포인트(P)다.
 class AttendTier {
-  final int day, won;
-  const AttendTier(this.day, this.won);
+  final int day, points;
+  const AttendTier(this.day, this.points);
 }
 
 const attendStreak = [

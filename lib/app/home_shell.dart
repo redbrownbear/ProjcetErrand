@@ -10,6 +10,7 @@ import '../features/auth/services/auth_service.dart';
 import '../features/benefits/data/point_rules.dart';
 import '../features/benefits/models/coupon.dart';
 import '../features/benefits/models/partner_mission.dart';
+import '../features/benefits/models/reward_ledger.dart';
 import '../features/benefits/models/reward_product.dart';
 import '../features/benefits/screens/benefits_view.dart';
 import '../features/chat/screens/chat_view.dart';
@@ -44,6 +45,7 @@ class _HomeShellState extends State<HomeShell> {
   final int monthEarn = 84500; // 이번 달 겸사 수익(원)
   final int monthPoints = 4230; // 이번 달 적립 포인트
   List<String> doneMissions = [];
+  final RewardLedger _rewards = RewardLedger();
 
   bool get isLoggedIn => AuthService().currentUser != null;
   StreamSubscription<User?>? _authSub;
@@ -87,12 +89,25 @@ class _HomeShellState extends State<HomeShell> {
     });
   }
 
-  void earn(int amt, String label) => requireLogin(() {
+  /// 해당 보상을 이미 받았는지. 적립 버튼을 "완료" 상태로 그릴 때 쓴다.
+  bool isClaimed(String key, {bool daily = true}) => _rewards.isClaimed(key, daily: daily);
+
+  /// [key]가 같은 보상은 한 번만 지급된다. [daily]가 true면 한국 시간 기준
+  /// 하루에 한 번, false면 계정당 한 번.
+  Future<void> earn(int amt, String label, {required String key, bool daily = true}) => requireLogin(() {
+        if (!_rewards.claim(key, daily: daily)) {
+          flash(daily ? '오늘은 이미 받았어요' : '이미 받은 적립이에요');
+          return;
+        }
         setState(() => points += amt);
         flash('+${amt}P 적립됐어요 · $label');
       });
 
   void redeem(RewardProduct p) => requireLogin(() {
+        if (points < p.points) {
+          flash('보유 포인트가 부족해요');
+          return;
+        }
         setState(() {
           points -= p.points;
           coupons.insert(
@@ -109,7 +124,7 @@ class _HomeShellState extends State<HomeShell> {
   void completeMission(PartnerMission m) => requireLogin(() {
         if (doneMissions.contains(m.id)) return;
         setState(() => doneMissions.add(m.id));
-        earn(m.points, m.title);
+        earn(m.points, m.title, key: 'mission:${m.id}', daily: false);
       });
 
   void goPointsHub() {
@@ -145,6 +160,9 @@ class _HomeShellState extends State<HomeShell> {
       mins: data.mode == 'sea' ? 0 : data.mins,
       price: data.price,
       who: '나',
+      // 내가 방금 올린 글에 별점 5.0 / 본인인증 완료를 자동으로 붙이면 안 된다.
+      // (TaskItem의 기본값은 프로필이 이미 쌓인 SEED 데이터용이다)
+      rating: 0, reviews: 0, deals: 0, resp: 0, verified: false,
       hot: data.hot,
       x: 50, y: 50,
     );
@@ -183,7 +201,7 @@ class _HomeShellState extends State<HomeShell> {
         return BenefitsView(
           points: points, steps: steps, coupons: coupons, items: items, scope: scope, actions: actions,
           monthEarn: monthEarn, monthPoints: monthPoints, freeLeft: freeLeft, doneMissions: doneMissions,
-          earn: earn, redeem: redeem, useCoupon: useCoupon, completeMission: completeMission, goPointsHub: goPointsHub,
+          earn: earn, isClaimed: isClaimed, redeem: redeem, useCoupon: useCoupon, completeMission: completeMission, goPointsHub: goPointsHub,
         );
       case 'chat':
         return ChatView(items: items, grabbed: grabbed);
@@ -197,7 +215,7 @@ class _HomeShellState extends State<HomeShell> {
           items: items, scope: scope, actions: actions, points: points, steps: steps,
           coupons: coupons, doneMissions: doneMissions,
           openPost: openPost, openRegion: openRegion,
-          earn: earn, redeem: redeem, useCoupon: useCoupon, completeMission: completeMission,
+          earn: earn, isClaimed: isClaimed, redeem: redeem, useCoupon: useCoupon, completeMission: completeMission,
           flash: flash, goPointsHub: goPointsHub,
         );
     }

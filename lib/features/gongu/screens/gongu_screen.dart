@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/screen_frame.dart';
+import '../../benefits/models/reward_ledger.dart';
 import '../repositories/gongu_repository.dart';
 import 'gongu_detail_screen.dart';
 
 class GonguScreen extends StatelessWidget {
-  final void Function(int amt, String label) earn;
-  const GonguScreen({super.key, required this.earn});
+  final EarnFn earn;
+  final IsClaimedFn isClaimed;
+  const GonguScreen({super.key, required this.earn, required this.isClaimed});
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +39,7 @@ class GonguScreen extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: 12),
               child: InkWell(
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GonguDetailScreen(g: g, earn: earn))),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GonguDetailScreen(g: g, earn: earn, isClaimed: isClaimed))),
                 borderRadius: BorderRadius.circular(16),
                 child: Container(
                   padding: const EdgeInsets.all(14),

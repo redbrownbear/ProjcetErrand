@@ -23,6 +23,10 @@ const walkRules = [
   WalkRule(10000, 30),
 ];
 const walkGoal = 10000;
+
+/// 걷기 적립 원장 키. 홈·혜택 탭·걷기 화면 세 곳에 버튼이 있어서, 같은 키를 써야
+/// 어느 화면에서 눌렀든 하루에 한 번만 지급된다.
+const walkRewardKey = 'walk';
 const seaMin = 20000; // 해외 대행 최소 사례비
 const pointValue = 1; // 1P ≈ N원
 

@@ -12,6 +12,7 @@ import '../data/partner_missions.dart';
 import '../data/point_rules.dart';
 import '../data/reward_products.dart';
 import '../models/coupon.dart';
+import '../models/reward_ledger.dart';
 import '../models/partner_mission.dart';
 import '../models/reward_product.dart';
 import '../widgets/attend_streak.dart';
@@ -36,7 +37,8 @@ class BenefitsView extends StatefulWidget {
   final int monthPoints;
   final int freeLeft;
   final List<String> doneMissions;
-  final void Function(int amt, String label) earn;
+  final EarnFn earn;
+  final IsClaimedFn isClaimed;
   final void Function(RewardProduct) redeem;
   final void Function(int id) useCoupon;
   final void Function(PartnerMission) completeMission;
@@ -58,27 +60,35 @@ class BenefitsView extends StatefulWidget {
     required this.useCoupon,
     required this.completeMission,
     required this.goPointsHub,
+    required this.isClaimed,
   });
   @override
   State<BenefitsView> createState() => _BenefitsViewState();
 }
 
 class _BenefitsViewState extends State<BenefitsView> {
-  final Map<String, bool> claimed = {};
-  int ad = 0;
-  bool walkGot = false;
   static const todayMax = 8430; // 오늘 받을 수 있는 예상 포인트(예상치)
 
-  void _claim(String k, int amt, String label) {
-    if (claimed[k] == true) return;
-    setState(() => claimed[k] = true);
-    widget.earn(amt, label);
+  /// 출석 계열만 매일 다시 받을 수 있고, 나머지(가입·프로필·첫 거래 등)는 1회성이다.
+  static bool _isDaily(String k) => k.startsWith('attend');
+
+  bool _claimed(String k) => widget.isClaimed('benefit:$k', daily: _isDaily(k));
+
+  /// 오늘 본 광고 수. 개별 시청을 각각 원장에 기록해서 5회 제한이 화면을 나갔다
+  /// 와도 유지되게 한다.
+  int get _adCount => List.generate(5, (i) => i).where((i) => widget.isClaimed('ad:$i')).length;
+
+  Future<void> _claim(String k, int amt, String label) async {
+    if (_claimed(k)) return;
+    await widget.earn(amt, label, key: 'benefit:$k', daily: _isDaily(k));
+    if (mounted) setState(() {});
   }
 
-  void _watchAd() {
-    if (ad >= 5) return;
-    setState(() => ad += 1);
-    widget.earn(PointRules.adView, '광고 시청');
+  Future<void> _watchAd() async {
+    final watched = _adCount;
+    if (watched >= 5) return;
+    await widget.earn(PointRules.adView, '광고 시청', key: 'ad:$watched');
+    if (mounted) setState(() {});
   }
 
   Widget _secTitle(String t, {String? sub, Widget? action}) {
@@ -128,6 +138,7 @@ class _BenefitsViewState extends State<BenefitsView> {
     final goal = nextRewardGoal(widget.points);
     final liveCoupons = widget.coupons.where((c) => !c.used).length;
     final claimable = walkClaimable(widget.steps);
+    final walkGot = widget.isClaimed(walkRewardKey);
     final nearby = widget.items.where((it) => it.mode != 'together').take(2).toList();
 
     return ListView(
@@ -308,11 +319,10 @@ class _BenefitsViewState extends State<BenefitsView> {
                     Padding(
                       padding: const EdgeInsets.only(top: 10),
                       child: InkWell(
-                        onTap: () {
-                          if (!walkGot) {
-                            widget.earn(claimable, '걸음 적립');
-                            setState(() => walkGot = true);
-                          }
+                        onTap: () async {
+                          if (walkGot) return;
+                          await widget.earn(claimable, '걸음 적립', key: walkRewardKey);
+                          if (mounted) setState(() {});
                         },
                         borderRadius: BorderRadius.circular(10),
                         child: Container(
@@ -350,7 +360,7 @@ class _BenefitsViewState extends State<BenefitsView> {
                 child: OutlinedButton(
                   onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => WalkScreen(
                     items: widget.items, scope: widget.scope, steps: widget.steps, points: widget.points, coupons: widget.coupons,
-                    actions: widget.actions, earn: widget.earn, redeem: widget.redeem, useCoupon: widget.useCoupon, goPointsHub: widget.goPointsHub,
+                    actions: widget.actions, earn: widget.earn, isClaimed: widget.isClaimed, redeem: widget.redeem, useCoupon: widget.useCoupon, goPointsHub: widget.goPointsHub,
                   ))),
                   style: OutlinedButton.styleFrom(foregroundColor: AppColors.ink, side: const BorderSide(color: AppColors.line), padding: const EdgeInsets.symmetric(vertical: 11), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11))),
                   child: const Text('걸으면서 할 수 있는 근처 부탁 보기 ›', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
@@ -360,13 +370,13 @@ class _BenefitsViewState extends State<BenefitsView> {
           ]),
         ),
 
-        // 연속 출석 현금 보상
-        _secTitle('📅 연속 출석하고 벌기', sub: '빠짐없이 오면 현금이 커져요'),
-        AttendStreak(earn: widget.earn),
+        // 연속 출석 포인트 보상 (지급 단위는 원이 아니라 P다)
+        _secTitle('📅 연속 출석하고 벌기', sub: '빠짐없이 오면 포인트가 커져요'),
+        AttendStreak(earn: widget.earn, isClaimed: widget.isClaimed),
 
         // 같이 사고 벌기 (공동구매)
         InkWell(
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GonguScreen(earn: widget.earn))),
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GonguScreen(earn: widget.earn, isClaimed: widget.isClaimed))),
           borderRadius: BorderRadius.circular(16),
           child: Container(
             margin: const EdgeInsets.fromLTRB(16, 14, 16, 2),
@@ -464,9 +474,9 @@ class _BenefitsViewState extends State<BenefitsView> {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
           child: Column(children: [
-            MissionRow(icon: '💬', label: '카카오톡 채널 친구 추가', points: PointRules.kakaoFriend, cta: '추가', done: claimed['kakao'] == true, onClaim: () => _claim('kakao', PointRules.kakaoFriend, '카카오톡 채널 친구 추가')),
-            MissionRow(icon: '👥', label: '친구 추천', sub: '친구가 가입하면 +100P · 첫 거래 완료 시 +300P', points: PointRules.referral, cta: '초대', prog: const [2, 5], done: claimed['referral'] == true, onClaim: () => _claim('referral', PointRules.referral, '친구 추천')),
-            MissionRow(icon: '📲', label: '초대 링크 공유', points: PointRules.invite, cta: '공유', done: claimed['invite'] == true, onClaim: () => _claim('invite', PointRules.invite, '초대 링크 공유')),
+            MissionRow(icon: '💬', label: '카카오톡 채널 친구 추가', points: PointRules.kakaoFriend, cta: '추가', done: _claimed('kakao'), onClaim: () => _claim('kakao', PointRules.kakaoFriend, '카카오톡 채널 친구 추가')),
+            MissionRow(icon: '👥', label: '친구 추천', sub: '친구가 가입하면 +100P · 첫 거래 완료 시 +300P', points: PointRules.referral, cta: '초대', prog: const [2, 5], done: _claimed('referral'), onClaim: () => _claim('referral', PointRules.referral, '친구 추천')),
+            MissionRow(icon: '📲', label: '초대 링크 공유', points: PointRules.invite, cta: '공유', done: _claimed('invite'), onClaim: () => _claim('invite', PointRules.invite, '초대 링크 공유')),
           ]),
         ),
 
@@ -490,27 +500,27 @@ class _BenefitsViewState extends State<BenefitsView> {
                         const TextSpan(text: '광고 보기 '),
                         TextSpan(text: '+${PointRules.adView}P', style: const TextStyle(color: AppColors.blue)),
                       ])),
-                      Padding(padding: const EdgeInsets.only(top: 2), child: Text('오늘 $ad/5회', style: const TextStyle(fontSize: 11.5, color: AppColors.sub))),
+                      Padding(padding: const EdgeInsets.only(top: 2), child: Text('오늘 $_adCount/5회', style: const TextStyle(fontSize: 11.5, color: AppColors.sub))),
                     ],
                   ),
                 ),
                 InkWell(
-                  onTap: ad >= 5 ? null : _watchAd,
+                  onTap: _adCount >= 5 ? null : _watchAd,
                   borderRadius: BorderRadius.circular(9),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-                    decoration: BoxDecoration(color: ad >= 5 ? AppColors.page : AppColors.ink, borderRadius: BorderRadius.circular(9)),
-                    child: Text(ad >= 5 ? '완료' : '보기', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: ad >= 5 ? AppColors.faint : Colors.white)),
+                    decoration: BoxDecoration(color: _adCount >= 5 ? AppColors.page : AppColors.ink, borderRadius: BorderRadius.circular(9)),
+                    child: Text(_adCount >= 5 ? '완료' : '보기', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: _adCount >= 5 ? AppColors.faint : Colors.white)),
                   ),
                 ),
               ]),
             ),
-            MissionRow(icon: '✅', label: '출석 체크', points: PointRules.attendance, cta: '출석', done: claimed['attend'] == true, onClaim: () => _claim('attend', PointRules.attendance, '출석 체크')),
+            MissionRow(icon: '✅', label: '출석 체크', points: PointRules.attendance, cta: '출석', done: _claimed('attend'), onClaim: () => _claim('attend', PointRules.attendance, '출석 체크')),
             MissionRow(icon: '📅', label: '7일 연속 출석', points: PointRules.attendance7, prog: const [4, 7], done: false),
-            MissionRow(icon: '🙂', label: '프로필 완성', points: PointRules.profile, cta: '완성', done: claimed['profile'] == true, onClaim: () => _claim('profile', PointRules.profile, '프로필 완성')),
-            MissionRow(icon: '🙋', label: '첫 부탁 등록', points: PointRules.firstRequest, cta: '등록', done: claimed['firstReq'] == true, onClaim: () => _claim('firstReq', PointRules.firstRequest, '첫 부탁 등록')),
+            MissionRow(icon: '🙂', label: '프로필 완성', points: PointRules.profile, cta: '완성', done: _claimed('profile'), onClaim: () => _claim('profile', PointRules.profile, '프로필 완성')),
+            MissionRow(icon: '🙋', label: '첫 부탁 등록', points: PointRules.firstRequest, cta: '등록', done: _claimed('firstReq'), onClaim: () => _claim('firstReq', PointRules.firstRequest, '첫 부탁 등록')),
             MissionRow(icon: '🤝', label: '첫 도와주기 완료', points: PointRules.firstHelp, done: false),
-            MissionRow(icon: '⭐', label: '후기 작성', points: PointRules.review, cta: '작성', done: claimed['review'] == true, onClaim: () => _claim('review', PointRules.review, '후기 작성')),
+            MissionRow(icon: '⭐', label: '후기 작성', points: PointRules.review, cta: '작성', done: _claimed('review'), onClaim: () => _claim('review', PointRules.review, '후기 작성')),
           ]),
         ),
       ],
