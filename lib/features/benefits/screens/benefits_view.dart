@@ -19,6 +19,7 @@ import '../widgets/attend_streak.dart';
 import '../widgets/mission_row.dart';
 import '../widgets/partner_card.dart';
 import '../widgets/walk_ring.dart';
+import '../../deals/screens/save_hub_screen.dart';
 import '../../gongu/screens/gongu_screen.dart';
 import 'earn_hub_screen.dart';
 import 'my_coupons_screen.dart';
@@ -43,6 +44,9 @@ class BenefitsView extends StatefulWidget {
   final void Function(int id) useCoupon;
   final void Function(PartnerMission) completeMission;
   final VoidCallback goPointsHub;
+
+  /// 하단 토스트. 일급·일당 지원처럼 아직 서버가 없는 동작의 안내에 쓴다.
+  final void Function(String) flash;
   const BenefitsView({
     super.key,
     required this.points,
@@ -61,6 +65,7 @@ class BenefitsView extends StatefulWidget {
     required this.completeMission,
     required this.goPointsHub,
     required this.isClaimed,
+    required this.flash,
     this.showHeader = true,
   });
   /// 마이 > 매일의 혜택처럼 화면 프레임이 제목을 그리는 경우 false.
@@ -113,6 +118,26 @@ class _BenefitsViewState extends State<BenefitsView> {
       ),
     );
   }
+
+  /// 오늘 벌기 허브 (§15 1차 메뉴)
+  void _openEarnHub() => Navigator.push(context, MaterialPageRoute(builder: (_) => EarnHubScreen(
+        doneMissions: widget.doneMissions,
+        completeMission: widget.completeMission,
+        onOpenErrand: _openEarnList,
+        onApplyDayJob: (j) => widget.flash('${j.org}에 지원 의사를 전달했어요 · 근로계약은 구인업체와 진행돼요'),
+      )));
+
+  /// 생활비 아끼기 허브 (§15 1차 메뉴)
+  void _openSaveHub() => Navigator.push(context, MaterialPageRoute(builder: (_) => SaveHubScreen(
+        earn: widget.earn,
+        isClaimed: widget.isClaimed,
+        onUse: (d) => widget.flash('${d.brand} 회원 전용가를 준비 중이에요 · 제휴 확정 후 열려요'),
+      )));
+
+  void _openEarnList() => Navigator.push(context, MaterialPageRoute(builder: (_) => ListScreen(
+        config: const ScreenRoute(name: 'list', title: '심부름으로 벌기', subtitle: '지역 픽업 · 개인/기업 심부름', base: 'earn', sortable: true, catChips: true, mapBtn: true),
+        items: widget.items, scope: widget.scope, actions: widget.actions,
+      )));
 
   Widget _missionRowScroll(String cat) {
     final list = missionsByCat(cat);
@@ -408,11 +433,34 @@ class _BenefitsViewState extends State<BenefitsView> {
           ),
         ),
 
+        // 생활비 아끼기 허브 진입 (§15의 두 번째 1차 메뉴)
+        InkWell(
+          onTap: _openSaveHub,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(16, 12, 16, 2),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+            decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(16)),
+            child: Row(children: [
+              Container(width: 42, height: 42, alignment: Alignment.center, decoration: BoxDecoration(color: AppColors.yellowSoft, borderRadius: BorderRadius.circular(12)), child: const Text('🏷️', style: TextStyle(fontSize: 22))),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('생활비 아끼기 · 회원 전용가', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.ink)),
+                    Padding(padding: EdgeInsets.only(top: 2), child: Text('지역업체 · 프랜차이즈 · 공동구매 · 생활서비스', style: TextStyle(fontSize: 11.5, color: AppColors.sub))),
+                  ],
+                ),
+              ),
+              const Text('›', style: TextStyle(fontSize: 20, color: AppColors.faint)),
+            ]),
+          ),
+        ),
+
         // B2B2C 부업 허브 진입
         InkWell(
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EarnHubScreen(
-            doneMissions: widget.doneMissions, completeMission: widget.completeMission,
-          ))),
+          onTap: _openEarnHub,
           borderRadius: BorderRadius.circular(16),
           child: Container(
             margin: const EdgeInsets.fromLTRB(16, 12, 16, 2),

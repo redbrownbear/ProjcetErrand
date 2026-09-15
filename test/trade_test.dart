@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:project_errand/core/storage/local_store.dart';
-import 'package:project_errand/core/utils/formatters.dart';
-import 'package:project_errand/features/errand/models/task_item.dart';
-import 'package:project_errand/features/errand/models/trade.dart';
+import 'package:gyeomsa/core/storage/local_store.dart';
+import 'package:gyeomsa/core/utils/formatters.dart';
+import 'package:gyeomsa/features/errand/models/task_item.dart';
+import 'package:gyeomsa/features/errand/models/trade.dart';
 
 void main() {
   group('Trade', () {

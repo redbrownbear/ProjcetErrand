@@ -68,6 +68,12 @@ class _HomeShellState extends State<HomeShell> {
   List<int> get grabbed => [for (final e in trades.entries) if (e.value.status != 'cancelled') e.key];
   int get activeCount => trades.values.where((t) => t.isActive).length;
 
+  /// 완료 처리한 거래의 사례비 합계(원). 홈의 누적 수익 표시에 쓴다.
+  /// 체험 기록이지 실제 정산액이 아니다.
+  int get earnedCash => items
+      .where((i) => trades[i.id]?.status == 'completed' && (i.mode == 'ask' || i.mode == 'sea'))
+      .fold(0, (sum, i) => sum + i.price);
+
   bool get isLoggedIn => AuthService().currentUser != null;
   StreamSubscription<User?>? _authSub;
 
@@ -294,6 +300,7 @@ class _HomeShellState extends State<HomeShell> {
         points: points, steps: steps, coupons: coupons, items: items, scope: scope, actions: actions,
         monthEarn: monthEarn, monthPoints: monthPoints, freeLeft: freeLeft, doneMissions: doneMissions,
         earn: earn, isClaimed: isClaimed, redeem: redeem, useCoupon: useCoupon, completeMission: completeMission, goPointsHub: goPointsHub,
+        flash: flash,
         showHeader: false,
       );
 
@@ -320,8 +327,9 @@ class _HomeShellState extends State<HomeShell> {
       default:
         return HomeContent(
           items: items, scope: scope, actions: actions, points: points, steps: steps,
+          earnedCash: earnedCash,
           coupons: coupons, doneMissions: doneMissions,
-          openPost: openPost, openRegion: openRegion,
+          openRegion: openRegion,
           earn: earn, isClaimed: isClaimed, redeem: redeem, useCoupon: useCoupon, completeMission: completeMission,
           flash: flash, goPointsHub: goPointsHub,
           activeCount: activeCount, goActivity: () => _switchTab('activity'),

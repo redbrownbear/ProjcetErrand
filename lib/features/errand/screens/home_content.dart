@@ -5,26 +5,28 @@ import '../../../core/theme/colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/chip_widget.dart';
 import '../../../core/widgets/section_header.dart';
-import '../../benefits/data/point_rules.dart';
+import '../../benefits/data/attend_streak.dart';
+import '../../benefits/data/partner_missions.dart';
 import '../../benefits/models/coupon.dart';
 import '../../benefits/models/partner_mission.dart';
 import '../../benefits/models/reward_ledger.dart';
 import '../../benefits/models/reward_product.dart';
 import '../../benefits/screens/earn_hub_screen.dart';
+import '../../benefits/screens/partner_mission_detail_screen.dart';
 import '../../benefits/screens/point_shop_screen.dart';
 import '../../benefits/screens/walk_screen.dart';
-import '../../benefits/widgets/walk_ring.dart';
 import '../../community/screens/community_screen.dart';
-import '../../community/widgets/community_card.dart';
-import '../../gongu/screens/gongu_screen.dart';
+import '../../dayjob/data/day_jobs.dart';
+import '../../dayjob/models/day_job.dart';
+import '../../dayjob/screens/day_job_screen.dart';
+import '../../dayjob/widgets/day_job_card.dart';
+import '../../deals/screens/save_hub_screen.dart';
+import '../../earn/widgets/income_summary.dart';
 import '../data/categories.dart';
-import '../data/countries.dart';
 import '../data/home_ads.dart';
 import '../models/task_item.dart';
 import '../navigation/errand_actions.dart';
 import '../widgets/ad_banner.dart';
-import '../widgets/featured_card.dart';
-import '../widgets/reco_card.dart';
 import '../widgets/task_card.dart';
 import 'country_screen.dart';
 import 'list_screen.dart';
@@ -32,15 +34,22 @@ import 'map_screen.dart';
 import 'overseas_screen.dart';
 import 'search_screen.dart';
 
+/// 홈. 기획 시안 v9(`gyumsa-home-v9`)의 Explore 구조를 그대로 따른다.
+///
+/// v9의 핵심은 "짧은 홈"이다. 예전 홈은 섹션이 22개였고 걷기·미션·공동구매 진입이
+/// 각각 서너 군데씩 흩어져 있었다. 여기서는 진입점을 하나씩만 두고, 목록을 좁히는
+/// 일(30분 이내·사례비 높은 순·급한 순 등)은 전부 아래 탐색 영역의 조건으로 옮겼다.
 class HomeContent extends StatefulWidget {
   final List<TaskItem> items;
   final String scope;
   final ErrandActions actions;
   final int points;
   final int steps;
+
+  /// 완료한 거래의 사례비 합계(원). 누적 수익 표시에 쓴다.
+  final int earnedCash;
   final List<Coupon> coupons;
   final List<String> doneMissions;
-  final VoidCallback openPost;
   final VoidCallback openRegion;
   final EarnFn earn;
   final IsClaimedFn isClaimed;
@@ -59,10 +68,10 @@ class HomeContent extends StatefulWidget {
     required this.actions,
     required this.points,
     required this.steps,
+    required this.earnedCash,
     required this.coupons,
     required this.doneMissions,
     required this.isClaimed,
-    required this.openPost,
     required this.openRegion,
     required this.earn,
     required this.redeem,
@@ -79,29 +88,20 @@ class HomeContent extends StatefulWidget {
 }
 
 class _HomeContentState extends State<HomeContent> {
-  // "지금, 내 주변" 조건. 목적지는 장소명 문자열 필터일 뿐, 경로·우회 시간을 계산하지 않는다.
-  final destCtrl = TextEditingController();
-  int? available; // 가능한 소요 시간(분). null이면 제한 없음
-  bool nearOnly = false; // 500m 이내만
-  String nearCat = 'all';
+  /// 탐색 대상: ask(동네 부탁) | job(단기알바)
+  String kind = 'ask';
+  String cat = 'all';
+  double radius = 3; // km
+  String sort = 'dist';
+  bool shortOnly = false;
+  bool expanded = false; // 서비스 숏컷 '전체' 펼침
 
-  @override
-  void dispose() {
-    destCtrl.dispose();
-    super.dispose();
-  }
-
-  void _resetNearby() => setState(() {
-        nearCat = 'all';
-        nearOnly = false;
-        available = null;
-        destCtrl.clear();
-      });
+  static const _attendKey = 'benefit:attend';
 
   bool _inScope(TaskItem i) => widget.scope == '전국' || i.region == widget.scope;
 
+  // ── 이동 ────────────────────────────────────────────────────────────────
   void goList(ScreenRoute config) => Navigator.push(context, MaterialPageRoute(builder: (_) => ListScreen(config: config, items: widget.items, scope: widget.scope, actions: widget.actions)));
-  void goMap() => Navigator.push(context, MaterialPageRoute(builder: (_) => MapScreen(items: widget.items, scope: widget.scope, actions: widget.actions)));
   void goSearch() => Navigator.push(context, MaterialPageRoute(builder: (_) => SearchScreen(items: widget.items, actions: widget.actions)));
   void goOverseas() => Navigator.push(context, MaterialPageRoute(builder: (_) => OverseasScreen(items: widget.items, actions: widget.actions)));
   void goCommunity() => Navigator.push(context, MaterialPageRoute(builder: (_) => CommunityScreen(items: widget.items, scope: widget.scope, actions: widget.actions)));
@@ -112,10 +112,30 @@ class _HomeContentState extends State<HomeContent> {
   void goShop() => Navigator.push(context, MaterialPageRoute(builder: (_) => PointShopScreen(
         points: widget.points, redeem: widget.redeem, coupons: widget.coupons, useCoupon: widget.useCoupon, goPointsHub: widget.goPointsHub,
       )));
-  void goGongu() => Navigator.push(context, MaterialPageRoute(builder: (_) => GonguScreen(earn: widget.earn, isClaimed: widget.isClaimed)));
-  void goEarnHub() => Navigator.push(context, MaterialPageRoute(builder: (_) => EarnHubScreen(doneMissions: widget.doneMissions, completeMission: widget.completeMission)));
   void goCountry(String cc) => Navigator.push(context, MaterialPageRoute(builder: (_) => CountryScreen(cc: cc, items: widget.items, actions: widget.actions)));
   void openDetail(TaskItem it) => widget.actions.open(context, it);
+
+  /// 지도는 목록과 같은 조건의 결과만 보여준다 (v9: 같은 결과로 지도/목록 전환)
+  void goMap(List<TaskItem> list) => Navigator.push(context, MaterialPageRoute(builder: (_) => MapScreen(items: list, scope: widget.scope, actions: widget.actions)));
+
+  /// 미션 숏컷 — 제휴 미션은 '오늘 벌기' 허브 한 곳으로만 들어간다
+  void goEarnHub() => Navigator.push(context, MaterialPageRoute(builder: (_) => EarnHubScreen(
+        doneMissions: widget.doneMissions,
+        completeMission: widget.completeMission,
+        onOpenErrand: () => goList(const ScreenRoute(name: 'list', title: '심부름으로 벌기', subtitle: '지역 픽업 · 개인/기업 심부름', base: 'earn', sortable: true, catChips: true, mapBtn: true)),
+        onApplyDayJob: _applyDayJob,
+      )));
+
+  /// 공동구매 숏컷 — 특가·공동구매는 '생활비 아끼기' 허브 한 곳으로만 들어간다
+  void goSaveHub() => Navigator.push(context, MaterialPageRoute(builder: (_) => SaveHubScreen(
+        earn: widget.earn,
+        isClaimed: widget.isClaimed,
+        onUse: (d) => widget.flash('${d.brand} 회원 전용가를 준비 중이에요 · 제휴 확정 후 열려요'),
+      )));
+
+  void goDayJobs() => Navigator.push(context, MaterialPageRoute(builder: (_) => DayJobScreen(onApply: _applyDayJob)));
+  void _applyDayJob(DayJob j) => widget.flash('${j.org}에 지원 의사를 전달했어요 · 근로계약은 구인업체와 진행돼요');
+
   void openAd(ScreenRoute route) {
     switch (route.name) {
       case 'shop':
@@ -129,551 +149,393 @@ class _HomeContentState extends State<HomeContent> {
     }
   }
 
+  // ── 탐색 조건 ───────────────────────────────────────────────────────────
+  /// 홈 탐색 목록. 거리 미확인 부탁은 반경 조건에서 제외한다.
+  List<TaskItem> get _tasks {
+    final list = widget.items.where((i) =>
+        i.mode == 'ask' &&
+        _inScope(i) &&
+        !i.isExpired &&
+        (cat == 'all' || i.cat == cat) &&
+        (i.distM != null && i.distM! <= radius * 1000) &&
+        (!shortOnly || (i.mins > 0 && i.mins <= 30))).toList();
+    switch (sort) {
+      case 'price':
+        list.sort((a, b) => b.price - a.price);
+      case 'time':
+        list.sort((a, b) => a.mins.compareTo(b.mins));
+      case 'deadline':
+        list.sort((a, b) {
+          final x = a.deadline, y = b.deadline;
+          if (x == null && y == null) return 0;
+          if (x == null) return 1;
+          if (y == null) return -1;
+          return x.compareTo(y);
+        });
+      case 'new':
+        list.sort((a, b) => b.id.compareTo(a.id));
+      default:
+        list.sort((a, b) => a.distSort.compareTo(b.distSort));
+    }
+    return list;
+  }
+
+  String get _radiusLabel => radius < 1 ? '${(radius * 1000).round()}m' : '${radius % 1 == 0 ? radius.toInt() : radius}km';
+
   @override
   Widget build(BuildContext context) {
-    // 마감된 부탁은 홈에서 추천하지 않는다
-    final askNat = widget.items.where((i) => i.mode == 'ask' && _inScope(i) && !i.isExpired).toList();
-    final sea = widget.items.where((i) => i.mode == 'sea').toList();
-    final community = widget.items.where((i) => i.mode == 'together' && _inScope(i)).toList();
+    final list = _tasks;
+    final jobs = List.of(dayJobs)..sort((a, b) => b.pay - a.pay);
+    final attended = widget.isClaimed(_attendKey);
 
-    final dest = destCtrl.text.trim();
-    final filtering = dest.isNotEmpty || available != null || nearOnly;
-    final nearby = askNat.where((i) =>
-            (nearCat == 'all' || i.cat == nearCat) &&
-            (!nearOnly || (i.distM != null && i.distM! <= 500)) && // 거리 미확인은 500m 조건에서 제외
-            (dest.isEmpty || '${i.place ?? ''} ${i.deliveryPlace ?? ''} ${i.region ?? ''}'.contains(dest)) &&
-            (available == null || (i.mins > 0 && i.mins <= available!))).toList()
-      ..sort((a, b) => a.distSort.compareTo(b.distSort));
-    final nearbyTop = filtering ? nearby : nearby.take(5).toList();
-
-    final quick30 = askNat.where((i) => i.mins > 0 && i.mins <= 30).toList()..sort((a, b) => a.mins.compareTo(b.mins));
-    final quick30Top = quick30.take(8).toList();
-
-    final highPay = List.of(askNat)..sort((a, b) => b.price - a.price);
-    final highPayTop = highPay.take(8).toList();
-
-    final hotItems = [...askNat, ...sea].where((i) => i.hot).take(4).toList();
-
-    final onTheWay = List.of(askNat)
-      ..sort((a, b) {
-        final d = a.distSort.compareTo(b.distSort);
-        return d != 0 ? d : a.mins.compareTo(b.mins);
-      });
-    final onTheWayTop = onTheWay.take(6).toList();
-
-    final newItems = List.of(askNat)..sort((a, b) => b.id - a.id);
-    final newTop = newItems.take(5).toList();
-
-    final popular = List.of(askNat)..sort((a, b) => b.deals - a.deals);
-    final popularTop = popular.take(3).toList();
-
-    final beginner = askNat.where((i) => i.mins > 0 && i.mins <= 20 && i.price <= 9000).toList()..sort((a, b) => a.mins.compareTo(b.mins));
-    final beginnerTop = beginner.take(5).toList();
-
-    final claimable = walkClaimable(widget.steps);
-    final walkGot = widget.isClaimed(walkRewardKey);
-
-    return SingleChildScrollView(
+    return ListView(
       padding: const EdgeInsets.only(bottom: 26),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ① 헤더
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(children: [
-                  Image.asset('assets/icon/app_icon.png', width: 26, height: 26),
-                  const SizedBox(width: 8),
-                  InkWell(
-                    onTap: widget.openRegion,
-                    child: Row(children: [
-                      Text('📍 ${shortRegion(widget.scope)}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink)),
-                      const SizedBox(width: 4),
-                      const Text('▾', style: TextStyle(color: AppColors.faint, fontSize: 13)),
-                    ]),
-                  ),
-                ]),
-                Row(children: [
-                  InkWell(onTap: () => goMap(), child: const Padding(padding: EdgeInsets.all(4), child: Text('🗺️', style: TextStyle(fontSize: 18)))),
-                  InkWell(onTap: () => widget.flash('새 알림이 없어요'), child: const Padding(padding: EdgeInsets.all(4), child: Text('🔔', style: TextStyle(fontSize: 18)))),
-                ]),
-              ],
-            ),
-          ),
-          // 브랜드 카피
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-            child: Text.rich(
-              TextSpan(style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.ink, letterSpacing: -0.3), children: [
-                const TextSpan(text: '어차피 가는 길에, '),
-                TextSpan(text: '하나 더 하고 벌기', style: TextStyle(backgroundColor: AppColors.yellow.withValues(alpha: .6))),
-              ]),
-            ),
-          ),
-          // ② 검색
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-            child: InkWell(
-              onTap: () => goSearch(),
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(12)),
-                child: const Text('🔍 줄서기, 사오기, 사진, 대행, 영화 같이…', style: TextStyle(color: AppColors.sub, fontSize: 13.5)),
-              ),
-            ),
-          ),
-          // 진행 중인 부탁 바로가기
-          if (widget.activeCount > 0)
-            InkWell(
-              onTap: widget.goActivity,
-              borderRadius: BorderRadius.circular(14),
-              child: Container(
-                margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
-                decoration: BoxDecoration(color: AppColors.yellowSoft, borderRadius: BorderRadius.circular(14)),
-                child: Row(children: [
-                  const Text('📋', style: TextStyle(fontSize: 19)),
-                  const SizedBox(width: 11),
-                  Expanded(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('진행 중인 부탁 ${widget.activeCount}건', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.ink)),
-                      const Text('현재 상태와 다음 할 일을 확인하세요', style: TextStyle(fontSize: 12.5, color: AppColors.yellowDeep)),
-                    ]),
-                  ),
-                  const Text('›', style: TextStyle(fontSize: 20, color: AppColors.yellowDeep)),
-                ]),
-              ),
-            ),
-
-          // 가는 길 조건 (목적지 이름 검색 · 가능한 소요 시간)
-          Container(
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
-            decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(14)),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('가는 동네·장소', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.ink)),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: destCtrl,
-                  onChanged: (_) => setState(() {}),
-                  textInputAction: TextInputAction.search,
-                  style: const TextStyle(fontSize: 14.5),
-                  decoration: InputDecoration(
-                    hintText: '예: 서초역',
-                    isDense: true,
-                    filled: true, fillColor: AppColors.page,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-                    suffixIcon: destCtrl.text.isEmpty ? null : IconButton(icon: const Icon(Icons.close_rounded, size: 18), onPressed: () => setState(destCtrl.clear)),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                const Text('가능한 소요 시간', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.ink)),
-                const SizedBox(height: 6),
-                SizedBox(
-                  height: 36,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: [
-                      for (final m in const [null, 10, 20, 30, 60])
-                        Padding(
-                          padding: const EdgeInsets.only(right: 6),
-                          child: ChipWidget(label: m == null ? '제한 없음' : '$m분 이내', active: available == m, onTap: () => setState(() => available = m)),
-                        ),
-                    ],
-                  ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(top: 8),
-                  child: Text('입력한 장소가 포함된 부탁을 찾아요. 이동 경로·우회 시간은 계산하지 않아요.', style: TextStyle(fontSize: 12, color: AppColors.sub, height: 1.5)),
-                ),
-              ],
-            ),
-          ),
-
-          // ⑤ 지금, 내 주변 (부탁 목록 우선 배치)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Row(children: [
-              Expanded(child: Text('📍 지금, 내 주변 ${nearby.length}', style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800, color: AppColors.ink))),
-              InkWell(
-                onTap: () => setState(() => nearOnly = !nearOnly),
-                borderRadius: BorderRadius.circular(8),
+      children: [
+        // ① 지역 헤더
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 12, 4),
+          child: Row(children: [
+            Expanded(
+              child: InkWell(
+                onTap: widget.openRegion,
+                borderRadius: BorderRadius.circular(10),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                  child: Text(nearOnly ? '500m 제한 해제' : '500m 이내만', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: nearOnly ? AppColors.ink : AppColors.sub)),
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Text('📍 ${shortRegion(widget.scope)}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink)),
+                    const Padding(padding: EdgeInsets.only(left: 4), child: Text('▾', style: TextStyle(color: AppColors.faint, fontSize: 13))),
+                  ]),
                 ),
               ),
-            ]),
-          ),
-          SizedBox(
-            height: 36,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: [
-                Padding(padding: const EdgeInsets.only(right: 6), child: ChipWidget(label: '전체', active: nearCat == 'all', onTap: () => setState(() => nearCat = 'all'))),
-                for (final c in cats)
-                  Padding(padding: const EdgeInsets.only(right: 6), child: ChipWidget(label: '${c.icon} ${c.label}', active: nearCat == c.k, onTap: () => setState(() => nearCat = c.k))),
-              ],
             ),
-          ),
-          const SizedBox(height: 10),
-          if (nearbyTop.isEmpty)
-            Column(children: [
-              const EmptyState(msg: '조건에 맞는 부탁이 없어요.\n다른 카테고리나 동네를 살펴보세요.'),
-              TextButton(onPressed: _resetNearby, child: const Text('조건 초기화', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w700))),
-            ])
-          else
-            Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Column(children: [for (final it in nearbyTop) TaskCard(it: it, onOpen: () => openDetail(it), done: widget.actions.grabbed.contains(it.id))])),
-          if (!filtering && nearby.length > 5)
-            InkWell(
-              onTap: () => goList(ScreenRoute(name: 'list', title: '내 주변 할 일', subtitle: '가까운 순', base: 'ask', cat: nearCat == 'all' ? null : nearCat, sortable: true, defaultSort: 'dist', catChips: true, mapBtn: true)),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
-                child: Center(child: Text('주변 부탁 모두 보기 ›', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.ink))),
-              ),
-            ),
-          const HDivider(),
-          const SizedBox(height: 14),
+            InkWell(onTap: goSearch, child: const Padding(padding: EdgeInsets.all(6), child: Text('🔍', style: TextStyle(fontSize: 18)))),
+            InkWell(onTap: () => goMap(list), child: const Padding(padding: EdgeInsets.all(6), child: Text('🗺️', style: TextStyle(fontSize: 18)))),
+            InkWell(onTap: () => widget.flash('새 알림이 없어요'), child: const Padding(padding: EdgeInsets.all(6), child: Text('🔔', style: TextStyle(fontSize: 18)))),
+          ]),
+        ),
 
-          // ③ 주요 서비스 바로가기 (목록 아래로 이동)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
-            child: Row(children: [
-              _Shortcut(icon: '🙋', label: '부탁해요', onTap: widget.openPost),
-              _Shortcut(icon: '🤝', label: '돈벌기', onTap: () => goList(const ScreenRoute(name: 'list', title: '돈벌기', subtitle: '가는 길에 부탁 해결하고 사례비 받기', base: 'earn', sortable: true, catChips: true, mapBtn: true))),
-              _Shortcut(icon: '🌏', label: '해외', onTap: () => goOverseas()),
-              _Shortcut(icon: '👋', label: '같이해요', onTap: () => goCommunity()),
-              _Shortcut(icon: '🗺️', label: '지도', onTap: () => goMap()),
-            ]),
-          ),
-          // ④ 업무 카테고리
-          const Padding(padding: EdgeInsets.fromLTRB(16, 6, 16, 6), child: Text('할 수 있는 일', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.ink))),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 14),
-            child: GridView(
-              // 열 개수를 고정하면 폴더블·태블릿처럼 폭이 넓은 기기에서 셀이 그만큼
-              // 옆으로 늘어나 버튼 사이가 벌어진다. 셀 크기를 고정하고 열 개수가
-              // 폭에 따라 늘어나게 한다. (폰 375px에서는 5열이 된다)
-              // 높이 = 타일 40 + 간격 5 + 라벨 14
-              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                maxCrossAxisExtent: 76,
-                mainAxisSpacing: 10,
-                mainAxisExtent: 62,
-              ),
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              children: cats.map((c) {
-                return InkWell(
-                  onTap: () => goList(ScreenRoute(name: 'list', title: c.label, subtitle: '${c.label} 부탁 모아보기', base: 'ask', cat: c.k, sortable: true, catChips: true, mapBtn: true)),
-                  child: Column(children: [
-                    Container(width: 40, height: 40, alignment: Alignment.center, decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(12)), child: Text(c.icon, style: const TextStyle(fontSize: 23))),
-                    const SizedBox(height: 5),
-                    Text(c.label, style: const TextStyle(fontSize: 11, color: AppColors.ink)),
-                  ]),
-                );
-              }).toList(),
-            ),
-          ),
-          const HDivider(),
-
-          // ⑥ 광고 배너 (스와이프 캐러셀)
-          AdBanner(ads: homeAds, onTap: openAd),
-
-          // ⑦ 혜택/포인트 배너
-          Container(
-            margin: const EdgeInsets.fromLTRB(16, 4, 16, 6),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(color: AppColors.ink, borderRadius: BorderRadius.circular(16)),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                  const Text('오늘도 겸사겸사 혜택', style: TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.w700)),
-                  InkWell(onTap: () => goWalk(), child: const Text('걷기 전체 ›', style: TextStyle(color: AppColors.yellow, fontSize: 12, fontWeight: FontWeight.w700))),
-                ]),
-                const SizedBox(height: 12),
-                Row(children: [
-                  Expanded(
-                    flex: 14,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: .08), borderRadius: BorderRadius.circular(12)),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('🚶 ${nf(widget.steps)}걸음', style: const TextStyle(fontSize: 11.5, color: Colors.white70)),
-                          Padding(padding: const EdgeInsets.only(top: 3), child: Text('+$claimable P 받을 수 있어요', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.yellow))),
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: InkWell(
-                              onTap: () async {
-                                if (walkGot) return;
-                                await widget.earn(claimable, '걸음 적립', key: walkRewardKey);
-                                if (mounted) setState(() {});
-                              },
-                              borderRadius: BorderRadius.circular(8),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                                decoration: BoxDecoration(color: walkGot ? Colors.white.withValues(alpha: .15) : AppColors.yellow, borderRadius: BorderRadius.circular(8)),
-                                child: Text(walkGot ? '적립 완료' : '받기', style: TextStyle(color: walkGot ? Colors.white : AppColors.ink, fontSize: 12, fontWeight: FontWeight.w800)),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    // flex를 생략하면 1이 되어 왼쪽(14)과 14:1로 갈리는 바람에
-                    // 이 타일이 20~30px만 받아 글자가 세로로 쪼개졌다.
-                    flex: 10,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: .08), borderRadius: BorderRadius.circular(12)),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('👥 친구 추천', style: TextStyle(fontSize: 11.5, color: Colors.white70)),
-                          Padding(padding: const EdgeInsets.only(top: 3), child: Text('+${PointRules.referral}P', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white))),
-                          Padding(padding: const EdgeInsets.only(top: 8), child: Text('출석 +${PointRules.attendance}P', style: const TextStyle(fontSize: 10.5, color: Colors.white54))),
-                        ],
-                      ),
-                    ),
-                  ),
-                ]),
-              ],
-            ),
-          ),
+        // ② 진행 중 배너
+        if (widget.activeCount > 0)
           InkWell(
-            onTap: () => goShop(),
-            borderRadius: BorderRadius.circular(12),
+            onTap: widget.goActivity,
+            borderRadius: BorderRadius.circular(14),
             child: Container(
-              margin: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-              decoration: BoxDecoration(color: AppColors.yellowSoft, borderRadius: BorderRadius.circular(12)),
+              margin: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+              decoration: BoxDecoration(color: AppColors.yellowSoft, borderRadius: BorderRadius.circular(14)),
               child: Row(children: [
-                const Text('🎁', style: TextStyle(fontSize: 17)),
-                const SizedBox(width: 8),
-                Expanded(child: Text('${nf(widget.points)}P 보유 · 치킨·커피로 바꿔보세요', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.ink))),
-                const Text('포인트샵 ›', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.yellowDeep)),
-              ]),
-            ),
-          ),
-          const Padding(padding: EdgeInsets.fromLTRB(16, 4, 16, 14), child: Text('혜택 탭에서 더 많은 포인트를 모을 수 있어요', style: TextStyle(fontSize: 11, color: AppColors.faint))),
-
-          // ⑧ 오늘 더 벌 수 있어요 (짧게 · 혜택으로 연결)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 2, 16, 0),
-            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              const Text('💡 오늘 더 벌 수 있어요', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink)),
-              InkWell(onTap: widget.goPointsHub, child: const Text('혜택에서 더 보기 ›', style: TextStyle(color: AppColors.sub, fontSize: 12.5, fontWeight: FontWeight.w700))),
-            ]),
-          ),
-          SizedBox(
-            height: 132,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
-              children: [
-                _EarnTile(icon: '🤝', label: '근처 부탁', val: '+7,000원', valColor: AppColors.ink, bg: AppColors.yellowSoft, onTap: () => goList(const ScreenRoute(name: 'list', title: '근처에서 벌기', subtitle: '가까운 순', base: 'earn', sortable: true, defaultSort: 'dist', catChips: true, mapBtn: true))),
-                _EarnTile(icon: '🚶', label: '걷기', val: '+30P', valColor: AppColors.blue, bg: AppColors.blueSoft, onTap: () => goWalk()),
-                _EarnTile(icon: '🎁', label: '부업 (제휴·성과)', val: '+50,000원', valColor: AppColors.purple, bg: AppColors.purpleSoft, onTap: () => goEarnHub()),
-                _EarnTile(icon: '🛍️', label: '공동구매', val: '성과보상', valColor: AppColors.yellowDeep, bg: AppColors.yellowSoft, onTap: () => goGongu()),
-              ],
-            ),
-          ),
-
-          // ⑨ 30분 안에 끝나요
-          if (quick30Top.isNotEmpty) ...[
-            SectionHeader(
-              title: '⚡ 30분 안에 끝나요',
-              sub: '자투리 시간에 겸사겸사',
-              onAction: () => goList(const ScreenRoute(name: 'list', title: '30분 안에 끝나요', subtitle: '짧게 할 수 있는 일', base: 'ask', maxMins: 30, sortable: true, defaultSort: 'time', mapBtn: true)),
-            ),
-            _hScroll(quick30Top),
-          ],
-
-          // ⑩ 사례비 높은 부탁
-          SectionHeader(
-            title: '💰 사례비 높은 부탁',
-            onAction: () => goList(const ScreenRoute(name: 'list', title: '사례비 높은 부탁', subtitle: '높은 사례비 순', base: 'earn', sortable: true, defaultSort: 'price', mapBtn: true)),
-          ),
-          _hScroll(highPayTop),
-
-          // ⑪ 급해요
-          if (hotItems.isNotEmpty) ...[
-            SectionHeader(
-              title: '🔥 지금 급해요',
-              sub: '빨리 매칭되면 좋은 부탁',
-              onAction: () => goList(const ScreenRoute(name: 'list', title: '지금 급해요', subtitle: 'HOT으로 올라온 부탁', base: 'earn', onlyHot: true, sortable: true, mapBtn: true)),
-            ),
-            Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Column(children: [for (final it in hotItems) TaskCard(it: it, onOpen: () => openDetail(it), done: widget.actions.grabbed.contains(it.id))])),
-          ],
-
-          // ⑫ 걷고 포인트 받기
-          const Padding(padding: EdgeInsets.fromLTRB(16, 18, 16, 4), child: Text('🚶 걷고 포인트 받기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink))),
-          InkWell(
-            onTap: () => goWalk(),
-            borderRadius: BorderRadius.circular(16),
-            child: Container(
-              margin: const EdgeInsets.fromLTRB(16, 8, 16, 6),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-              decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(16)),
-              child: Row(children: [
-                WalkRing(steps: widget.steps, size: 56),
-                const SizedBox(width: 14),
+                const Text('📋', style: TextStyle(fontSize: 19)),
+                const SizedBox(width: 11),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('${nf(widget.steps)}걸음', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.ink)),
-                      Padding(padding: const EdgeInsets.only(top: 2), child: Text(walkGot ? '목표 ${nf(walkGoal)}걸음 · 오늘 적립 완료' : '목표 ${nf(walkGoal)}걸음 · 오늘 +$claimable P 적립 가능', style: const TextStyle(fontSize: 12, color: AppColors.sub))),
-                      const Padding(padding: EdgeInsets.only(top: 5), child: Text('500m 더 걸으면 근처 부탁도 할 수 있어요 ›', style: TextStyle(fontSize: 12, color: AppColors.green, fontWeight: FontWeight.w700))),
+                      Text('진행 중인 부탁 ${widget.activeCount}건', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.ink)),
+                      const Text('현재 상태와 다음 할 일을 확인하세요', style: TextStyle(fontSize: 12.5, color: AppColors.yellowDeep)),
                     ],
                   ),
                 ),
+                const Text('›', style: TextStyle(fontSize: 20, color: AppColors.yellowDeep)),
               ]),
             ),
           ),
 
-          const HDivider(thick: true),
+        // ③ 누적 수익 + 목표
+        IncomeSummary(cash: widget.earnedCash, points: widget.points),
 
-          // ⑬ 가는 길에 겸사겸사
-          const Padding(padding: EdgeInsets.fromLTRB(16, 18, 16, 3), child: Text('🚶 가는 길에 겸사겸사', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.ink))),
-          const Padding(padding: EdgeInsets.fromLTRB(16, 0, 16, 10), child: Text('지금 위치에서 가까운 부탁 — "여기 근처니까 해볼까?"', style: TextStyle(fontSize: 12.5, color: AppColors.sub))),
-          if (onTheWayTop.isNotEmpty) FeaturedCard(it: onTheWayTop.first, onOpen: () => openDetail(onTheWayTop.first), done: widget.actions.grabbed.contains(onTheWayTop.first.id)),
-          _hScroll(onTheWayTop.skip(1).toList()),
-
-          const HDivider(thick: true),
-
-          // ⑭ 해외 대행
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 18, 16, 3),
-            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              const Text('🌏 해외에서 사다드려요', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.ink)),
-              InkWell(onTap: () => goOverseas(), child: const Text('전체 국가 ›', style: TextStyle(color: AppColors.purple, fontSize: 12, fontWeight: FontWeight.w700))),
+        // ④ 출석 한 줄
+        InkWell(
+          onTap: attended ? null : () => widget.earn(attendStreak[0].points, '출석 적립', key: _attendKey),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: attended ? AppColors.greenSoft : AppColors.card,
+              border: Border.all(color: attended ? AppColors.greenSoft : AppColors.line),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(children: [
+              Text(attended ? '✅' : '📅', style: const TextStyle(fontSize: 17)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(attended ? '오늘 출석 완료' : '오늘 출석하고 +${attendStreak[0].points}P',
+                    style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: attended ? AppColors.green : AppColors.ink)),
+              ),
+              if (!attended)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(color: AppColors.yellow, borderRadius: BorderRadius.circular(8)),
+                  child: const Text('출석', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.ink)),
+                ),
             ]),
           ),
-          Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 10), child: Text('여행·출장 중인 이웃에게 · 최소 사례비 ${nf(seaMin)}원', style: const TextStyle(fontSize: 12.5, color: AppColors.sub))),
-          SizedBox(
-            height: 76,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: countries.length > 10 ? 10 : countries.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 8),
-              itemBuilder: (context, i) {
-                final c = countries[i];
-                return InkWell(
-                  onTap: () => goCountry(c.cc),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    width: 62,
-                    padding: const EdgeInsets.symmetric(vertical: 9),
-                    decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(12)),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(c.flag, style: const TextStyle(fontSize: 22)),
-                        const SizedBox(height: 2),
-                        Text(c.name, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.ink)),
-                      ],
-                    ),
-                  ),
-                );
-              },
+        ),
+
+        // ⑤ 주요 서비스 3개
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(children: [
+            _ServiceRow(icon: '🤝', title: '동네 부탁', sub: '가까운 곳에서 하나 더', onTap: () => setState(() => kind = 'ask')),
+            _ServiceRow(icon: '🌏', title: '해외 부탁', sub: '여행길에도 수익을', onTap: goOverseas),
+            _ServiceRow(icon: '📋', title: '단기알바', sub: '하루도 알차게', onTap: () => setState(() => kind = 'job')),
+          ]),
+        ),
+
+        // ⑥ 서비스 숏컷 (+ 전체 펼침)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(10, 14, 10, 4),
+          child: Row(children: [
+            _Shortcut(icon: '🙋', label: '부탁 전체', onTap: () => goList(const ScreenRoute(name: 'list', title: '부탁 전체', subtitle: '조건을 바꿔가며 찾아보세요', base: 'ask', sortable: true, catChips: true, mapBtn: true))),
+            _Shortcut(icon: '🎁', label: '미션', onTap: goEarnHub),
+            _Shortcut(icon: '👋', label: '같이해요', onTap: goCommunity),
+            _Shortcut(icon: '🛍️', label: '공동구매', onTap: goSaveHub),
+            _Shortcut(icon: expanded ? '▴' : '➕', label: expanded ? '접기' : '전체', onTap: () => setState(() => expanded = !expanded)),
+          ]),
+        ),
+        if (expanded) ...[
+          const Padding(padding: EdgeInsets.fromLTRB(16, 8, 16, 2), child: Text('동네 부탁 종류', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.ink))),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+            child: GridView(
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: 76, mainAxisSpacing: 10, mainAxisExtent: 62),
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              children: cats
+                  .map((c) => InkWell(
+                        onTap: () => setState(() {
+                          kind = 'ask';
+                          cat = c.k;
+                        }),
+                        child: Column(children: [
+                          Container(width: 40, height: 40, alignment: Alignment.center, decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(12)), child: Text(c.icon, style: const TextStyle(fontSize: 23))),
+                          const SizedBox(height: 5),
+                          Text(c.label, style: const TextStyle(fontSize: 11, color: AppColors.ink)),
+                        ]),
+                      ))
+                  .toList(),
             ),
           ),
-          const SizedBox(height: 10),
-          _hScroll(sea.take(6).toList()),
-
-          const HDivider(thick: true),
-
-          // ⑮ 같이해요
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 18, 16, 3),
-            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              const Text('👋 같이해요', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.ink)),
-              InkWell(onTap: () => goCommunity(), child: const Text('동네생활 ›', style: TextStyle(color: AppColors.sub, fontSize: 12))),
-            ]),
-          ),
-          const Padding(padding: EdgeInsets.fromLTRB(16, 0, 16, 10), child: Text('본인인증 이웃과 함께 · 공개 장소 권장', style: TextStyle(fontSize: 12.5, color: AppColors.sub))),
-          Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Column(children: [for (final it in community.take(3)) CommunityCard(it: it, onOpen: () => openDetail(it), compact: true)])),
-
-          const HDivider(),
-
-          // ⑯ 이번 주 인기
-          SectionHeader(
-            title: '🏆 이번 주 인기 부탁',
-            onAction: () => goList(const ScreenRoute(name: 'list', title: '이번 주 인기', subtitle: '많이 거래된 순', base: 'ask', sortable: true, defaultSort: 'deals', mapBtn: true)),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(children: [for (int i = 0; i < popularTop.length; i++) TaskCard(it: popularTop[i], onOpen: () => openDetail(popularTop[i]), done: widget.actions.grabbed.contains(popularTop[i].id), rank: i + 1)]),
-          ),
-
-          // ⑰ 처음이라면 이 일부터
-          if (beginnerTop.isNotEmpty) ...[
-            const SectionHeader(title: '🌱 처음이라면 이 일부터', sub: '초보도 부담 없는 짧고 쉬운 일'),
-            _hScroll(beginnerTop),
-          ],
-
-          // ⑱ 새로 올라온 부탁
-          SectionHeader(
-            title: '🆕 새로 올라온 부탁',
-            onAction: () => goList(const ScreenRoute(name: 'list', title: '새로 올라온 부탁', subtitle: '최신 순', base: 'ask', sortable: true, defaultSort: 'new', mapBtn: true)),
-          ),
-          Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Column(children: [for (final it in newTop) TaskCard(it: it, onOpen: () => openDetail(it), done: widget.actions.grabbed.contains(it.id))])),
-
-          // ⑲ 안전 거래
-          Container(
-            margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(16)),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Padding(padding: EdgeInsets.only(bottom: 10), child: Text('🛡 안전하게 거래해요', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: AppColors.ink))),
-                for (final t in const ['본인인증 회원끼리 매칭', '공개된 장소에서 만나기 권장', '사례비는 완료 확인 전까지 앱이 보관', '언제든 신고·차단할 수 있어요'])
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(children: [
-                      const Text('✓', style: TextStyle(color: AppColors.green, fontWeight: FontWeight.w800)),
-                      const SizedBox(width: 8),
-                      Text(t, style: const TextStyle(fontSize: 12.5, color: AppColors.ink)),
-                    ]),
-                  ),
-              ],
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+            child: InkWell(
+              onTap: goWalk,
+              borderRadius: BorderRadius.circular(11),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                decoration: BoxDecoration(color: AppColors.blueSoft, borderRadius: BorderRadius.circular(11)),
+                child: Row(children: [
+                  const Text('🚶', style: TextStyle(fontSize: 16)),
+                  const SizedBox(width: 9),
+                  Expanded(child: Text('걷기 혜택 · ${nf(widget.steps)}걸음', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.blue))),
+                  const Text('›', style: TextStyle(fontSize: 18, color: AppColors.blue)),
+                ]),
+              ),
             ),
           ),
         ],
-      ),
+
+        // ⑦ 가볍게 모으기 — 짧은 미션 2개만
+        _LightMissions(
+          doneMissions: widget.doneMissions,
+          onOpenAll: goEarnHub,
+          onOpen: (m) => Navigator.push(context, MaterialPageRoute(builder: (_) => PartnerMissionDetailScreen(
+                m: m, done: widget.doneMissions.contains(m.id), onComplete: widget.completeMission,
+              ))),
+        ),
+
+        // ⑧ 광고 (v9 시안에는 없지만 수익 지면이라 한 곳만 남겼다)
+        AdBanner(ads: homeAds, onTap: openAd),
+
+        // ⑨ 지금, 내 주변
+        SectionHeader(
+          title: '지금, 내 주변',
+          sub: kind == 'ask' ? '${list.length}개의 부탁 · 시작 장소까지의 예시 거리' : '${jobs.length}개의 단기알바',
+          onAction: () => kind == 'ask'
+              ? goList(const ScreenRoute(name: 'list', title: '부탁 전체', base: 'ask', sortable: true, catChips: true, mapBtn: true))
+              : goDayJobs(),
+        ),
+
+        // 탐색 대상 탭
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: Row(children: [
+            for (final t in [['ask', '동네 부탁'], ['job', '단기알바']])
+              Padding(
+                padding: const EdgeInsets.only(right: 7),
+                child: ChipWidget(label: t[1], active: kind == t[0], onTap: () => setState(() => kind = t[0])),
+              ),
+          ]),
+        ),
+
+        if (kind == 'ask') ...[
+          // 빠른 종류 칩
+          SizedBox(
+            height: 40,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              children: [
+                Padding(padding: const EdgeInsets.only(right: 7), child: ChipWidget(label: '전체', active: cat == 'all', onTap: () => setState(() => cat = 'all'))),
+                for (final c in cats)
+                  Padding(padding: const EdgeInsets.only(right: 7), child: ChipWidget(label: c.label, active: cat == c.k, onTap: () => setState(() => cat = c.k))),
+              ],
+            ),
+          ),
+
+          // 반경 · 정렬 · 지도
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: Row(children: [
+              Expanded(
+                child: _Picker<double>(
+                  label: '반경',
+                  value: radius,
+                  display: _radiusLabel,
+                  items: const [
+                    [0.5, '500m 이내'], [1.0, '1km 이내'], [3.0, '3km 이내'],
+                    [5.0, '5km 이내'], [10.0, '10km 이내'], [20.0, '20km 이내'], [30.0, '30km 이내'],
+                  ],
+                  onChanged: (v) => setState(() => radius = v),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _Picker<String>(
+                  label: '정렬',
+                  value: sort,
+                  display: const {'dist': '가까운순', 'price': '사례비순', 'time': '짧은순', 'deadline': '마감임박', 'new': '최신순'}[sort]!,
+                  items: const [
+                    ['dist', '가까운순'], ['price', '사례비 높은순'], ['time', '소요시간 짧은순'],
+                    ['deadline', '마감 임박순'], ['new', '최신순'],
+                  ],
+                  onChanged: (v) => setState(() => sort = v),
+                ),
+              ),
+              const SizedBox(width: 8),
+              InkWell(
+                onTap: () => goMap(list),
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+                  decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(10)),
+                  child: const Text('🗺️ 지도', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.ink)),
+                ),
+              ),
+            ]),
+          ),
+
+          // 세부 조건
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
+            child: Row(children: [
+              InkWell(
+                onTap: () => setState(() => shortOnly = !shortOnly),
+                borderRadius: BorderRadius.circular(99),
+                child: ChipWidget(label: '⚡ 30분 안에 끝나요', active: shortOnly),
+              ),
+              const Spacer(),
+              if (cat != 'all' || shortOnly || radius != 3 || sort != 'dist')
+                TextButton(
+                  onPressed: () => setState(() {
+                    cat = 'all';
+                    shortOnly = false;
+                    radius = 3;
+                    sort = 'dist';
+                  }),
+                  child: const Text('조건 초기화', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w700, fontSize: 12.5)),
+                ),
+            ]),
+          ),
+
+          if (list.isEmpty)
+            const EmptyState(msg: '조건에 맞는 부탁이 없어요.\n거리 미확인 부탁은 반경 검색에서 제외됩니다.')
+          else
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(children: [
+                for (final it in list.take(12)) TaskCard(it: it, onOpen: () => openDetail(it), done: widget.actions.grabbed.contains(it.id)),
+              ]),
+            ),
+        ] else ...[
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Text('근무일 · 근무시간 · 일급 · 지급일을 부탁과 구분해 안내해요', style: TextStyle(fontSize: 12, color: AppColors.sub)),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(children: [
+              for (final j in jobs.take(4)) DayJobCard(j: j, onOpen: () => openDayJob(context, j, _applyDayJob), compact: true),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: goDayJobs,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.ink,
+                    side: const BorderSide(color: AppColors.line),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('단기알바 전체 보기 ›', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ]),
+          ),
+        ],
+
+        // ⑩ 더 둘러보기
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+          child: Column(children: [
+            _MoreRow(label: '🌏 해외 부탁', onTap: goOverseas),
+            _MoreRow(label: '👋 우리 동네 같이해요', onTap: goCommunity),
+          ]),
+        ),
+
+        // ⑪ 안전 안내
+        Container(
+          margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(12)),
+          child: const Text(
+            '🛡 공개된 장소에서 만나고, 앱 안에서 대화·정산 내역을 남겨 주세요. 선입금 요구는 신고해 주세요.',
+            style: TextStyle(fontSize: 11.5, color: AppColors.sub, height: 1.6),
+          ),
+        ),
+      ],
     );
   }
+}
 
-  Widget _hScroll(List<TaskItem> list) {
-    if (list.isEmpty) return const SizedBox.shrink();
-    return SizedBox(
-      height: 168,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: list.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 10),
-        itemBuilder: (context, i) {
-          final it = list[i];
-          return RecoCard(it: it, onOpen: () => openDetail(it), done: widget.actions.grabbed.contains(it.id));
-        },
+/// 주요 서비스 한 줄 (동네 부탁 / 해외 부탁 / 단기알바)
+class _ServiceRow extends StatelessWidget {
+  final String icon, title, sub;
+  final VoidCallback onTap;
+  const _ServiceRow({required this.icon, required this.title, required this.sub, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(14)),
+        child: Row(children: [
+          Container(width: 44, height: 44, alignment: Alignment.center, decoration: BoxDecoration(color: AppColors.yellowSoft, borderRadius: BorderRadius.circular(13)), child: Text(icon, style: const TextStyle(fontSize: 22))),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.ink)),
+                Padding(padding: const EdgeInsets.only(top: 2), child: Text(sub, style: const TextStyle(fontSize: 11.5, color: AppColors.sub))),
+              ],
+            ),
+          ),
+          const Text('›', style: TextStyle(fontSize: 19, color: AppColors.faint)),
+        ]),
       ),
     );
   }
@@ -683,18 +545,19 @@ class _Shortcut extends StatelessWidget {
   final String icon, label;
   final VoidCallback onTap;
   const _Shortcut({required this.icon, required this.label, required this.onTap});
+
   @override
   Widget build(BuildContext context) {
     return Expanded(
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
+          padding: const EdgeInsets.symmetric(vertical: 8),
           child: Column(children: [
-            Container(width: 48, height: 48, alignment: Alignment.center, decoration: BoxDecoration(color: AppColors.yellowSoft, borderRadius: BorderRadius.circular(15)), child: Text(icon, style: const TextStyle(fontSize: 26))),
+            Container(width: 44, height: 44, alignment: Alignment.center, decoration: BoxDecoration(color: AppColors.yellowSoft, borderRadius: BorderRadius.circular(14)), child: Text(icon, style: const TextStyle(fontSize: 20))),
             const SizedBox(height: 6),
-            Text(label, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.ink)),
+            Text(label, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: AppColors.ink)),
           ]),
         ),
       ),
@@ -702,27 +565,142 @@ class _Shortcut extends StatelessWidget {
   }
 }
 
-class _EarnTile extends StatelessWidget {
-  final String icon, label, val;
-  final Color valColor, bg;
+/// 짧은 시간 순으로 설문·체험 미션 두 개만. 전체는 '오늘 벌기' 허브에서 본다.
+class _LightMissions extends StatelessWidget {
+  final List<String> doneMissions;
+  final VoidCallback onOpenAll;
+  final void Function(PartnerMission) onOpen;
+  const _LightMissions({required this.doneMissions, required this.onOpenAll, required this.onOpen});
+
+  /// 소요 시간 문구를 분으로 읽는다. '1~2시간'을 1분으로 보면 좌담회가
+  /// '가볍게 모으기'에 올라오므로 시간 단위를 반드시 구분한다.
+  /// 숫자가 없는 '방문', '체험+후기' 같은 값은 짧은 일로 취급하지 않는다.
+  static int _minutes(String time) {
+    final n = int.tryParse(RegExp(r'\d+').stringMatch(time) ?? '');
+    if (n == null) return 999;
+    return time.contains('시간') ? n * 60 : n;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = partnerMissions
+        .where((m) => !doneMissions.contains(m.id) && (m.cat == 'survey' || m.cat == 'experience'))
+        .toList()
+      ..sort((a, b) => _minutes(a.time).compareTo(_minutes(b.time)));
+    final top = rows.where((m) => _minutes(m.time) <= 30).take(2).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionHeader(title: '가볍게 모으기', sub: '짧게 참여하고 포인트 받기', onAction: onOpenAll),
+        if (top.isEmpty)
+          const EmptyState(msg: '참여 가능한 미션을 모두 완료했어요.')
+        else
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(children: [
+              for (final m in top)
+                InkWell(
+                  onTap: () => onOpen(m),
+                  borderRadius: BorderRadius.circular(13),
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
+                    decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(13)),
+                    child: Row(children: [
+                      Container(width: 40, height: 40, alignment: Alignment.center, decoration: BoxDecoration(color: AppColors.purpleSoft, borderRadius: BorderRadius.circular(11)), child: Text(m.icon, style: const TextStyle(fontSize: 20))),
+                      const SizedBox(width: 11),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('${m.time} · ${m.cat == 'survey' ? '설문' : '체험'}', style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: AppColors.purple)),
+                            Padding(padding: const EdgeInsets.only(top: 1), child: Text(m.title, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.ink))),
+                            Padding(padding: const EdgeInsets.only(top: 2), child: Text(m.cond, style: const TextStyle(fontSize: 11, color: AppColors.sub))),
+                          ],
+                        ),
+                      ),
+                      Text('+${nf(m.points)}P', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.ink)),
+                    ]),
+                  ),
+                ),
+            ]),
+          ),
+      ],
+    );
+  }
+}
+
+class _MoreRow extends StatelessWidget {
+  final String label;
   final VoidCallback onTap;
-  const _EarnTile({required this.icon, required this.label, required this.val, required this.valColor, required this.bg, required this.onTap});
+  const _MoreRow({required this.label, required this.onTap});
+
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(12),
       child: Container(
-        width: 122,
-        margin: const EdgeInsets.only(right: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
-        decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(14)),
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(12)),
+        child: Row(children: [
+          Expanded(child: Text(label, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.ink))),
+          const Text('›', style: TextStyle(fontSize: 18, color: AppColors.faint)),
+        ]),
+      ),
+    );
+  }
+}
+
+/// 반경·정렬처럼 값을 하나 고르는 작은 드롭다운. 바텀시트로 열어 터치 영역을 넓게 둔다.
+class _Picker<T> extends StatelessWidget {
+  final String label;
+  final T value;
+  final String display;
+  final List<List<Object>> items;
+  final void Function(T) onChanged;
+  const _Picker({required this.label, required this.value, required this.display, required this.items, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => _open(context),
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+        decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(10)),
+        child: Row(children: [
+          Text('$label ', style: const TextStyle(fontSize: 11.5, color: AppColors.sub)),
+          Expanded(child: Text(display, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.ink))),
+          const Text('▾', style: TextStyle(fontSize: 11, color: AppColors.faint)),
+        ]),
+      ),
+    );
+  }
+
+  void _open(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.card,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
+      builder: (sheet) => SafeArea(
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(width: 34, height: 34, alignment: Alignment.center, decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)), child: Text(icon, style: const TextStyle(fontSize: 17))),
-            Padding(padding: const EdgeInsets.only(top: 8), child: Text(label, style: const TextStyle(fontSize: 12.5, color: AppColors.sub, fontWeight: FontWeight.w600))),
-            Padding(padding: const EdgeInsets.only(top: 2), child: Text(val, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: valColor))),
+            Padding(padding: const EdgeInsets.fromLTRB(20, 18, 20, 6), child: Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.ink))),
+            for (final it in items)
+              ListTile(
+                title: Text(it[1] as String, style: TextStyle(fontSize: 14, fontWeight: it[0] == value ? FontWeight.w800 : FontWeight.w500, color: AppColors.ink)),
+                trailing: it[0] == value ? const Text('✓', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w800)) : null,
+                onTap: () {
+                  Navigator.of(sheet).pop();
+                  onChanged(it[0] as T);
+                },
+              ),
+            const SizedBox(height: 8),
           ],
         ),
       ),

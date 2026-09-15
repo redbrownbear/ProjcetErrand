@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:project_errand/features/benefits/models/reward_ledger.dart';
+import 'package:gyeomsa/features/benefits/models/reward_ledger.dart';
 
 void main() {
   group('RewardLedger', () {

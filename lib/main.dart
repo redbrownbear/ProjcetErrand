@@ -18,11 +18,11 @@ void main() async {
     debugPrint('네이버 지도 초기화 실패: $e');
   }
   await LocalStore.init();
-  runApp(const BureumApp());
+  runApp(const GyeomsaApp());
 }
 
-class BureumApp extends StatelessWidget {
-  const BureumApp({super.key});
+class GyeomsaApp extends StatelessWidget {
+  const GyeomsaApp({super.key});
   @override
   Widget build(BuildContext context) {
     return MaterialApp(

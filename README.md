@@ -1,17 +1,42 @@
-# project_errand
+# 겸사겸사
 
-A new Flutter project.
+어차피 가는 길에 하나 더 하고 버는, 지역 기반 부업·심부름 앱입니다.
 
-## Getting Started
+## 홈 구조
 
-This project is a starting point for a Flutter application.
+홈은 기획 시안 v9을 따릅니다. 1차 메뉴는 **동네 부탁 / 해외 부탁 / 단기알바** 세 개이고,
+제휴로 늘어나는 기능은 숏컷(미션·공동구매) 뒤의 허브로 들어갑니다.
+자세한 내용은 [docs/홈_v9_적용.md](docs/홈_v9_적용.md) 참고.
 
-A few resources to get you started if this is your first Flutter project:
+제휴 카테고리와 규제 고지 설계는 [docs/제휴전략_앱적용.md](docs/제휴전략_앱적용.md)에 있습니다.
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+## 실행
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```bash
+flutter pub get
+flutter run
+```
+
+기기를 지정하려면 `flutter devices`로 id를 확인한 뒤 `flutter run -d <id>`.
+
+## 검증
+
+```bash
+flutter analyze
+flutter test
+```
+
+## 지금 상태
+
+화면과 흐름이 동작하는 프런트엔드 단계입니다. 실제 거래·채팅·인증·지급·광고 연동 서버는 없습니다.
+
+- 관심 저장·지원 내역·가격 제안·작성 중 임시글·목표 금액은 **이 기기에만** 보관됩니다
+  (`LocalStore`). 다른 기기와 동기화되지 않고 앱 데이터를 지우면 사라집니다.
+- 누적 수익은 체험에서 완료 처리한 거래의 합계이며 실제 정산액이 아닙니다.
+- 지도는 Android·iOS에서만 동작합니다. 웹·데스크톱에서는 안내 문구만 표시됩니다.
+- 제휴 미션·회원 전용가·단기알바 공고는 체험용 샘플이며 제휴가 체결된 것이 아닙니다.
+
+## 환경 메모
+
+pub 캐시가 `C:\src\pub-cache`에 있습니다 (`PUB_CACHE` 환경변수). 기본값인
+`%LOCALAPPDATA%\Pub\Cache`는 이 PC에서 IDE가 띄운 프로세스가 읽지 못하는 문제가 있었습니다.

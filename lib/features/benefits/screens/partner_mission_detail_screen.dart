@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/compliance/disclosures.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/screen_frame.dart';
@@ -13,6 +14,7 @@ class PartnerMissionDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dis = Disclosures.of(m.disclosureKey);
     return ScreenFrame(
       title: '제휴 미션',
       subtitle: '제휴 · ${m.brand}',
@@ -66,15 +68,41 @@ class PartnerMissionDetailScreen extends StatelessWidget {
               decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(14)),
               child: Text(m.desc, style: const TextStyle(fontSize: 13.5, color: Color(0xFF3A3D42), height: 1.6)),
             ),
+            // 무엇으로 '완료'를 인정하고 언제 주는지를 참여 전에 못박는다.
+            // (가이드 §3의 방문 인증, §4의 상담 완료 기준 객관화)
+            Container(
+              margin: const EdgeInsets.only(top: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+              decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(14)),
+              child: Column(children: [
+                for (final e in [
+                  ['✅', '완료 인정', m.verify],
+                  ['💵', '지급 시점', m.payout],
+                ])
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(e[0], style: const TextStyle(fontSize: 14)),
+                      const SizedBox(width: 8),
+                      SizedBox(width: 68, child: Text(e[1], style: const TextStyle(fontSize: 12.5, color: AppColors.sub))),
+                      Expanded(child: Text(e[2], style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.ink, height: 1.4))),
+                    ]),
+                  ),
+              ]),
+            ),
+
+            // 규제 영역별 필수 고지 (§19)
             Container(
               margin: const EdgeInsets.only(top: 14),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(color: AppColors.page, borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(color: AppColors.purpleSoft, borderRadius: BorderRadius.circular(12)),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Padding(padding: EdgeInsets.only(bottom: 5), child: Text('⚠️ 참여 전 확인', style: TextStyle(fontSize: 11.5, color: AppColors.sub, fontWeight: FontWeight.w700))),
-                  const Text('제휴사 정책에 따라 지급 조건·시점이 달라질 수 있어요. 조건을 충족하면 포인트가 자동 적립됩니다.', style: TextStyle(fontSize: 12, color: AppColors.sub, height: 1.6)),
+                  Padding(padding: const EdgeInsets.only(bottom: 5), child: Text('⚠️ 참여 전 확인 · ${dis.label}', style: const TextStyle(fontSize: 11.5, color: AppColors.purple, fontWeight: FontWeight.w800))),
+                  Text(dis.body, style: const TextStyle(fontSize: 12, color: AppColors.purple, height: 1.6)),
+                  if (m.disclosureKey != 'partner')
+                    Padding(padding: const EdgeInsets.only(top: 6), child: Text(Disclosures.partner.body, style: const TextStyle(fontSize: 12, color: AppColors.purple, height: 1.6))),
                 ],
               ),
             ),

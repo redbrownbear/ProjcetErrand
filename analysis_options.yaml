@@ -11,6 +11,9 @@ include: package:flutter_lints/flutter.yaml
 
 analyzer:
   exclude:
+    # 작업용 git worktree가 프로젝트 안에 생기면 lib/ 전체가 한 벌 더 들어온다.
+    # 분석기가 같은 파일을 두 번 보지 않도록 제외한다. (IDE의 중복 오류 표시 방지)
+    - .claude/**
     - build/**
     - android/**
     - ios/**

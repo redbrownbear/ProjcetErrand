@@ -46,3 +46,6 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Claude Code 작업용 worktree·세션 파일 (프로젝트 안에 생기지만 커밋 대상이 아니다)
+.claude/worktrees/
