@@ -3,8 +3,12 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../core/navigation/screen_route.dart';
+import '../core/storage/local_store.dart';
 import '../core/theme/colors.dart';
 import '../core/utils/formatters.dart';
+import '../core/widgets/screen_frame.dart';
+import '../features/activity/screens/activity_view.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/auth/services/auth_service.dart';
 import '../features/benefits/data/point_rules.dart';
@@ -16,12 +20,15 @@ import '../features/benefits/screens/benefits_view.dart';
 import '../features/chat/screens/chat_view.dart';
 import '../features/errand/models/offer.dart';
 import '../features/errand/models/task_item.dart';
+import '../features/errand/models/trade.dart';
 import '../features/errand/navigation/errand_actions.dart';
 import '../features/errand/repositories/errand_repository.dart';
 import '../features/errand/screens/home_content.dart';
+import '../features/errand/screens/list_screen.dart';
 import '../features/errand/screens/post_request.dart';
 import '../features/errand/widgets/region_sheet.dart';
 import '../features/profile/screens/me_view.dart';
+import '../features/profile/screens/saved_screen.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -31,11 +38,9 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   final ErrandRepository _errandRepository = LocalErrandRepository();
-  String tab = 'home'; // home | benefits | chat | me
-  List<int> grabbed = [];
-  Map<int, List<Offer>> offers = {};
+  String tab = 'home'; // home | activity | chat | me
   String? toast;
-  late List<TaskItem> items;
+  late final List<TaskItem> _seed;
   String scope = '서울 서초구';
   int points = 3200;
   final int steps = 6430;
@@ -47,10 +52,29 @@ class _HomeShellState extends State<HomeShell> {
   List<String> doneMissions = [];
   final RewardLedger _rewards = RewardLedger();
 
+  // 이 기기에 보관되는 체험 상태 (LocalStore 참고)
+  List<TaskItem> created = []; // 내가 올린 부탁, 최신순
+  List<int> bookmarks = []; // 관심 저장
+  Map<int, Trade> trades = {}; // 지원 내역과 거래 단계
+  Map<int, List<Offer>> offers = {}; // 보낸 가격 제안
+
+  /// 셸 상태가 바뀔 때마다 올라가는 번호. 푸시된 화면(매일의 혜택·관심 저장 등)이
+  /// 이것을 듣고 다시 그려져서, 탭이 아니어도 포인트·관심 목록이 바로 반영된다.
+  final ValueNotifier<int> _rev = ValueNotifier(0);
+
+  List<TaskItem> get items => [...created, ..._seed];
+
+  /// 취소하지 않은 지원 내역의 부탁 id
+  List<int> get grabbed => [for (final e in trades.entries) if (e.value.status != 'cancelled') e.key];
+  int get activeCount => trades.values.where((t) => t.isActive).length;
+
   bool get isLoggedIn => AuthService().currentUser != null;
   StreamSubscription<User?>? _authSub;
 
-  ErrandActions get actions => ErrandActions(grabbed: grabbed, onGrab: grab, onOffer: sendOffer, offers: offers);
+  ErrandActions get actions => ErrandActions(
+        grabbed: grabbed, onGrab: grab, onOffer: sendOffer, offers: offers,
+        isSaved: bookmarks.contains, toggleSave: toggleSave,
+      );
 
   /// 콘텐츠 열람은 항상 허용하되, 실제 참여 행동(지원/제안/등록/적립/교환 등)만
   /// 로그인 여부로 막아 로그인 화면으로 유도함.
@@ -70,22 +94,54 @@ class _HomeShellState extends State<HomeShell> {
   @override
   void initState() {
     super.initState();
-    items = _errandRepository.fetchSeedItems();
+    _seed = _errandRepository.fetchSeedItems();
+    _loadLocal();
     _authSub = AuthService().authStateChanges.listen((_) {
       if (mounted) setState(() {});
     });
   }
 
+  void _loadLocal() {
+    created = [for (final j in LocalStore.read<List<dynamic>>('requests', const [])) ?TaskItem.fromJson(j)];
+    bookmarks = LocalStore.read<List<dynamic>>('bookmarks', const []).whereType<int>().toList();
+    trades = {
+      for (final e in LocalStore.read<Map<String, dynamic>>('trades', const {}).entries)
+        if (int.tryParse(e.key) != null && Trade.fromJson(e.value) != null) int.parse(e.key): Trade.fromJson(e.value)!,
+    };
+    offers = {
+      for (final e in LocalStore.read<Map<String, dynamic>>('offers', const {}).entries)
+        if (int.tryParse(e.key) != null && e.value is List)
+          int.parse(e.key): [
+            for (final o in e.value as List)
+              if (o is Map && o['price'] is int) Offer(o['price'] as int, o['msg'] is String ? o['msg'] as String : ''),
+          ],
+    };
+  }
+
+  void _saveRequests() => LocalStore.write('requests', [for (final it in created) it.toJson()]);
+  void _saveBookmarks() => LocalStore.write('bookmarks', bookmarks);
+  void _saveTrades() => LocalStore.write('trades', {for (final e in trades.entries) '${e.key}': e.value.toJson()});
+  void _saveOffers() => LocalStore.write('offers', {
+        for (final e in offers.entries) '${e.key}': [for (final o in e.value) {'price': o.price, 'msg': o.msg}],
+      });
+
+  @override
+  void setState(VoidCallback fn) {
+    super.setState(fn);
+    _rev.value++;
+  }
+
   @override
   void dispose() {
     _authSub?.cancel();
+    _rev.dispose();
     super.dispose();
   }
 
   void flash(String m) {
     setState(() => toast = m);
     Future.delayed(const Duration(milliseconds: 2400), () {
-      if (mounted) setState(() => toast = null);
+      if (mounted && toast == m) setState(() => toast = null);
     });
   }
 
@@ -127,20 +183,64 @@ class _HomeShellState extends State<HomeShell> {
         earn(m.points, m.title, key: 'mission:${m.id}', daily: false);
       });
 
+  /// 혜택은 하단 탭에서 빠지고 마이 > 매일의 혜택으로 옮겨졌다.
   void goPointsHub() {
     Navigator.of(context).popUntil((r) => r.isFirst);
-    setState(() => tab = 'benefits');
+    _pushLive(() => ScreenFrame(
+          title: '매일의 혜택',
+          subtitle: '오늘 내가 더 벌 수 있는 방법',
+          onBack: () => Navigator.of(context).pop(),
+          child: _benefitsView(),
+        ));
   }
 
+  /// 셸 상태가 바뀌면 다시 그려지는 전체화면을 띄운다.
+  void _pushLive(Widget Function() build) {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => ListenableBuilder(listenable: _rev, builder: (_, _) => build())));
+  }
+
+  void toggleSave(int id) {
+    final saved = bookmarks.contains(id);
+    setState(() => bookmarks = saved ? bookmarks.where((x) => x != id).toList() : [...bookmarks, id]);
+    _saveBookmarks();
+    flash(saved ? '관심 저장을 해제했어요' : '관심 저장했어요 · 마이에서 볼 수 있어요');
+  }
+
+  /// 지원하기 → "요청자 확인 대기"로 저장하고 진행 중 탭으로 이동.
+  /// 실제 상대방에게 전송되지는 않는다.
   void grab(TaskItem it) => requireLogin(() {
+        if (it.isMine || it.isExpired) {
+          flash(it.isMine ? '내가 올린 부탁에는 지원할 수 없어요' : '마감된 부탁이에요');
+          return;
+        }
+        final cur = trades[it.id];
+        if (cur != null && cur.status != 'cancelled') return;
+        Navigator.of(context).popUntil((r) => r.isFirst);
         setState(() {
-          if (!grabbed.contains(it.id)) grabbed.add(it.id);
+          trades = {...trades, it.id: Trade.pending()};
+          tab = 'activity';
         });
-        flash(it.mode == 'together' ? '신청했어요. 채팅으로 이어드릴게요' : '지원했어요. 요청자가 확인하면 매칭돼요');
+        _saveTrades();
+        flash(it.mode == 'together' ? '신청했어요 · 진행 중에서 확인하세요' : '지원했어요 · 요청자 응답은 아직 체험 단계예요');
       });
 
+  void updateTrade(int id, String action) {
+    final cur = trades[id];
+    if (cur == null) return;
+    final next = cur.advance(action);
+    if (identical(next, cur)) return; // 허용되지 않는 단계 이동
+    setState(() => trades = {...trades, id: next});
+    _saveTrades();
+  }
+
   void sendOffer(TaskItem it, int price, String msg) => requireLogin(() {
-        setState(() => offers.putIfAbsent(it.id, () => []).add(Offer(price, msg)));
+        final min = it.mode == 'sea' ? seaMin : 1000;
+        if (price < min) {
+          flash('제안 금액은 ${won(min)} 이상이어야 해요');
+          return;
+        }
+        setState(() => offers = {...offers, it.id: [...?offers[it.id], Offer(price, msg)]});
+        _saveOffers();
         flash('가격 제안을 보냈어요. 요청자에게만 보여요');
       });
 
@@ -156,7 +256,8 @@ class _HomeShellState extends State<HomeShell> {
       city: data.city,
       country: data.country,
       region: data.mode == 'sea' ? null : (scope == '전국' ? '우리 동네' : scope),
-      distM: data.mode == 'sea' ? 9e9 : 150,
+      // 새 부탁은 실제 거리를 알 수 없어 임의의 거리를 붙이지 않는다
+      distM: data.mode == 'sea' ? 9e9 : null,
       mins: data.mode == 'sea' ? 0 : data.mins,
       price: data.price,
       who: '나',
@@ -164,21 +265,15 @@ class _HomeShellState extends State<HomeShell> {
       // (TaskItem의 기본값은 프로필이 이미 쌓인 SEED 데이터용이다)
       rating: 0, reviews: 0, deals: 0, resp: 0, verified: false,
       hot: data.hot,
-      x: 50, y: 50,
+      deadline: data.deadline, deliveryPlace: data.deliveryPlace, budget: data.budget,
+      payment: data.payment, completion: data.completion,
     );
     setState(() {
-      if (it.hot) {
-        items.insert(0, it);
-      } else {
-        final i = items.indexWhere((x) => !x.hot);
-        if (i == -1) {
-          items.add(it);
-        } else {
-          items.insert(i, it);
-        }
-      }
+      created = [it, ...created];
+      tab = 'home';
     });
-    flash(it.hot ? '급해요로 목록 맨 위에 올렸어요' : '부탁을 올렸어요');
+    _saveRequests();
+    flash(it.hot ? '급해요로 목록 맨 위에 올렸어요 · 이 기기에 저장돼요' : '부탁을 올렸어요 · 이 기기에 저장돼요');
   }
 
   void openPost() => requireLogin(() {
@@ -195,20 +290,32 @@ class _HomeShellState extends State<HomeShell> {
     if (picked != null) setState(() => scope = picked);
   }
 
+  Widget _benefitsView() => BenefitsView(
+        points: points, steps: steps, coupons: coupons, items: items, scope: scope, actions: actions,
+        monthEarn: monthEarn, monthPoints: monthPoints, freeLeft: freeLeft, doneMissions: doneMissions,
+        earn: earn, isClaimed: isClaimed, redeem: redeem, useCoupon: useCoupon, completeMission: completeMission, goPointsHub: goPointsHub,
+        showHeader: false,
+      );
+
+  void _openFilteredList(String title, bool Function(TaskItem) filter) => _pushLive(() => ListScreen(
+        config: ScreenRoute(name: 'list', title: title, sortable: true, filter: filter),
+        items: items, scope: scope, actions: actions,
+      ));
+
   Widget _body() {
     switch (tab) {
-      case 'benefits':
-        return BenefitsView(
-          points: points, steps: steps, coupons: coupons, items: items, scope: scope, actions: actions,
-          monthEarn: monthEarn, monthPoints: monthPoints, freeLeft: freeLeft, doneMissions: doneMissions,
-          earn: earn, isClaimed: isClaimed, redeem: redeem, useCoupon: useCoupon, completeMission: completeMission, goPointsHub: goPointsHub,
-        );
+      case 'activity':
+        return ActivityView(items: items, trades: trades, updateTrade: updateTrade, openDetail: (it) => actions.open(context, it));
       case 'chat':
-        return ChatView(items: items, grabbed: grabbed);
+        return ChatView(onGoActivity: () => _switchTab('activity'));
       case 'me':
         return MeView(
           points: points, coupons: coupons, useCoupon: useCoupon, goPointsHub: goPointsHub,
           freeLeft: freeLeft, monthPoints: monthPoints, isLoggedIn: isLoggedIn, onLogin: () => requireLogin(() {}),
+          savedCount: bookmarks.length, appliedCount: grabbed.length, myCount: created.length,
+          onOpenSaved: () => _pushLive(() => SavedScreen(items: items, bookmarks: bookmarks, actions: actions)),
+          onOpenApplied: () => _openFilteredList('지원한 부탁', (i) => grabbed.contains(i.id)),
+          onOpenMine: () => _openFilteredList('내가 올린 부탁', (i) => i.isMine),
         );
       default:
         return HomeContent(
@@ -217,6 +324,7 @@ class _HomeShellState extends State<HomeShell> {
           openPost: openPost, openRegion: openRegion,
           earn: earn, isClaimed: isClaimed, redeem: redeem, useCoupon: useCoupon, completeMission: completeMission,
           flash: flash, goPointsHub: goPointsHub,
+          activeCount: activeCount, goActivity: () => _switchTab('activity'),
         );
     }
   }
@@ -263,17 +371,13 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   Widget _bottomNav() {
-    final tabs = [
-      ['home', '홈', '🏠'],
-      ['benefits', '혜택', '🎁'],
-    ];
     return Container(
       decoration: const BoxDecoration(color: AppColors.card, border: Border(top: BorderSide(color: AppColors.line))),
       padding: const EdgeInsets.only(bottom: 8, top: 4),
       child: Row(
         children: [
-          _navBtn(tabs[0]),
-          _navBtn(tabs[1]),
+          _navBtn(['home', '홈', '🏠']),
+          _navBtn(['activity', '진행 중', '📋'], badge: activeCount),
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -295,7 +399,7 @@ class _HomeShellState extends State<HomeShell> {
               ],
             ),
           ),
-          _navBtn(['chat', '채팅', '💬'], badge: grabbed.length),
+          _navBtn(['chat', '채팅', '💬']),
           _navBtn(['me', '내정보', '👤']),
         ],
       ),

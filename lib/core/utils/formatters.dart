@@ -20,8 +20,28 @@ String kwon(int n) => '${(n / 1000).round()}천원';
 
 String distLabel(TaskItem it) {
   if (it.mode == 'sea') return it.country ?? '해외';
-  return it.distM >= 1000 ? '${(it.distM / 1000).round()}km' : '${it.distM.round()}m';
+  final d = it.distM;
+  if (d == null) return '거리 미확인';
+  return d >= 1000 ? '${(d / 1000).round()}km' : '${d.round()}m';
 }
+
+/// 마감 안내 문구. 마감 정보가 없는 부탁은 임의로 만들지 않고 협의로 표시한다.
+String deadlineLabel(TaskItem it) {
+  final d = it.deadline;
+  if (d == null) return '마감 시각 협의';
+  return '${dateTimeLabel(d)}까지';
+}
+
+String dateTimeLabel(DateTime d) {
+  String two(int n) => n.toString().padLeft(2, '0');
+  return '${d.month}월 ${d.day}일 ${two(d.hour)}:${two(d.minute)}';
+}
+
+const paymentLabels = {
+  'none': '구매비 없음',
+  'prepaid': '요청자가 매장에 결제 완료',
+  'reimburse': '도우미 선결제 후 영수증 정산',
+};
 
 String metaOf(TaskItem it) {
   if (it.mode == 'sea') {

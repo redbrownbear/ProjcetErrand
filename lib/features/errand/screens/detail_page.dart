@@ -7,6 +7,7 @@ import '../data/categories.dart';
 import '../models/offer.dart';
 import '../models/task_item.dart';
 import '../widgets/offer_sheet.dart';
+import '../widgets/request_facts.dart';
 
 class DetailPage extends StatefulWidget {
   final TaskItem it;
@@ -14,9 +15,11 @@ class DetailPage extends StatefulWidget {
   final List<Offer> myOffers;
   final void Function(TaskItem) onGrab;
   final void Function(TaskItem, int, String) onOffer;
+  final bool Function(int id) isSaved;
+  final void Function(int id) toggleSave;
   const DetailPage({
     super.key, required this.it, required this.grabbed, required this.myOffers,
-    required this.onGrab, required this.onOffer,
+    required this.onGrab, required this.onOffer, required this.isSaved, required this.toggleSave,
   });
   @override
   State<DetailPage> createState() => _DetailPageState();
@@ -31,6 +34,8 @@ class _DetailPageState extends State<DetailPage> {
     final sea = it.mode == 'sea';
     final paid = it.mode == 'ask' || sea;
     final done = widget.grabbed.contains(it.id);
+    // 자기 부탁·마감된 부탁에는 지원할 수 없다
+    final blocked = it.isMine ? '내가 올린 부탁' : it.isExpired ? '마감된 부탁' : null;
 
     return Material(
       color: AppColors.page,
@@ -45,6 +50,8 @@ class _DetailPageState extends State<DetailPage> {
             child: Row(children: [
               InkWell(onTap: () => Navigator.of(context).pop(), borderRadius: BorderRadius.circular(99), child: const Padding(padding: EdgeInsets.only(right: 2), child: Text('‹', style: TextStyle(fontSize: 24, color: AppColors.ink)))),
                 Text(sea ? '해외 대행구매' : paid ? '부탁해요' : '같이해요', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.ink)),
+                const Spacer(),
+                _saveBtn(it),
               ]),
             ),
             Expanded(
@@ -101,7 +108,7 @@ class _DetailPageState extends State<DetailPage> {
                               padding: const EdgeInsets.only(top: 13),
                               decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
                               child: Row(children: [
-                                _stat('★ ${it.rating.toStringAsFixed(1)}', '후기 ${it.reviews}'),
+                                it.reviews > 0 ? _stat('★ ${it.rating.toStringAsFixed(1)}', '후기 ${it.reviews}') : _stat('-', '후기 없음'),
                                 _statDivider(),
                                 _stat('${it.deals}회', '거래 완료'),
                                 _statDivider(),
@@ -117,6 +124,7 @@ class _DetailPageState extends State<DetailPage> {
                       ),
                     ),
                     const SizedBox(height: 18),
+                    if (paid) ...[RequestFacts(it: it), const SizedBox(height: 18)],
                     const Text('상세 내용', style: TextStyle(fontSize: 12.5, color: AppColors.sub, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 7),
                     Text(it.desc, style: const TextStyle(fontSize: 14.5, color: AppColors.ink, height: 1.7)),
@@ -169,12 +177,12 @@ class _DetailPageState extends State<DetailPage> {
             Container(
               padding: const EdgeInsets.fromLTRB(22, 12, 22, 16),
               decoration: const BoxDecoration(color: AppColors.card, border: Border(top: BorderSide(color: AppColors.line))),
-              child: done
+              child: (done || blocked != null)
                   ? Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      decoration: BoxDecoration(color: AppColors.greenSoft, borderRadius: BorderRadius.circular(14)),
-                      child: const Text('지원 완료 ✓', textAlign: TextAlign.center, style: TextStyle(color: AppColors.green, fontWeight: FontWeight.w800, fontSize: 15)),
+                      decoration: BoxDecoration(color: blocked != null ? AppColors.page : AppColors.greenSoft, borderRadius: BorderRadius.circular(14)),
+                      child: Text(blocked ?? '지원 내역에 저장됨 ✓', textAlign: TextAlign.center, style: TextStyle(color: blocked != null ? AppColors.sub : AppColors.green, fontWeight: FontWeight.w800, fontSize: 15)),
                     )
                   : Row(children: [
                       if (paid)
@@ -216,6 +224,18 @@ class _DetailPageState extends State<DetailPage> {
               },
             ),
         ]),
+    );
+  }
+
+  Widget _saveBtn(TaskItem it) {
+    final saved = widget.isSaved(it.id);
+    return IconButton(
+      tooltip: saved ? '관심 해제' : '관심 저장',
+      onPressed: () {
+        widget.toggleSave(it.id);
+        setState(() {});
+      },
+      icon: Icon(saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded, color: saved ? AppColors.yellowDeep : AppColors.ink),
     );
   }
 

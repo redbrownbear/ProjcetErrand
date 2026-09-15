@@ -1,5 +1,6 @@
 import '../../features/gongu/models/gongu.dart';
 import '../../features/benefits/models/partner_mission.dart';
+import '../../features/errand/models/task_item.dart';
 
 /// 홈 셸의 전체화면 스택에 쌓이는 라우트 설정.
 /// name: list | overseas | country | search | map | community | walk | shop | coupons | mission | earn | gongu | gongudetail
@@ -22,6 +23,8 @@ class ScreenRoute {
   final PartnerMission? mission;
   // gongudetail 화면
   final Gongu? gongu;
+  // list 화면: 지정하면 지역·모드 구분 없이 이 조건으로만 고른다 (지원한 부탁·내가 올린 부탁)
+  final bool Function(TaskItem)? filter;
 
   const ScreenRoute({
     required this.name,
@@ -38,5 +41,6 @@ class ScreenRoute {
     this.cc,
     this.mission,
     this.gongu,
+    this.filter,
   });
 }

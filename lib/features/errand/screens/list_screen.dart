@@ -35,6 +35,7 @@ class _ListScreenState extends State<ListScreen> {
   Widget build(BuildContext context) {
     final config = widget.config;
     var base = widget.items.where((i) {
+      if (config.filter != null) return config.filter!(i);
       switch (config.base) {
         case 'earn':
           return (i.mode == 'ask' && _inScope(i)) || i.mode == 'sea';
@@ -50,17 +51,18 @@ class _ListScreenState extends State<ListScreen> {
     if (config.onlyHot) base = base.where((i) => i.hot).toList();
     if (config.maxMins != null) base = base.where((i) => i.mins > 0 && i.mins <= config.maxMins!).toList();
     if (config.catChips && cat != 'all') base = base.where((i) => i.cat == cat).toList();
-    if (fdist != 'all') base = base.where((i) => i.distM <= double.parse(fdist)).toList();
+    // 거리 미확인 부탁은 거리 조건에서 제외한다
+    if (fdist != 'all') base = base.where((i) => i.distM != null && i.distM! <= double.parse(fdist)).toList();
     if (ftime != 'all') base = base.where((i) => i.mins > 0 && i.mins <= int.parse(ftime)).toList();
     if (fprice != 'all') base = base.where((i) => i.price >= int.parse(fprice)).toList();
 
+    // 급해요 우선은 추천순에서만. 사용자가 고른 정렬(가까운 순 등)을 덮어쓰지 않는다.
     base.sort((a, b) {
-      if (a.hot != b.hot) return a.hot ? -1 : 1;
       switch (sort) {
         case 'price':
           return b.price - a.price;
         case 'dist':
-          return a.distM.compareTo(b.distM);
+          return a.distSort.compareTo(b.distSort);
         case 'time':
           return a.mins.compareTo(b.mins);
         case 'new':
@@ -68,7 +70,7 @@ class _ListScreenState extends State<ListScreen> {
         case 'deals':
           return b.deals - a.deals;
         default:
-          return 0;
+          return a.hot == b.hot ? 0 : (a.hot ? -1 : 1);
       }
     });
 

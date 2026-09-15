@@ -59,6 +59,16 @@ class TaskCard extends StatelessWidget {
                     ]),
                     const SizedBox(height: 2),
                     Text(sea ? (it.country ?? '') : '${distLabel(it)} · 약 ${it.mins}분', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: AppColors.sub)),
+                    // 마감·전달 정보는 입력된 부탁에만 보여준다 (샘플에는 없음)
+                    if (it.deadline != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          [it.isExpired ? '마감됨' : deadlineLabel(it), if (it.deliveryPlace != null) '전달 ${it.deliveryPlace}'].join(' · '),
+                          maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 12, color: it.isExpired ? AppColors.faint : AppColors.yellowDeep, fontWeight: FontWeight.w600),
+                        ),
+                      ),
                   ],
                 ),
               ),

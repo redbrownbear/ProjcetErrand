@@ -61,7 +61,10 @@ class BenefitsView extends StatefulWidget {
     required this.completeMission,
     required this.goPointsHub,
     required this.isClaimed,
+    this.showHeader = true,
   });
+  /// 마이 > 매일의 혜택처럼 화면 프레임이 제목을 그리는 경우 false.
+  final bool showHeader;
   @override
   State<BenefitsView> createState() => _BenefitsViewState();
 }
@@ -144,8 +147,10 @@ class _BenefitsViewState extends State<BenefitsView> {
     return ListView(
       padding: const EdgeInsets.only(bottom: 26),
       children: [
-        const Padding(padding: EdgeInsets.fromLTRB(16, 18, 16, 2), child: Text('혜택', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.ink))),
-        const Padding(padding: EdgeInsets.fromLTRB(16, 0, 16, 4), child: Text('오늘 내가 더 벌 수 있는 방법', style: TextStyle(fontSize: 12.5, color: AppColors.sub))),
+        if (widget.showHeader) ...[
+          const Padding(padding: EdgeInsets.fromLTRB(16, 18, 16, 2), child: Text('혜택', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.ink))),
+          const Padding(padding: EdgeInsets.fromLTRB(16, 0, 16, 4), child: Text('오늘 내가 더 벌 수 있는 방법', style: TextStyle(fontSize: 12.5, color: AppColors.sub))),
+        ],
 
         // 내 포인트 + 오늘 예상
         Container(

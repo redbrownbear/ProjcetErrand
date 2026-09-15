@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/storage/local_store.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../benefits/data/point_rules.dart';
@@ -13,9 +14,15 @@ class NewRequestData {
   final String? cc, city, country;
   final int mins, price;
   final bool hot;
+  final DateTime deadline;
+  final String deliveryPlace;
+  final int budget;
+  final String payment; // none | prepaid | reimburse
+  final String completion;
   const NewRequestData({
     required this.mode, required this.cat, required this.title, required this.desc,
     required this.place, this.cc, this.city, this.country, required this.mins, required this.price, required this.hot,
+    required this.deadline, required this.deliveryPlace, required this.budget, required this.payment, required this.completion,
   });
 }
 
@@ -28,6 +35,8 @@ class PostRequest extends StatefulWidget {
 }
 
 class _PostRequestState extends State<PostRequest> {
+  static const _draftKey = 'draft';
+
   int step = 0;
   String kind = 'ask'; // ask | sea
   String cat = 'buy';
@@ -36,19 +45,66 @@ class _PostRequestState extends State<PostRequest> {
   int mins = 30;
   int price = 10000;
   bool hot = false;
+  DateTime? deadline;
+  String payment = 'none';
   final titleCtrl = TextEditingController();
   final descCtrl = TextEditingController();
   final placeCtrl = TextEditingController();
+  final deliveryCtrl = TextEditingController();
+  final budgetCtrl = TextEditingController();
+  final completionCtrl = TextEditingController();
 
   bool get sea => kind == 'sea';
   // 사례비 하한. 0원짜리 부탁이 올라가지 않도록 동네 부탁도 최소 1,000원을 받는다.
   int get floor => sea ? seaMin : 1000;
+  int get budget => int.tryParse(budgetCtrl.text.trim()) ?? 0;
+  bool get deadlineOk => deadline != null && deadline!.isAfter(DateTime.now());
+
+  @override
+  void initState() {
+    super.initState();
+    // 작성 도중 닫았다가 다시 열면 내용을 복원한다. 등록에 성공하면 지운다.
+    final d = LocalStore.read<Map<String, dynamic>>(_draftKey, const {});
+    String s(String k, String f) => d[k] is String ? d[k] as String : f;
+    int n(String k, int f) => d[k] is int ? d[k] as int : f;
+    kind = s('kind', kind) == 'sea' ? 'sea' : 'ask';
+    cat = s('cat', cat);
+    cc = s('cc', cc);
+    city = s('city', city);
+    mins = n('mins', mins);
+    price = n('price', price);
+    hot = d['hot'] == true;
+    deadline = DateTime.tryParse(s('deadline', ''));
+    payment = paymentLabels.containsKey(d['payment']) ? d['payment'] as String : payment;
+    titleCtrl.text = s('title', '');
+    descCtrl.text = s('desc', '');
+    placeCtrl.text = s('place', '');
+    deliveryCtrl.text = s('delivery', '');
+    budgetCtrl.text = s('budget', '');
+    completionCtrl.text = s('completion', '');
+  }
+
+  @override
+  void setState(VoidCallback fn) {
+    super.setState(fn);
+    _saveDraft();
+  }
+
+  void _saveDraft() => LocalStore.write(_draftKey, {
+        'kind': kind, 'cat': cat, 'cc': cc, 'city': city, 'mins': mins, 'price': price, 'hot': hot,
+        'deadline': deadline?.toIso8601String(), 'payment': payment,
+        'title': titleCtrl.text, 'desc': descCtrl.text, 'place': placeCtrl.text, 'delivery': deliveryCtrl.text,
+        'budget': budgetCtrl.text, 'completion': completionCtrl.text,
+      });
 
   @override
   void dispose() {
     titleCtrl.dispose();
     descCtrl.dispose();
     placeCtrl.dispose();
+    deliveryCtrl.dispose();
+    budgetCtrl.dispose();
+    completionCtrl.dispose();
     super.dispose();
   }
 
@@ -59,17 +115,31 @@ class _PostRequestState extends State<PostRequest> {
     });
   }
 
-  /// 각 단계를 넘어갈 수 있는지. 예전에는 1·2단계가 무조건 통과라, 장소를 비우거나
-  /// 0원짜리 부탁도 그대로 올라갔다.
+  Future<void> _pickDeadline() async {
+    final now = DateTime.now();
+    final init = (deadline != null && deadline!.isAfter(now)) ? deadline! : now.add(const Duration(hours: 2));
+    final date = await showDatePicker(
+      context: context,
+      initialDate: init,
+      firstDate: DateTime(now.year, now.month, now.day),
+      lastDate: now.add(const Duration(days: 90)),
+    );
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(init));
+    if (time == null || !mounted) return;
+    setState(() => deadline = DateTime(date.year, date.month, date.day, time.hour, time.minute));
+  }
+
+  /// 각 단계를 넘어갈 수 있는지.
   bool _readyAt(int s) {
     switch (s) {
       case 0:
         return titleCtrl.text.trim().length >= 2 && descCtrl.text.trim().length >= 10;
       case 1:
-        // 해외 대행은 도시·구매 장소가 UI상 (선택) 항목이라 국가만 확인한다.
-        return sea ? cc.isNotEmpty : (placeCtrl.text.trim().isNotEmpty && mins > 0);
+        final places = placeCtrl.text.trim().length >= 2 && deliveryCtrl.text.trim().length >= 2 && deadlineOk;
+        return places && (sea ? (cc.isNotEmpty && city.isNotEmpty) : mins > 0);
       default:
-        return price >= floor;
+        return price >= floor && completionCtrl.text.trim().length >= 5 && (payment == 'none' || budget > 0);
     }
   }
 
@@ -80,9 +150,11 @@ class _PostRequestState extends State<PostRequest> {
       case 0:
         return '제목은 2자, 설명은 10자 이상 적어주세요';
       case 1:
-        return sea ? '어느 나라에서 필요한지 골라주세요' : '만날 장소를 적어주세요';
+        return sea ? '도시, 구매 장소, 전달 장소와 앞으로의 마감 시각을 입력해 주세요' : '만날 장소, 전달 장소와 앞으로의 마감 시각을 입력해 주세요';
       default:
-        return '사례비를 ${nf(floor)}원 이상으로 정해주세요';
+        if (price < floor) return '사례비를 ${nf(floor)}원 이상으로 정해주세요';
+        if (payment != 'none' && budget <= 0) return '물품 예산을 입력해 주세요';
+        return '완료 확인 방법을 5자 이상 적어주세요';
     }
   }
 
@@ -97,7 +169,10 @@ class _PostRequestState extends State<PostRequest> {
       city: sea ? city : null,
       country: sea ? '${country.flag} ${country.name}${city.isNotEmpty ? ' $city' : ''}' : null,
       mins: sea ? 0 : mins, price: finalPrice, hot: hot,
+      deadline: deadline!, deliveryPlace: deliveryCtrl.text.trim(),
+      budget: payment == 'none' ? 0 : budget, payment: payment, completion: completionCtrl.text.trim(),
     ));
+    LocalStore.remove(_draftKey);
     Navigator.of(context).pop();
   }
 
@@ -185,6 +260,7 @@ class _PostRequestState extends State<PostRequest> {
 
   Widget _stepTitle(String t) => Padding(padding: const EdgeInsets.only(bottom: 18), child: Text(t, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800, color: AppColors.ink, letterSpacing: -0.3)));
   Widget _label(String t) => Padding(padding: const EdgeInsets.only(bottom: 9), child: Text(t, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: AppColors.ink)));
+  Widget _hint(String t) => Padding(padding: const EdgeInsets.only(top: 6), child: Text(t, style: const TextStyle(fontSize: 12, color: AppColors.sub)));
 
   InputDecoration _dec(String hint) => InputDecoration(
         hintText: hint,
@@ -199,6 +275,10 @@ class _PostRequestState extends State<PostRequest> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _stepTitle('무엇을 부탁할까요?'),
+        const Padding(
+          padding: EdgeInsets.only(bottom: 14),
+          child: Text('작성 중인 내용은 이 기기에 자동 보관돼요.', style: TextStyle(fontSize: 12, color: AppColors.sub)),
+        ),
         Row(children: [
           Expanded(child: _segBtn(!sea, () => _setKind('ask'), '🇰🇷 우리 동네', AppColors.yellow, AppColors.yellowSoft)),
           const SizedBox(width: 8),
@@ -261,8 +341,9 @@ class _PostRequestState extends State<PostRequest> {
         TextField(
           controller: descCtrl,
           maxLines: 4,
+          maxLength: 2000,
           onChanged: (_) => setState(() {}),
-          decoration: _dec(sea ? '품목·수량, 예산, 귀국 예정일 등을 적어주세요' : '무엇을, 어디서, 언제까지 필요한지 적어주세요'),
+          decoration: _dec(sea ? '품목·수량, 예산, 귀국 예정일 등을 적어주세요' : '필요한 물건, 수량, 전달 방법을 알려주세요'),
         ),
       ],
     );
@@ -298,11 +379,7 @@ class _PostRequestState extends State<PostRequest> {
             }).toList(),
           ),
           const SizedBox(height: 16),
-          Text.rich(TextSpan(style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: AppColors.ink), children: const [
-            TextSpan(text: '도시 '),
-            TextSpan(text: '(선택)', style: TextStyle(color: AppColors.faint, fontWeight: FontWeight.w500)),
-          ])),
-          const SizedBox(height: 9),
+          _label('도시'),
           Wrap(
             spacing: 8, runSpacing: 8,
             children: countryOf(cc).cities.map((ci) {
@@ -323,14 +400,10 @@ class _PostRequestState extends State<PostRequest> {
             }).toList(),
           ),
           const SizedBox(height: 16),
-          Text.rich(TextSpan(style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: AppColors.ink), children: const [
-            TextSpan(text: '구매 장소 '),
-            TextSpan(text: '(선택)', style: TextStyle(color: AppColors.faint, fontWeight: FontWeight.w500)),
-          ])),
-          const SizedBox(height: 9),
-          TextField(controller: placeCtrl, decoration: _dec('예: 시부야 돈키호테')),
+          _label('구매할 매장'),
+          TextField(controller: placeCtrl, onChanged: (_) => setState(() {}), decoration: _dec('예: 시부야 돈키호테')),
         ] else ...[
-          _label('어디서요?'),
+          _label('만날 장소'),
           TextField(
             controller: placeCtrl,
             onChanged: (_) => setState(() {}),
@@ -345,6 +418,39 @@ class _PostRequestState extends State<PostRequest> {
               Expanded(child: Padding(padding: const EdgeInsets.only(right: 8), child: _quickBtn('$m분', mins == m, () => setState(() => mins = m)))),
           ]),
         ],
+        const SizedBox(height: 18),
+        _label('전달·완료 장소'),
+        TextField(controller: deliveryCtrl, onChanged: (_) => setState(() {}), decoration: _dec('예: 서초역 2번 출구 / 같은 장소')),
+        const SizedBox(height: 18),
+        _label('완료해야 하는 날짜와 시각'),
+        InkWell(
+          onTap: _pickDeadline,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+            decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: deadline != null && !deadlineOk ? AppColors.red : AppColors.line)),
+            child: Row(children: [
+              const Text('🗓', style: TextStyle(fontSize: 17)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  deadline == null ? '날짜와 시각 선택' : '${dateTimeLabel(deadline!)}까지',
+                  style: TextStyle(fontSize: 14.5, color: deadline == null ? AppColors.faint : AppColors.ink, fontWeight: deadline == null ? FontWeight.w500 : FontWeight.w700),
+                ),
+              ),
+              const Text('›', style: TextStyle(fontSize: 18, color: AppColors.faint)),
+            ]),
+          ),
+        ),
+        _hint(deadline != null && !deadlineOk ? '이미 지난 시각이에요. 현재보다 이후 시각을 선택해 주세요.' : '현재보다 이후 시각을 선택해 주세요.'),
+        const SizedBox(height: 14),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(color: AppColors.yellowSoft, borderRadius: BorderRadius.circular(12)),
+          child: Text(sea ? '📍 매장 이름을 자세히 적어주세요.' : '📍 여러 사람이 오가는 공개된 장소가 좋아요.', style: const TextStyle(fontSize: 12, color: AppColors.yellowDeep, fontWeight: FontWeight.w600)),
+        ),
       ],
     );
   }
@@ -356,18 +462,19 @@ class _PostRequestState extends State<PostRequest> {
       id: -1, mode: kind, cat: cat,
       title: titleCtrl.text.trim().isEmpty ? '제목을 입력하세요' : titleCtrl.text.trim(),
       price: sea ? (price < seaMin ? seaMin : price) : price, hot: hot,
-      distM: sea ? 9e9 : 150, mins: sea ? 0 : mins,
+      distM: sea ? 9e9 : null, mins: sea ? 0 : mins,
       region: sea ? null : (placeCtrl.text.trim().isEmpty ? '우리 동네' : placeCtrl.text.trim()),
       cc: sea ? cc : null,
       country: sea ? '${country.flag} ${country.name}${city.isNotEmpty ? ' $city' : ''}' : null,
       place: placeCtrl.text.trim(),
       who: '나', desc: descCtrl.text.trim(),
+      deadline: deadline, deliveryPlace: deliveryCtrl.text.trim().isEmpty ? null : deliveryCtrl.text.trim(),
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _stepTitle('얼마 드릴까요?'),
-        _label(sea ? '사례비 (최소 ${nf(seaMin)}원, 물건값 별도)' : '사례비'),
+        _stepTitle('비용과 완료 조건을 알려주세요'),
+        _label(sea ? '사례비 (최소 ${nf(seaMin)}원, 물건값 별도)' : '사례비 (물건값 별도)'),
         _qtyStepper(won(price), () => setState(() => price = (price - 1000).clamp(floor, 9999999)), () => setState(() => price += 1000), big: true),
         const SizedBox(height: 10),
         Row(children: [
@@ -380,6 +487,35 @@ class _PostRequestState extends State<PostRequest> {
           TextSpan(text: '비공개로 가격을 제안', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w700)),
           TextSpan(text: '할 수 있어요.'),
         ])),
+        const SizedBox(height: 22),
+        _label('물품 구매비 부담 방식'),
+        for (final e in paymentLabels.entries)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: InkWell(
+              onTap: () => setState(() => payment = e.key),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
+                decoration: BoxDecoration(
+                  color: payment == e.key ? AppColors.yellowSoft : AppColors.card,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: payment == e.key ? AppColors.yellow : AppColors.line, width: 1.5),
+                ),
+                child: Text(e.value, style: TextStyle(fontSize: 14, color: AppColors.ink, fontWeight: payment == e.key ? FontWeight.w800 : FontWeight.w500)),
+              ),
+            ),
+          ),
+        if (payment != 'none') ...[
+          const SizedBox(height: 8),
+          _label('물품 예산 (원)'),
+          TextField(controller: budgetCtrl, keyboardType: TextInputType.number, onChanged: (_) => setState(() {}), decoration: _dec('예: 15000')),
+          _hint('사례비와 별도로 물건값에 쓰는 금액이에요.'),
+        ],
+        const SizedBox(height: 18),
+        _label('완료 확인 방법'),
+        TextField(controller: completionCtrl, maxLines: 2, onChanged: (_) => setState(() {}), decoration: _dec('예: 물품 전달 후 요청자가 수령 확인 (5자 이상)')),
         const SizedBox(height: 22),
         _label('급하게 올릴까요? (선택)'),
         InkWell(

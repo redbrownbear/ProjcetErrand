@@ -44,8 +44,8 @@ class _WalkScreenState extends State<WalkScreen> {
     final claimable = walkClaimable(widget.steps);
     final got = widget.isClaimed(walkRewardKey);
     final goal = nextRewardGoal(widget.points);
-    final near = widget.items.where((i) => i.mode == 'ask' && _inScope(i) && i.distM < 100000).toList()
-      ..sort((a, b) => a.distM.compareTo(b.distM));
+    final near = widget.items.where((i) => i.mode == 'ask' && _inScope(i) && i.distSort < 100000).toList()
+      ..sort((a, b) => a.distSort.compareTo(b.distSort));
     final nearTop = near.take(4).toList();
     final next = nearTop.isNotEmpty ? nearTop.first : null;
 

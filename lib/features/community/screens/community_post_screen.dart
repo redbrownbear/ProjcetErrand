@@ -10,7 +10,9 @@ class CommunityPostScreen extends StatefulWidget {
   final TaskItem it;
   final List<int> grabbed;
   final void Function(TaskItem) onGrab;
-  const CommunityPostScreen({super.key, required this.it, required this.grabbed, required this.onGrab});
+  final bool Function(int id) isSaved;
+  final void Function(int id) toggleSave;
+  const CommunityPostScreen({super.key, required this.it, required this.grabbed, required this.onGrab, required this.isSaved, required this.toggleSave});
   @override
   State<CommunityPostScreen> createState() => _CommunityPostScreenState();
 }
@@ -18,7 +20,6 @@ class CommunityPostScreen extends StatefulWidget {
 class _CommunityPostScreenState extends State<CommunityPostScreen> {
   late List<Comment> comments = List.of(widget.it.comments);
   final txtCtrl = TextEditingController();
-  bool liked = false;
 
   @override
   void dispose() {
@@ -40,6 +41,7 @@ class _CommunityPostScreenState extends State<CommunityPostScreen> {
     final it = widget.it;
     final t = tcatOf(it.tcat);
     final done = widget.grabbed.contains(it.id);
+    final liked = widget.isSaved(it.id); // 관심 = 마이 > 관심 저장
 
     return Material(
       color: AppColors.page,
@@ -123,7 +125,10 @@ class _CommunityPostScreenState extends State<CommunityPostScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: InkWell(
-                        onTap: () => setState(() => liked = !liked),
+                        onTap: () {
+                          widget.toggleSave(it.id);
+                          setState(() {});
+                        },
                         borderRadius: BorderRadius.circular(12),
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -208,7 +213,7 @@ class _CommunityPostScreenState extends State<CommunityPostScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     decoration: BoxDecoration(color: AppColors.greenSoft, borderRadius: BorderRadius.circular(14)),
-                    child: const Text('신청 완료 ✓ 채팅에서 이어가요', textAlign: TextAlign.center, style: TextStyle(color: AppColors.green, fontWeight: FontWeight.w800, fontSize: 15)),
+                    child: const Text('신청 완료 ✓ 진행 중에서 확인하세요', textAlign: TextAlign.center, style: TextStyle(color: AppColors.green, fontWeight: FontWeight.w800, fontSize: 15)),
                   )
                 : SizedBox(
                     width: double.infinity,

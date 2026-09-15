@@ -16,9 +16,13 @@ class MeView extends StatelessWidget {
   final int monthPoints;
   final bool isLoggedIn;
   final VoidCallback onLogin;
+  final int savedCount, appliedCount, myCount;
+  final VoidCallback onOpenSaved, onOpenApplied, onOpenMine;
   const MeView({
     super.key, required this.points, required this.coupons, required this.useCoupon, required this.goPointsHub,
     required this.freeLeft, required this.monthPoints, required this.isLoggedIn, required this.onLogin,
+    required this.savedCount, required this.appliedCount, required this.myCount,
+    required this.onOpenSaved, required this.onOpenApplied, required this.onOpenMine,
   });
 
   @override
@@ -47,6 +51,13 @@ class MeView extends StatelessWidget {
                   elevation: 0,
                 ),
                 child: const Text('로그인', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+              ),
+              const SizedBox(height: 8),
+              // 혜택 탭이 진행 중 탭으로 바뀌어, 로그인 전에도 혜택은 여기서 둘러볼 수 있게 한다
+              TextButton(
+                onPressed: goPointsHub,
+                style: TextButton.styleFrom(foregroundColor: AppColors.sub, minimumSize: const Size(0, 44)),
+                child: const Text('매일의 혜택 둘러보기 ›', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
               ),
             ],
           ),
@@ -200,21 +211,26 @@ class MeView extends StatelessWidget {
           ),
         ),
         const Padding(padding: EdgeInsets.fromLTRB(16, 4, 16, 6), child: Text('활동 기록', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.ink))),
-        for (final r in const [
-          ['🙋', '내가 올린 부탁', '14건'],
-          ['🤝', '내가 지원한 부탁', '27건'],
-          ['⭐', '내 후기', '4.9 (11)'],
-          ['💰', '수익·정산 내역', ''],
+        for (final r in [
+          ('🔖', '관심 저장', '$savedCount건', onOpenSaved),
+          ('🎁', '매일의 혜택', '', goPointsHub),
+          ('🤝', '내가 지원한 부탁', '$appliedCount건', onOpenApplied),
+          ('🙋', '내가 올린 부탁', '$myCount건', onOpenMine),
+          ('⭐', '내 후기', '4.9 (11)', null),
+          ('💰', '수익·정산 내역', '', null),
         ])
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-            decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))),
-            child: Row(children: [
-              Text(r[0], style: const TextStyle(fontSize: 17)),
-              const SizedBox(width: 12),
-              Expanded(child: Text(r[1], style: const TextStyle(fontSize: 14, color: AppColors.ink))),
-              Text('${r[2]} ›', style: const TextStyle(fontSize: 12.5, color: AppColors.sub)),
-            ]),
+          InkWell(
+            onTap: r.$4,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+              decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))),
+              child: Row(children: [
+                Text(r.$1, style: const TextStyle(fontSize: 17)),
+                const SizedBox(width: 12),
+                Expanded(child: Text(r.$2, style: const TextStyle(fontSize: 14, color: AppColors.ink))),
+                Text('${r.$3} ›', style: const TextStyle(fontSize: 12.5, color: AppColors.sub)),
+              ]),
+            ),
           ),
         const Padding(padding: EdgeInsets.fromLTRB(16, 14, 16, 6), child: Text('설정', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.ink))),
         for (final r in rows)

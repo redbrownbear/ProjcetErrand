@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/navigation/screen_route.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/chip_widget.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../benefits/data/point_rules.dart';
 import '../../benefits/models/coupon.dart';
@@ -48,6 +49,8 @@ class HomeContent extends StatefulWidget {
   final void Function(PartnerMission) completeMission;
   final void Function(String) flash;
   final VoidCallback goPointsHub;
+  final int activeCount; // 진행 중인 지원 건수
+  final VoidCallback goActivity;
 
   const HomeContent({
     super.key,
@@ -67,6 +70,8 @@ class HomeContent extends StatefulWidget {
     required this.completeMission,
     required this.flash,
     required this.goPointsHub,
+    required this.activeCount,
+    required this.goActivity,
   });
 
   @override
@@ -74,6 +79,24 @@ class HomeContent extends StatefulWidget {
 }
 
 class _HomeContentState extends State<HomeContent> {
+  // "지금, 내 주변" 조건. 목적지는 장소명 문자열 필터일 뿐, 경로·우회 시간을 계산하지 않는다.
+  final destCtrl = TextEditingController();
+  int? available; // 가능한 소요 시간(분). null이면 제한 없음
+  bool nearOnly = false; // 500m 이내만
+  String nearCat = 'all';
+
+  @override
+  void dispose() {
+    destCtrl.dispose();
+    super.dispose();
+  }
+
+  void _resetNearby() => setState(() {
+        nearCat = 'all';
+        nearOnly = false;
+        available = null;
+        destCtrl.clear();
+      });
 
   bool _inScope(TaskItem i) => widget.scope == '전국' || i.region == widget.scope;
 
@@ -108,12 +131,20 @@ class _HomeContentState extends State<HomeContent> {
 
   @override
   Widget build(BuildContext context) {
-    final askNat = widget.items.where((i) => i.mode == 'ask' && _inScope(i)).toList();
+    // 마감된 부탁은 홈에서 추천하지 않는다
+    final askNat = widget.items.where((i) => i.mode == 'ask' && _inScope(i) && !i.isExpired).toList();
     final sea = widget.items.where((i) => i.mode == 'sea').toList();
     final community = widget.items.where((i) => i.mode == 'together' && _inScope(i)).toList();
 
-    final nearby = List.of(askNat)..sort((a, b) => a.distM.compareTo(b.distM));
-    final nearbyTop = nearby.take(4).toList();
+    final dest = destCtrl.text.trim();
+    final filtering = dest.isNotEmpty || available != null || nearOnly;
+    final nearby = askNat.where((i) =>
+            (nearCat == 'all' || i.cat == nearCat) &&
+            (!nearOnly || (i.distM != null && i.distM! <= 500)) && // 거리 미확인은 500m 조건에서 제외
+            (dest.isEmpty || '${i.place ?? ''} ${i.deliveryPlace ?? ''} ${i.region ?? ''}'.contains(dest)) &&
+            (available == null || (i.mins > 0 && i.mins <= available!))).toList()
+      ..sort((a, b) => a.distSort.compareTo(b.distSort));
+    final nearbyTop = filtering ? nearby : nearby.take(5).toList();
 
     final quick30 = askNat.where((i) => i.mins > 0 && i.mins <= 30).toList()..sort((a, b) => a.mins.compareTo(b.mins));
     final quick30Top = quick30.take(8).toList();
@@ -125,7 +156,7 @@ class _HomeContentState extends State<HomeContent> {
 
     final onTheWay = List.of(askNat)
       ..sort((a, b) {
-        final d = a.distM.compareTo(b.distM);
+        final d = a.distSort.compareTo(b.distSort);
         return d != 0 ? d : a.mins.compareTo(b.mins);
       });
     final onTheWayTop = onTheWay.take(6).toList();
@@ -196,7 +227,124 @@ class _HomeContentState extends State<HomeContent> {
               ),
             ),
           ),
-          // ③ 주요 서비스 바로가기
+          // 진행 중인 부탁 바로가기
+          if (widget.activeCount > 0)
+            InkWell(
+              onTap: widget.goActivity,
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
+                decoration: BoxDecoration(color: AppColors.yellowSoft, borderRadius: BorderRadius.circular(14)),
+                child: Row(children: [
+                  const Text('📋', style: TextStyle(fontSize: 19)),
+                  const SizedBox(width: 11),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('진행 중인 부탁 ${widget.activeCount}건', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.ink)),
+                      const Text('현재 상태와 다음 할 일을 확인하세요', style: TextStyle(fontSize: 12.5, color: AppColors.yellowDeep)),
+                    ]),
+                  ),
+                  const Text('›', style: TextStyle(fontSize: 20, color: AppColors.yellowDeep)),
+                ]),
+              ),
+            ),
+
+          // 가는 길 조건 (목적지 이름 검색 · 가능한 소요 시간)
+          Container(
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+            decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(14)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('가는 동네·장소', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.ink)),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: destCtrl,
+                  onChanged: (_) => setState(() {}),
+                  textInputAction: TextInputAction.search,
+                  style: const TextStyle(fontSize: 14.5),
+                  decoration: InputDecoration(
+                    hintText: '예: 서초역',
+                    isDense: true,
+                    filled: true, fillColor: AppColors.page,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                    suffixIcon: destCtrl.text.isEmpty ? null : IconButton(icon: const Icon(Icons.close_rounded, size: 18), onPressed: () => setState(destCtrl.clear)),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Text('가능한 소요 시간', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.ink)),
+                const SizedBox(height: 6),
+                SizedBox(
+                  height: 36,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      for (final m in const [null, 10, 20, 30, 60])
+                        Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: ChipWidget(label: m == null ? '제한 없음' : '$m분 이내', active: available == m, onTap: () => setState(() => available = m)),
+                        ),
+                    ],
+                  ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.only(top: 8),
+                  child: Text('입력한 장소가 포함된 부탁을 찾아요. 이동 경로·우회 시간은 계산하지 않아요.', style: TextStyle(fontSize: 12, color: AppColors.sub, height: 1.5)),
+                ),
+              ],
+            ),
+          ),
+
+          // ⑤ 지금, 내 주변 (부탁 목록 우선 배치)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Row(children: [
+              Expanded(child: Text('📍 지금, 내 주변 ${nearby.length}', style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800, color: AppColors.ink))),
+              InkWell(
+                onTap: () => setState(() => nearOnly = !nearOnly),
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                  child: Text(nearOnly ? '500m 제한 해제' : '500m 이내만', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: nearOnly ? AppColors.ink : AppColors.sub)),
+                ),
+              ),
+            ]),
+          ),
+          SizedBox(
+            height: 36,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              children: [
+                Padding(padding: const EdgeInsets.only(right: 6), child: ChipWidget(label: '전체', active: nearCat == 'all', onTap: () => setState(() => nearCat = 'all'))),
+                for (final c in cats)
+                  Padding(padding: const EdgeInsets.only(right: 6), child: ChipWidget(label: '${c.icon} ${c.label}', active: nearCat == c.k, onTap: () => setState(() => nearCat = c.k))),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          if (nearbyTop.isEmpty)
+            Column(children: [
+              const EmptyState(msg: '조건에 맞는 부탁이 없어요.\n다른 카테고리나 동네를 살펴보세요.'),
+              TextButton(onPressed: _resetNearby, child: const Text('조건 초기화', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w700))),
+            ])
+          else
+            Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Column(children: [for (final it in nearbyTop) TaskCard(it: it, onOpen: () => openDetail(it), done: widget.actions.grabbed.contains(it.id))])),
+          if (!filtering && nearby.length > 5)
+            InkWell(
+              onTap: () => goList(ScreenRoute(name: 'list', title: '내 주변 할 일', subtitle: '가까운 순', base: 'ask', cat: nearCat == 'all' ? null : nearCat, sortable: true, defaultSort: 'dist', catChips: true, mapBtn: true)),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Center(child: Text('주변 부탁 모두 보기 ›', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.ink))),
+              ),
+            ),
+          const HDivider(),
+          const SizedBox(height: 14),
+
+          // ③ 주요 서비스 바로가기 (목록 아래로 이동)
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
             child: Row(children: [
@@ -235,16 +383,6 @@ class _HomeContentState extends State<HomeContent> {
               }).toList(),
             ),
           ),
-          // ⑤ 내 주변 지금 할 일
-          SectionHeader(
-            title: '📍 내 주변 지금 할 일',
-            onAction: () => goList(const ScreenRoute(name: 'list', title: '내 주변 할 일', subtitle: '가까운 순', base: 'ask', sortable: true, defaultSort: 'dist', catChips: true, mapBtn: true)),
-          ),
-          if (nearbyTop.isEmpty)
-            const EmptyState(msg: '이 지역엔 아직 부탁이 없어요. 지역을 ‘전국’으로 바꿔보세요.')
-          else
-            Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Column(children: [for (final it in nearbyTop) TaskCard(it: it, onOpen: () => openDetail(it), done: widget.actions.grabbed.contains(it.id))])),
-
           const HDivider(),
 
           // ⑥ 광고 배너 (스와이프 캐러셀)

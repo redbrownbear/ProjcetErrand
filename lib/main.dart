@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
 import 'core/config/naver_map_init.dart';
+import 'core/storage/local_store.dart';
 import 'core/theme/colors.dart';
 import 'features/auth/screens/auth_gate.dart';
 import 'firebase_options.dart';
@@ -9,7 +10,14 @@ import 'firebase_options.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  await initNaverMap();
+  // 지도 SDK 초기화가 실패해도(플러그인 미등록·인증 오류 등) 앱은 떠야 한다.
+  // 여기서 예외가 나면 runApp까지 가지 못해 스플래시에서 멈춘다.
+  try {
+    await initNaverMap();
+  } catch (e) {
+    debugPrint('네이버 지도 초기화 실패: $e');
+  }
+  await LocalStore.init();
   runApp(const BureumApp());
 }
 
