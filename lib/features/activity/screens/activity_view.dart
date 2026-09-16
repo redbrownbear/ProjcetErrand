@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/chip_widget.dart';
@@ -15,7 +16,17 @@ class ActivityView extends StatefulWidget {
   final Map<int, Trade> trades;
   final void Function(int id, String action) updateTrade;
   final void Function(TaskItem) openDetail;
-  const ActivityView({super.key, required this.items, required this.trades, required this.updateTrade, required this.openDetail});
+
+  /// 전체화면으로 띄울 때는 바깥 [ScreenFrame]이 제목을 그리므로 false를 준다.
+  final bool showHeader;
+  const ActivityView({
+    super.key,
+    required this.items,
+    required this.trades,
+    required this.updateTrade,
+    required this.openDetail,
+    this.showHeader = true,
+  });
   @override
   State<ActivityView> createState() => _ActivityViewState();
 }
@@ -46,7 +57,11 @@ class _ActivityViewState extends State<ActivityView> {
     return ListView(
       padding: const EdgeInsets.only(bottom: 26),
       children: [
-        const Padding(padding: EdgeInsets.fromLTRB(16, 20, 16, 6), child: Text('진행 중', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.ink))),
+        if (widget.showHeader)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(22, 26, 22, 8),
+            child: Text('진행 중', style: AppType.tabTitle),
+          ),
         Container(
           margin: const EdgeInsets.fromLTRB(16, 4, 16, 10),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),

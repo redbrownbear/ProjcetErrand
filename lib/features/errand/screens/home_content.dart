@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/navigation/screen_route.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/app_icon.dart';
 import '../../../core/widgets/chip_widget.dart';
+import '../../../core/widgets/screen_frame.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../benefits/data/attend_streak.dart';
 import '../../benefits/data/partner_missions.dart';
@@ -21,33 +24,47 @@ import '../../dayjob/models/day_job.dart';
 import '../../dayjob/screens/day_job_screen.dart';
 import '../../dayjob/widgets/day_job_card.dart';
 import '../../deals/screens/save_hub_screen.dart';
-import '../../earn/widgets/income_summary.dart';
+import '../../pay/widgets/wallet_summary.dart';
+import '../../profile/models/trust_level.dart';
 import '../data/categories.dart';
 import '../data/home_ads.dart';
 import '../models/task_item.dart';
 import '../navigation/errand_actions.dart';
 import '../widgets/ad_banner.dart';
 import '../widgets/task_card.dart';
-import 'country_screen.dart';
 import 'list_screen.dart';
+import 'local_errand_hub_screen.dart';
+import 'map/map_canvas.dart';
+import 'map/map_centers.dart';
 import 'map_screen.dart';
 import 'overseas_screen.dart';
 import 'search_screen.dart';
 
-/// 홈. 기획 시안 v9(`gyumsa-home-v9`)의 Explore 구조를 그대로 따른다.
+/// 홈. 기획 시안 v9(`gyumsa-home-v9`)의 `Explore` 화면을 그대로 옮긴 것이다.
 ///
-/// v9의 핵심은 "짧은 홈"이다. 예전 홈은 섹션이 22개였고 걷기·미션·공동구매 진입이
-/// 각각 서너 군데씩 흩어져 있었다. 여기서는 진입점을 하나씩만 두고, 목록을 좁히는
-/// 일(30분 이내·사례비 높은 순·급한 순 등)은 전부 아래 탐색 영역의 조건으로 옮겼다.
+/// 위에서부터 지역 헤더 → 진행 중 배너 → 누적 수익 → 출석 → 주요 서비스 3개 →
+/// 숏컷 → 가볍게 모으기 → '지금, 내 주변'(탐색) 순서이고, 탐색 영역의 지도 전환은
+/// 목록과 **같은 조건의 결과**를 네이버 지도 위에 그대로 올린다.
+///
+/// 목록을 더 좁히거나 조건별로 모아 보는 일은 '부탁 전체보기'의
+/// [LocalErrandHubScreen]에서 이어서 한다.
 class HomeContent extends StatefulWidget {
   final List<TaskItem> items;
   final String scope;
   final ErrandActions actions;
+  /// 부업·미션으로 받는 리워드 포인트(P)
   final int points;
   final int steps;
 
-  /// 완료한 거래의 사례비 합계(원). 누적 수익 표시에 쓴다.
-  final int earnedCash;
+  /// 겸사페이 잔액(원). 포인트와 성격이 다른 값이라 끝까지 따로 둔다.
+  final int payBalance;
+
+  /// 신뢰 레벨
+  final TrustLevel trust;
+
+  final VoidCallback goPay;
+  final VoidCallback goProfile;
+
   final List<Coupon> coupons;
   final List<String> doneMissions;
   final VoidCallback openRegion;
@@ -68,7 +85,10 @@ class HomeContent extends StatefulWidget {
     required this.actions,
     required this.points,
     required this.steps,
-    required this.earnedCash,
+    required this.payBalance,
+    required this.trust,
+    required this.goPay,
+    required this.goProfile,
     required this.coupons,
     required this.doneMissions,
     required this.isClaimed,
@@ -94,46 +114,63 @@ class _HomeContentState extends State<HomeContent> {
   double radius = 3; // km
   String sort = 'dist';
   bool shortOnly = false;
-  bool expanded = false; // 서비스 숏컷 '전체' 펼침
+  bool expanded = false; // 숏컷 '전체' 펼침
+  bool showMap = false; // 지도/목록 전환
+  bool moreFilters = false; // 세부 조건 펼침
+  int? pinned; // 지도에서 선택한 부탁
 
   static const _attendKey = 'benefit:attend';
+
+  /// 목록 영역으로 스크롤을 옮길 때 쓴다. (v9의 `#nearby-v5` 앵커)
+  final _nearbyKey = GlobalKey();
 
   bool _inScope(TaskItem i) => widget.scope == '전국' || i.region == widget.scope;
 
   // ── 이동 ────────────────────────────────────────────────────────────────
-  void goList(ScreenRoute config) => Navigator.push(context, MaterialPageRoute(builder: (_) => ListScreen(config: config, items: widget.items, scope: widget.scope, actions: widget.actions)));
-  void goSearch() => Navigator.push(context, MaterialPageRoute(builder: (_) => SearchScreen(items: widget.items, actions: widget.actions)));
-  void goOverseas() => Navigator.push(context, MaterialPageRoute(builder: (_) => OverseasScreen(items: widget.items, actions: widget.actions)));
-  void goCommunity() => Navigator.push(context, MaterialPageRoute(builder: (_) => CommunityScreen(items: widget.items, scope: widget.scope, actions: widget.actions)));
-  void goWalk() => Navigator.push(context, MaterialPageRoute(builder: (_) => WalkScreen(
-        items: widget.items, scope: widget.scope, steps: widget.steps, points: widget.points, coupons: widget.coupons,
-        actions: widget.actions, earn: widget.earn, isClaimed: widget.isClaimed, redeem: widget.redeem, useCoupon: widget.useCoupon, goPointsHub: widget.goPointsHub,
-      )));
-  void goShop() => Navigator.push(context, MaterialPageRoute(builder: (_) => PointShopScreen(
-        points: widget.points, redeem: widget.redeem, coupons: widget.coupons, useCoupon: widget.useCoupon, goPointsHub: widget.goPointsHub,
-      )));
-  void goCountry(String cc) => Navigator.push(context, MaterialPageRoute(builder: (_) => CountryScreen(cc: cc, items: widget.items, actions: widget.actions)));
-  void openDetail(TaskItem it) => widget.actions.open(context, it);
+  void _push(Widget screen) => Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
 
-  /// 지도는 목록과 같은 조건의 결과만 보여준다 (v9: 같은 결과로 지도/목록 전환)
-  void goMap(List<TaskItem> list) => Navigator.push(context, MaterialPageRoute(builder: (_) => MapScreen(items: list, scope: widget.scope, actions: widget.actions)));
+  void goList(ScreenRoute config) => _push(ListScreen(config: config, items: widget.items, scope: widget.scope, actions: widget.actions));
+  void goSearch() => _push(SearchScreen(items: widget.items, actions: widget.actions));
+  void goOverseas() => _push(OverseasScreen(items: widget.items, actions: widget.actions));
+  void goCommunity() => _push(CommunityScreen(items: widget.items, scope: widget.scope, actions: widget.actions));
+  void goDayJobs() => _push(DayJobScreen(onApply: _applyDayJob));
+
+  /// 부탁 전체보기 — 카테고리·조건별 모아보기가 있는 동네 부탁 허브
+  void goLocalHub({String initialCat = 'all'}) =>
+      _push(LocalErrandHubScreen(items: widget.items, scope: widget.scope, actions: widget.actions, initialCat: initialCat));
+
+  void goWalk() => _push(WalkScreen(
+        items: widget.items, scope: widget.scope, steps: widget.steps, points: widget.points, coupons: widget.coupons,
+        actions: widget.actions, earn: widget.earn, isClaimed: widget.isClaimed, redeem: widget.redeem,
+        useCoupon: widget.useCoupon, goPointsHub: widget.goPointsHub,
+      ));
+
+  void goShop() => _push(PointShopScreen(
+        points: widget.points, redeem: widget.redeem, coupons: widget.coupons,
+        useCoupon: widget.useCoupon, goPointsHub: widget.goPointsHub,
+      ));
 
   /// 미션 숏컷 — 제휴 미션은 '오늘 벌기' 허브 한 곳으로만 들어간다
-  void goEarnHub() => Navigator.push(context, MaterialPageRoute(builder: (_) => EarnHubScreen(
+  void goEarnHub() => _push(EarnHubScreen(
         doneMissions: widget.doneMissions,
         completeMission: widget.completeMission,
-        onOpenErrand: () => goList(const ScreenRoute(name: 'list', title: '심부름으로 벌기', subtitle: '지역 픽업 · 개인/기업 심부름', base: 'earn', sortable: true, catChips: true, mapBtn: true)),
+        onOpenErrand: () => goList(const ScreenRoute(
+          name: 'list', title: '심부름으로 벌기', subtitle: '지역 픽업 · 개인/기업 심부름',
+          base: 'earn', sortable: true, catChips: true, mapBtn: true,
+        )),
         onApplyDayJob: _applyDayJob,
-      )));
+      ));
 
   /// 공동구매 숏컷 — 특가·공동구매는 '생활비 아끼기' 허브 한 곳으로만 들어간다
-  void goSaveHub() => Navigator.push(context, MaterialPageRoute(builder: (_) => SaveHubScreen(
+  void goSaveHub() => _push(SaveHubScreen(
         earn: widget.earn,
         isClaimed: widget.isClaimed,
         onUse: (d) => widget.flash('${d.brand} 회원 전용가를 준비 중이에요 · 제휴 확정 후 열려요'),
-      )));
+      ));
 
-  void goDayJobs() => Navigator.push(context, MaterialPageRoute(builder: (_) => DayJobScreen(onApply: _applyDayJob)));
+  /// 전체 지도 화면. 홈 안쪽 지도와 달리 화면 전체를 쓴다.
+  void goFullMap(List<TaskItem> list) => _push(MapScreen(items: list, scope: widget.scope, actions: widget.actions));
+
   void _applyDayJob(DayJob j) => widget.flash('${j.org}에 지원 의사를 전달했어요 · 근로계약은 구인업체와 진행돼요');
 
   void openAd(ScreenRoute route) {
@@ -149,16 +186,41 @@ class _HomeContentState extends State<HomeContent> {
     }
   }
 
+  /// 종류를 고르고 목록 영역으로 스크롤한다. (v9의 숏컷 동작)
+  void _focusNearby({String? category, String? which}) {
+    setState(() {
+      if (which != null) kind = which;
+      if (category != null) cat = category;
+      expanded = false;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _nearbyKey.currentContext;
+      if (ctx != null) Scrollable.ensureVisible(ctx, duration: const Duration(milliseconds: 280), curve: Curves.easeOutCubic);
+    });
+  }
+
   // ── 탐색 조건 ───────────────────────────────────────────────────────────
-  /// 홈 탐색 목록. 거리 미확인 부탁은 반경 조건에서 제외한다.
-  List<TaskItem> get _tasks {
-    final list = widget.items.where((i) =>
-        i.mode == 'ask' &&
-        _inScope(i) &&
-        !i.isExpired &&
-        (cat == 'all' || i.cat == cat) &&
-        (i.distM != null && i.distM! <= radius * 1000) &&
-        (!shortOnly || (i.mins > 0 && i.mins <= 30))).toList();
+  /// 거리를 뺀 공통 조건 (지역 · 마감 · 종류 · 30분)
+  bool _matches(TaskItem i) =>
+      i.mode == 'ask' &&
+      _inScope(i) &&
+      !i.isExpired &&
+      (cat == 'all' || i.cat == cat) &&
+      (!shortOnly || (i.mins > 0 && i.mins <= 30));
+
+  /// '부탁하기'로 올린 **진짜 부탁**. 항상 목록 맨 위에 최신순으로 둔다.
+  ///
+  /// 새로 올린 부탁은 아직 좌표가 없어서(`distM == null`) 반경 조건에 걸리면
+  /// 목록에서 통째로 사라진다. 방금 올린 내 부탁이 안 보이는 게 제일 이상하므로,
+  /// 반경·정렬과 무관하게 따로 뽑아 앞에 붙인다.
+  List<TaskItem> get _realTasks =>
+      widget.items.where((i) => !i.sample && _matches(i)).toList()..sort((a, b) => b.id.compareTo(a.id));
+
+  /// 미리 만들어 둔 예시 부탁. 반경·정렬 조건을 그대로 따른다.
+  List<TaskItem> get _sampleTasks {
+    final list = widget.items
+        .where((i) => i.sample && _matches(i) && i.distM != null && i.distM! <= radius * 1000)
+        .toList();
     switch (sort) {
       case 'price':
         list.sort((a, b) => b.price - a.price);
@@ -180,367 +242,693 @@ class _HomeContentState extends State<HomeContent> {
     return list;
   }
 
+  /// 화면에 뿌리는 목록 = 내 진짜 부탁 + 예시
+  List<TaskItem> get _tasks => [..._realTasks, ..._sampleTasks];
+
   String get _radiusLabel => radius < 1 ? '${(radius * 1000).round()}m' : '${radius % 1 == 0 ? radius.toInt() : radius}km';
+  bool get _dirty => cat != 'all' || shortOnly || radius != 3 || sort != 'dist';
 
   @override
   Widget build(BuildContext context) {
     final list = _tasks;
     final jobs = List.of(dayJobs)..sort((a, b) => b.pay - a.pay);
-    final attended = widget.isClaimed(_attendKey);
 
     return ListView(
-      padding: const EdgeInsets.only(bottom: 26),
+      padding: const EdgeInsets.only(bottom: 30),
       children: [
-        // ① 지역 헤더
+        _header(),
+        if (widget.activeCount > 0) _activeBanner(),
+        WalletSummary(
+          payBalance: widget.payBalance,
+          points: widget.points,
+          trust: widget.trust,
+          onOpenPay: widget.goPay,
+          onOpenPoints: widget.goPointsHub,
+          onOpenLevel: widget.goProfile,
+        ),
+        _attendance(),
+        _primaryServices(),
+        _shortcuts(),
+        const HDivider(thick: true),
+        _lightMissions(),
+        // v9 시안에는 없지만 수익 지면이라 홈 한 곳만 남겼다.
+        Padding(padding: const EdgeInsets.symmetric(horizontal: 6), child: AdBanner(ads: homeAds, onTap: openAd)),
+        const HDivider(thick: true),
+
+        // ── 지금, 내 주변 ───────────────────────────────────────────────
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 12, 4),
+          key: _nearbyKey,
+          padding: const EdgeInsets.fromLTRB(22, 22, 14, 6),
           child: Row(children: [
-            Expanded(
-              child: InkWell(
-                onTap: widget.openRegion,
-                borderRadius: BorderRadius.circular(10),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Text('📍 ${shortRegion(widget.scope)}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink)),
-                    const Padding(padding: EdgeInsets.only(left: 4), child: Text('▾', style: TextStyle(color: AppColors.faint, fontSize: 13))),
-                  ]),
-                ),
-              ),
-            ),
-            InkWell(onTap: goSearch, child: const Padding(padding: EdgeInsets.all(6), child: Text('🔍', style: TextStyle(fontSize: 18)))),
-            InkWell(onTap: () => goMap(list), child: const Padding(padding: EdgeInsets.all(6), child: Text('🗺️', style: TextStyle(fontSize: 18)))),
-            InkWell(onTap: () => widget.flash('새 알림이 없어요'), child: const Padding(padding: EdgeInsets.all(6), child: Text('🔔', style: TextStyle(fontSize: 18)))),
+            Expanded(child: Text('지금, 내 주변', style: AppType.section)),
+            TextAction(label: '부탁 전체보기', onTap: goLocalHub),
           ]),
         ),
-
-        // ② 진행 중 배너
-        if (widget.activeCount > 0)
-          InkWell(
-            onTap: widget.goActivity,
-            borderRadius: BorderRadius.circular(14),
-            child: Container(
-              margin: const EdgeInsets.fromLTRB(16, 4, 16, 6),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-              decoration: BoxDecoration(color: AppColors.yellowSoft, borderRadius: BorderRadius.circular(14)),
-              child: Row(children: [
-                const Text('📋', style: TextStyle(fontSize: 19)),
-                const SizedBox(width: 11),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('진행 중인 부탁 ${widget.activeCount}건', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.ink)),
-                      const Text('현재 상태와 다음 할 일을 확인하세요', style: TextStyle(fontSize: 12.5, color: AppColors.yellowDeep)),
-                    ],
-                  ),
-                ),
-                const Text('›', style: TextStyle(fontSize: 20, color: AppColors.yellowDeep)),
-              ]),
-            ),
-          ),
-
-        // ③ 누적 수익 + 목표
-        IncomeSummary(cash: widget.earnedCash, points: widget.points),
-
-        // ④ 출석 한 줄
-        InkWell(
-          onTap: attended ? null : () => widget.earn(attendStreak[0].points, '출석 적립', key: _attendKey),
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: attended ? AppColors.greenSoft : AppColors.card,
-              border: Border.all(color: attended ? AppColors.greenSoft : AppColors.line),
-              borderRadius: BorderRadius.circular(12),
-            ),
+        _quickCats(),
+        _workTabs(),
+        if (kind == 'ask') ...[
+          _filterControls(),
+          _extraFilters(),
+          _categoryStrip(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(22, 14, 22, 2),
             child: Row(children: [
-              Text(attended ? '✅' : '📅', style: const TextStyle(fontSize: 17)),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(attended ? '오늘 출석 완료' : '오늘 출석하고 +${attendStreak[0].points}P',
-                    style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: attended ? AppColors.green : AppColors.ink)),
-              ),
-              if (!attended)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(color: AppColors.yellow, borderRadius: BorderRadius.circular(8)),
-                  child: const Text('출석', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.ink)),
-                ),
+              Expanded(child: Text('${list.length}개의 부탁', style: AppType.meta.copyWith(fontSize: 13, fontWeight: AppType.w600, color: AppColors.ink))),
+              Text('시작 장소까지의 예시 거리', style: AppType.caption),
             ]),
           ),
-        ),
+          if (showMap) _inlineMap(list) else _taskList(list),
+        ] else
+          _dayJobs(jobs),
 
-        // ⑤ 주요 서비스 3개
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Column(children: [
-            _ServiceRow(icon: '🤝', title: '동네 부탁', sub: '가까운 곳에서 하나 더', onTap: () => setState(() => kind = 'ask')),
-            _ServiceRow(icon: '🌏', title: '해외 부탁', sub: '여행길에도 수익을', onTap: goOverseas),
-            _ServiceRow(icon: '📋', title: '단기알바', sub: '하루도 알차게', onTap: () => setState(() => kind = 'job')),
-          ]),
-        ),
+        _exploreMore(),
+        _safetyNote(),
+      ],
+    );
+  }
 
-        // ⑥ 서비스 숏컷 (+ 전체 펼침)
-        Padding(
-          padding: const EdgeInsets.fromLTRB(10, 14, 10, 4),
-          child: Row(children: [
-            _Shortcut(icon: '🙋', label: '부탁 전체', onTap: () => goList(const ScreenRoute(name: 'list', title: '부탁 전체', subtitle: '조건을 바꿔가며 찾아보세요', base: 'ask', sortable: true, catChips: true, mapBtn: true))),
-            _Shortcut(icon: '🎁', label: '미션', onTap: goEarnHub),
-            _Shortcut(icon: '👋', label: '같이해요', onTap: goCommunity),
-            _Shortcut(icon: '🛍️', label: '공동구매', onTap: goSaveHub),
-            _Shortcut(icon: expanded ? '▴' : '➕', label: expanded ? '접기' : '전체', onTap: () => setState(() => expanded = !expanded)),
-          ]),
-        ),
-        if (expanded) ...[
-          const Padding(padding: EdgeInsets.fromLTRB(16, 8, 16, 2), child: Text('동네 부탁 종류', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.ink))),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-            child: GridView(
-              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: 76, mainAxisSpacing: 10, mainAxisExtent: 62),
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              children: cats
-                  .map((c) => InkWell(
-                        onTap: () => setState(() {
-                          kind = 'ask';
-                          cat = c.k;
-                        }),
-                        child: Column(children: [
-                          Container(width: 40, height: 40, alignment: Alignment.center, decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(12)), child: Text(c.icon, style: const TextStyle(fontSize: 23))),
-                          const SizedBox(height: 5),
-                          Text(c.label, style: const TextStyle(fontSize: 11, color: AppColors.ink)),
-                        ]),
-                      ))
-                  .toList(),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+  // ── 조각들 ─────────────────────────────────────────────────────────────
+
+  /// ① 지역 헤더 (.explore-header)
+  Widget _header() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(22, 10, 12, 2),
+      child: Row(children: [
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerLeft,
             child: InkWell(
-              onTap: goWalk,
-              borderRadius: BorderRadius.circular(11),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-                decoration: BoxDecoration(color: AppColors.blueSoft, borderRadius: BorderRadius.circular(11)),
-                child: Row(children: [
-                  const Text('🚶', style: TextStyle(fontSize: 16)),
-                  const SizedBox(width: 9),
-                  Expanded(child: Text('걷기 혜택 · ${nf(widget.steps)}걸음', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.blue))),
-                  const Text('›', style: TextStyle(fontSize: 18, color: AppColors.blue)),
+              onTap: widget.openRegion,
+              borderRadius: BorderRadius.circular(10),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.place_outlined, size: 17, color: Color(0xFF75797E)),
+                  const SizedBox(width: 5),
+                  Text(shortRegion(widget.scope),
+                      style: AppType.meta.copyWith(fontSize: 13, fontWeight: AppType.w600, color: const Color(0xFF74787D))),
+                  const Icon(Icons.expand_more_rounded, size: 16, color: Color(0xFF9DA2A9)),
                 ]),
               ),
             ),
           ),
-        ],
-
-        // ⑦ 가볍게 모으기 — 짧은 미션 2개만
-        _LightMissions(
-          doneMissions: widget.doneMissions,
-          onOpenAll: goEarnHub,
-          onOpen: (m) => Navigator.push(context, MaterialPageRoute(builder: (_) => PartnerMissionDetailScreen(
-                m: m, done: widget.doneMissions.contains(m.id), onComplete: widget.completeMission,
-              ))),
         ),
+        IconBtn(icon: 'search', label: '검색', onTap: goSearch, size: 23),
+        IconBtn(icon: 'map', label: '지도에서 찾기', onTap: () => goFullMap(_tasks), size: 22),
+        IconBtn(icon: 'bell', label: '알림', onTap: () => widget.flash('새 알림이 없어요'), size: 22),
+      ]),
+    );
+  }
 
-        // ⑧ 광고 (v9 시안에는 없지만 수익 지면이라 한 곳만 남겼다)
-        AdBanner(ads: homeAds, onTap: openAd),
-
-        // ⑨ 지금, 내 주변
-        SectionHeader(
-          title: '지금, 내 주변',
-          sub: kind == 'ask' ? '${list.length}개의 부탁 · 시작 장소까지의 예시 거리' : '${jobs.length}개의 단기알바',
-          onAction: () => kind == 'ask'
-              ? goList(const ScreenRoute(name: 'list', title: '부탁 전체', base: 'ask', sortable: true, catChips: true, mapBtn: true))
-              : goDayJobs(),
-        ),
-
-        // 탐색 대상 탭
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+  /// ② 진행 중 배너 (.active-banner)
+  Widget _activeBanner() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(22, 4, 22, 0),
+      child: InkWell(
+        onTap: widget.goActivity,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        child: Container(
+          padding: const EdgeInsets.all(15),
+          decoration: BoxDecoration(
+            color: AppColors.yellowSoft,
+            border: Border.all(color: AppColors.yellowLine),
+            borderRadius: BorderRadius.circular(AppRadius.card),
+          ),
           child: Row(children: [
-            for (final t in [['ask', '동네 부탁'], ['job', '단기알바']])
-              Padding(
-                padding: const EdgeInsets.only(right: 7),
-                child: ChipWidget(label: t[1], active: kind == t[0], onTap: () => setState(() => kind = t[0])),
-              ),
+            const Icon(Icons.assignment_outlined, size: 21, color: AppColors.yellowDeep),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('진행 중 ${widget.activeCount}건',
+                    style: AppType.body.copyWith(fontWeight: AppType.w600, color: AppColors.ink)),
+                Padding(
+                  padding: const EdgeInsets.only(top: 5),
+                  child: Text('현재 상태와 다음 할 일 확인', style: AppType.meta.copyWith(color: const Color(0xFF5C5B55))),
+                ),
+              ]),
+            ),
+            const Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.yellowDeep),
           ]),
         ),
+      ),
+    );
+  }
 
-        if (kind == 'ask') ...[
-          // 빠른 종류 칩
-          SizedBox(
-            height: 40,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+  /// ④ 출석 한 줄 (.attendance-v8)
+  Widget _attendance() {
+    final attended = widget.isClaimed(_attendKey);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(22, 0, 22, 16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(color: AppColors.attendSoft, borderRadius: BorderRadius.circular(AppRadius.tile)),
+        child: Row(children: [
+          Icon(attended ? Icons.check_circle_outline_rounded : Icons.calendar_today_outlined, size: 20, color: AppColors.yellowDeep),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(attended ? '오늘 출석 완료' : '오늘 출석하고 +${attendStreak[0].points}P',
+                  style: AppType.meta.copyWith(fontSize: 13, fontWeight: AppType.w600, color: AppColors.yellowDeep)),
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(attended ? '내일도 들러서 이어가 보세요' : '연속 출석일수록 보상이 커져요',
+                    style: AppType.caption.copyWith(color: const Color(0xFF8D7A4A))),
+              ),
+            ]),
+          ),
+          TextButton(
+            onPressed: attended ? null : () => widget.earn(attendStreak[0].points, '출석 적립', key: _attendKey),
+            style: TextButton.styleFrom(
+              backgroundColor: attended ? Colors.transparent : AppColors.yellow,
+              foregroundColor: AppColors.ink,
+              minimumSize: const Size(56, 34),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
+            ),
+            child: Text(attended ? '완료' : '받기',
+                style: AppType.button.copyWith(fontSize: 12.5, color: attended ? AppColors.faint : AppColors.ink)),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  /// ⑤ 주요 서비스 3개 (.primary-services)
+  Widget _primaryServices() {
+    final seaCount = widget.items.where((i) => i.mode == 'sea').length;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 22),
+      child: Row(children: [
+        Expanded(child: _ServiceTile(icon: 'handshake', title: '동네 부탁', sub: '가까운 곳에서 하나 더', onTap: () => _focusNearby(which: 'ask'))),
+        const SizedBox(width: 8),
+        Expanded(child: _ServiceTile(icon: 'globe', title: '해외 부탁', sub: seaCount > 0 ? '${nf(seaCount)}건 모집 중' : '여행길에도 수익을', tone: _ServiceTone.blue, onTap: goOverseas)),
+        const SizedBox(width: 8),
+        Expanded(child: _ServiceTile(icon: 'clipboard', title: '단기알바', sub: '하루도 알차게', tone: _ServiceTone.warm, onTap: () => _focusNearby(which: 'job'))),
+      ]),
+    );
+  }
+
+  /// ⑥ 숏컷 5개 + '전체' 펼침 (.compact-categories)
+  Widget _shortcuts() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(22, 17, 22, 17),
+      child: Column(children: [
+        Row(children: [
+          _Shortcut(icon: 'handshake', label: '부탁 전체', onTap: goLocalHub),
+          _Shortcut(icon: 'gift', label: '미션', onTap: goEarnHub),
+          _Shortcut(icon: 'users', label: '같이해요', onTap: goCommunity),
+          _Shortcut(icon: 'cart', label: '공동구매', onTap: goSaveHub),
+          _Shortcut(
+            icon: expanded ? 'chevronUp' : 'plus',
+            label: expanded ? '접기' : '전체',
+            onTap: () => setState(() => expanded = !expanded),
+          ),
+        ]),
+        if (expanded) ...[
+          Container(
+            margin: const EdgeInsets.only(top: 15),
+            padding: const EdgeInsets.only(top: 15),
+            decoration: const BoxDecoration(border: Border(top: BorderSide(color: Color(0xFFEEEEE8)))),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('동네 부탁 종류', style: AppType.meta.copyWith(fontWeight: AppType.w500, color: const Color(0xFF7B806F))),
+              const SizedBox(height: 13),
+              GridView(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 5, mainAxisSpacing: 15, crossAxisSpacing: 5, mainAxisExtent: 58,
+                ),
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                children: [
+                  for (final c in cats)
+                    InkWell(
+                      onTap: () => _focusNearby(which: 'ask', category: c.k),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Column(mainAxisSize: MainAxisSize.min, children: [
+                        CatEmblem(cat: c.k, size: 36, radius: 12, iconSize: 19),
+                        const SizedBox(height: 6),
+                        Text(c.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.caption.copyWith(color: const Color(0xFF616754))),
+                      ]),
+                    ),
+                ],
+              ),
+              InkWell(
+                onTap: goWalk,
+                borderRadius: BorderRadius.circular(10),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Row(children: [
+                    const Icon(Icons.directions_walk_rounded, size: 18, color: Color(0xFF616754)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text('걷기 혜택 · ${nf(widget.steps)}걸음',
+                          style: AppType.meta.copyWith(fontSize: 12.5, color: const Color(0xFF616754))),
+                    ),
+                    const Icon(Icons.chevron_right_rounded, size: 17, color: AppColors.faint),
+                  ]),
+                ),
+              ),
+            ]),
+          ),
+        ],
+      ]),
+    );
+  }
+
+  /// ⑦ 가볍게 모으기 — 30분 이내 미션 2개 (.compact-missions)
+  Widget _lightMissions() {
+    // 소요 시간 문구를 분으로 읽는다. '1~2시간'을 1분으로 보면 좌담회가 여기 올라오므로
+    // 시간 단위를 반드시 구분한다. 숫자가 없는 '방문' 같은 값은 짧은 일로 취급하지 않는다.
+    int minutes(String time) {
+      final n = int.tryParse(RegExp(r'\d+').stringMatch(time) ?? '');
+      if (n == null) return 999;
+      return time.contains('시간') ? n * 60 : n;
+    }
+
+    final rows = partnerMissions
+        .where((m) => !widget.doneMissions.contains(m.id) && (m.cat == 'survey' || m.cat == 'experience'))
+        .toList()
+      ..sort((a, b) => minutes(a.time).compareTo(minutes(b.time)));
+    final top = rows.where((m) => minutes(m.time) <= 30).take(2).toList();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(22, 17, 22, 20),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Expanded(child: Text('가볍게 모으기', style: AppType.sectionSmall)),
+          TextAction(label: '전체 미션', onTap: goEarnHub),
+        ]),
+        const SizedBox(height: 12),
+        if (top.isEmpty)
+          Text('참여 가능한 미션을 모두 완료했어요.', style: AppType.meta)
+        else
+          // 두 카드의 높이를 맞추려면 stretch가 필요한데, 스크롤 안이라 세로 제약이
+          // 무한이다. IntrinsicHeight로 높이를 먼저 확정한 뒤 stretch를 건다.
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Padding(padding: const EdgeInsets.only(right: 7), child: ChipWidget(label: '전체', active: cat == 'all', onTap: () => setState(() => cat = 'all'))),
-                for (final c in cats)
-                  Padding(padding: const EdgeInsets.only(right: 7), child: ChipWidget(label: c.label, active: cat == c.k, onTap: () => setState(() => cat = c.k))),
+                for (var i = 0; i < top.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 10),
+                  Expanded(child: _MissionCard(m: top[i], onTap: () => _openMission(top[i]))),
+                ],
+                // 미션이 하나뿐이면 나머지 칸을 비워 폭을 맞춘다.
+                if (top.length == 1) ...[const SizedBox(width: 10), const Expanded(child: SizedBox())],
               ],
             ),
           ),
+      ]),
+    );
+  }
 
-          // 반경 · 정렬 · 지도
+  void _openMission(PartnerMission m) => _push(PartnerMissionDetailScreen(
+        m: m, done: widget.doneMissions.contains(m.id), onComplete: widget.completeMission,
+      ));
+
+  /// 빠른 종류 칩 (.quick-task-categories)
+  Widget _quickCats() {
+    const quick = ['buy', 'pickup', 'line', 'move'];
+    return SizedBox(
+      height: 48,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(22, 4, 22, 0),
+        children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-            child: Row(children: [
-              Expanded(
-                child: _Picker<double>(
-                  label: '반경',
-                  value: radius,
-                  display: _radiusLabel,
-                  items: const [
-                    [0.5, '500m 이내'], [1.0, '1km 이내'], [3.0, '3km 이내'],
-                    [5.0, '5km 이내'], [10.0, '10km 이내'], [20.0, '20km 이내'], [30.0, '30km 이내'],
-                  ],
-                  onChanged: (v) => setState(() => radius = v),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _Picker<String>(
-                  label: '정렬',
-                  value: sort,
-                  display: const {'dist': '가까운순', 'price': '사례비순', 'time': '짧은순', 'deadline': '마감임박', 'new': '최신순'}[sort]!,
-                  items: const [
-                    ['dist', '가까운순'], ['price', '사례비 높은순'], ['time', '소요시간 짧은순'],
-                    ['deadline', '마감 임박순'], ['new', '최신순'],
-                  ],
-                  onChanged: (v) => setState(() => sort = v),
-                ),
-              ),
-              const SizedBox(width: 8),
-              InkWell(
-                onTap: () => goMap(list),
-                borderRadius: BorderRadius.circular(10),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
-                  decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(10)),
-                  child: const Text('🗺️ 지도', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.ink)),
-                ),
-              ),
-            ]),
+            padding: const EdgeInsets.only(right: 7),
+            child: ChipWidget(label: '전체', pill: true, active: cat == 'all', onTap: () => setState(() => cat = 'all')),
           ),
-
-          // 세부 조건
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
-            child: Row(children: [
-              InkWell(
-                onTap: () => setState(() => shortOnly = !shortOnly),
-                borderRadius: BorderRadius.circular(99),
-                child: ChipWidget(label: '⚡ 30분 안에 끝나요', active: shortOnly),
-              ),
-              const Spacer(),
-              if (cat != 'all' || shortOnly || radius != 3 || sort != 'dist')
-                TextButton(
-                  onPressed: () => setState(() {
-                    cat = 'all';
-                    shortOnly = false;
-                    radius = 3;
-                    sort = 'dist';
-                  }),
-                  child: const Text('조건 초기화', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w700, fontSize: 12.5)),
-                ),
-            ]),
-          ),
-
-          if (list.isEmpty)
-            const EmptyState(msg: '조건에 맞는 부탁이 없어요.\n거리 미확인 부탁은 반경 검색에서 제외됩니다.')
-          else
+          for (final c in cats.where((c) => quick.contains(c.k)))
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(children: [
-                for (final it in list.take(12)) TaskCard(it: it, onOpen: () => openDetail(it), done: widget.actions.grabbed.contains(it.id)),
-              ]),
+              padding: const EdgeInsets.only(right: 7),
+              child: ChipWidget(label: c.label, pill: true, active: cat == c.k, onTap: () => _focusNearby(which: 'ask', category: c.k)),
             ),
-        ] else ...[
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Text('근무일 · 근무시간 · 일급 · 지급일을 부탁과 구분해 안내해요', style: TextStyle(fontSize: 12, color: AppColors.sub)),
-          ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(children: [
-              for (final j in jobs.take(4)) DayJobCard(j: j, onOpen: () => openDayJob(context, j, _applyDayJob), compact: true),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: goDayJobs,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.ink,
-                    side: const BorderSide(color: AppColors.line),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: const Text('단기알바 전체 보기 ›', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
-                ),
-              ),
-            ]),
+            padding: const EdgeInsets.only(right: 7),
+            child: ChipWidget(
+              label: moreFilters ? '접기' : '더보기',
+              pill: true,
+              onTap: () => setState(() => moreFilters = !moreFilters),
+            ),
           ),
         ],
+      ),
+    );
+  }
 
-        // ⑩ 더 둘러보기
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-          child: Column(children: [
-            _MoreRow(label: '🌏 해외 부탁', onTap: goOverseas),
-            _MoreRow(label: '👋 우리 동네 같이해요', onTap: goCommunity),
-          ]),
-        ),
+  /// 탐색 대상 탭 (.work-tabs) — 밑줄 형태
+  Widget _workTabs() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(22, 2, 22, 0),
+      decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFE6E6E2)))),
+      child: Row(children: [
+        for (final t in const [['ask', '동네 부탁'], ['job', '단기알바']])
+          Padding(
+            padding: const EdgeInsets.only(right: 26),
+            child: InkWell(
+              onTap: () => setState(() {
+                kind = t[0];
+                showMap = false;
+              }),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  border: Border(bottom: BorderSide(color: kind == t[0] ? const Color(0xFFFFBF00) : Colors.transparent, width: 3)),
+                ),
+                child: Text(
+                  t[1],
+                  style: AppType.body.copyWith(
+                    fontSize: 15,
+                    fontWeight: AppType.w600,
+                    color: kind == t[0] ? AppColors.ink : const Color(0xFF787971),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ]),
+    );
+  }
 
-        // ⑪ 안전 안내
-        Container(
-          margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(12)),
-          child: const Text(
-            '🛡 공개된 장소에서 만나고, 앱 안에서 대화·정산 내역을 남겨 주세요. 선입금 요구는 신고해 주세요.',
-            style: TextStyle(fontSize: 11.5, color: AppColors.sub, height: 1.6),
+  /// 지도 토글 · 반경 · 정렬 (.filter-controls)
+  Widget _filterControls() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(22, 12, 22, 4),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+        InkWell(
+          onTap: () => setState(() {
+            showMap = !showMap;
+            pinned = null;
+          }),
+          borderRadius: BorderRadius.circular(9),
+          child: Container(
+            height: 38,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: showMap ? AppColors.ink : AppColors.card,
+              border: Border.all(color: showMap ? AppColors.ink : const Color(0xFFE5E5E5)),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(showMap ? Icons.format_list_bulleted_rounded : Icons.map_outlined, size: 17, color: showMap ? Colors.white : AppColors.ink),
+              const SizedBox(width: 4),
+              Text(showMap ? '목록' : '지도',
+                  style: AppType.meta.copyWith(fontWeight: AppType.w600, color: showMap ? Colors.white : AppColors.ink)),
+            ]),
           ),
         ),
-      ],
+        const SizedBox(width: 10),
+        Expanded(
+          child: _SelectField<double>(
+            label: '반경',
+            value: radius,
+            display: _radiusLabel,
+            items: const [
+              (0.5, '500m 이내'), (1.0, '1km 이내'), (3.0, '3km 이내'),
+              (5.0, '5km 이내'), (10.0, '10km 이내'), (20.0, '20km 이내'), (30.0, '30km 이내'),
+            ],
+            onChanged: (v) => setState(() => radius = v),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _SelectField<String>(
+            label: '정렬',
+            value: sort,
+            display: const {'dist': '가까운순', 'price': '사례비순', 'time': '짧은순', 'deadline': '마감임박', 'new': '최신순'}[sort]!,
+            items: const [
+              ('dist', '가까운순'), ('price', '사례비 높은순'), ('time', '소요시간 짧은순'),
+              ('deadline', '마감 임박순'), ('new', '최신순'),
+            ],
+            onChanged: (v) => setState(() => sort = v),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  /// 세부 조건 (.extra-filters) — '더보기'로 펼친다
+  Widget _extraFilters() {
+    if (!moreFilters) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(22, 6, 22, 6),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        InkWell(
+          onTap: () => setState(() => shortOnly = !shortOnly),
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(children: [
+              Icon(shortOnly ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded,
+                  size: 20, color: shortOnly ? AppColors.ink : AppColors.faint),
+              const SizedBox(width: 8),
+              Text('30분 안에 끝나는 부탁', style: AppType.meta.copyWith(fontSize: 12.5, color: const Color(0xFF777F6A))),
+            ]),
+          ),
+        ),
+        Row(children: [
+          SizedBox(width: 72, child: Text('반경 $_radiusLabel', style: AppType.caption.copyWith(color: const Color(0xFF68685E)))),
+          Expanded(
+            child: SliderTheme(
+              data: SliderThemeData(
+                activeTrackColor: const Color(0xFFC69B00),
+                inactiveTrackColor: AppColors.line,
+                thumbColor: const Color(0xFFC69B00),
+                overlayShape: SliderComponentShape.noOverlay,
+                trackHeight: 3,
+              ),
+              child: Slider(
+                min: 0.5, max: 30, divisions: 59, value: radius,
+                onChanged: (v) => setState(() => radius = double.parse(v.toStringAsFixed(1))),
+              ),
+            ),
+          ),
+        ]),
+        if (_dirty)
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () => setState(() {
+                cat = 'all';
+                shortOnly = false;
+                radius = 3;
+                sort = 'dist';
+              }),
+              child: Text('조건 초기화', style: AppType.meta.copyWith(fontWeight: AppType.w600, color: AppColors.ink)),
+            ),
+          ),
+      ]),
+    );
+  }
+
+  /// 전체 종류 칩 줄 (.category-strip)
+  Widget _categoryStrip() {
+    return SizedBox(
+      height: 46,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(22, 8, 22, 0),
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(right: 7),
+            child: ChipWidget(label: '전체', active: cat == 'all', onTap: () => setState(() => cat = 'all')),
+          ),
+          for (final c in cats)
+            Padding(
+              padding: const EdgeInsets.only(right: 7),
+              child: ChipWidget(label: c.label, active: cat == c.k, onTap: () => setState(() => cat = c.k)),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _taskList(List<TaskItem> list) {
+    if (list.isEmpty) {
+      return EmptyState(
+        compact: true,
+        title: '조건에 맞는 부탁이 없어요',
+        msg: '거리 미확인 부탁은 반경 검색에서 제외됩니다.',
+        action: '30km · 전체 종류로 보기',
+        onAction: () => setState(() {
+          radius = 30;
+          cat = 'all';
+          shortOnly = false;
+          sort = 'dist';
+        }),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 22),
+      child: Column(children: [
+        for (final it in list.take(12))
+          TaskCard(it: it, onOpen: () => widget.actions.open(context, it), done: widget.actions.grabbed.contains(it.id)),
+        if (list.length > 12)
+          Padding(
+            padding: const EdgeInsets.only(top: 14),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(onPressed: goLocalHub, child: const Text('주변 부탁 모두 보기')),
+            ),
+          ),
+      ]),
+    );
+  }
+
+  /// 목록과 **같은 조건**의 결과를 네이버 지도 위에 올린다 (v9의 지도/목록 전환).
+  ///
+  /// 좌표가 없는 부탁(내가 방금 올린 부탁 등)은 지도에 찍을 수 없으므로 개수를 따로 알려준다.
+  Widget _inlineMap(List<TaskItem> list) {
+    final located = list.where((i) => i.lat != null && i.lng != null).toList();
+    // 클로저(onOpen) 안에서도 null 승격이 되도록 final로 확정해 둔다.
+    TaskItem? found;
+    for (final i in located) {
+      if (i.id == pinned) {
+        found = i;
+        break;
+      }
+    }
+    final selected = found ?? (located.isEmpty ? null : located.first);
+    final center = centerOf(widget.scope);
+
+    return Column(children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(22, 10, 22, 0),
+        child: Text(
+          located.length == list.length
+              ? '목록과 같은 조건의 결과예요'
+              : '좌표가 있는 ${located.length}건만 지도에 표시돼요',
+          textAlign: TextAlign.center,
+          style: AppType.caption.copyWith(color: const Color(0xFF78786E)),
+        ),
+      ),
+      Container(
+        height: 330,
+        margin: const EdgeInsets.fromLTRB(22, 12, 22, 0),
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: AppColors.page,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.line),
+        ),
+        child: MapCanvas(
+          pins: [
+            for (final it in located)
+              MapPin(
+                item: it,
+                lat: it.lat!,
+                lng: it.lng!,
+                label: (it.hot ? '급 ' : '') + kwon(it.price),
+                color: it.id == selected?.id
+                    ? AppColors.yellowDeep
+                    : widget.actions.grabbed.contains(it.id)
+                        ? AppColors.faint
+                        : AppColors.ink,
+              ),
+          ],
+          selectedId: selected?.id,
+          centerLat: center.$1,
+          centerLng: center.$2,
+          zoom: zoomOf(widget.scope),
+          onPinTap: (it) => setState(() => pinned = it.id),
+        ),
+      ),
+      if (selected != null)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 22),
+          child: TaskCard(
+            it: selected,
+            onOpen: () => widget.actions.open(context, selected),
+            done: widget.actions.grabbed.contains(selected.id),
+          ),
+        )
+      else
+        Padding(
+          padding: const EdgeInsets.fromLTRB(22, 18, 22, 0),
+          child: Text('이 조건에는 지도에 찍을 부탁이 없어요', textAlign: TextAlign.center, style: AppType.meta),
+        ),
+    ]);
+  }
+
+  Widget _dayJobs(List<DayJob> jobs) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(22, 14, 22, 0),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('근무일 · 근무시간 · 일급 · 지급일을 부탁과 구분해 안내해요', style: AppType.meta),
+        const SizedBox(height: 10),
+        for (final j in jobs.take(4)) DayJobCard(j: j, onOpen: () => openDayJob(context, j, _applyDayJob), compact: true),
+        const SizedBox(height: 4),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(onPressed: goDayJobs, child: const Text('단기알바 전체 보기')),
+        ),
+      ]),
+    );
+  }
+
+  /// ⑩ 더 둘러보기 (.explore-more)
+  Widget _exploreMore() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(22, 20, 22, 0),
+      child: Row(children: [
+        Expanded(child: _MoreButton(label: '해외 부탁', onTap: goOverseas)),
+        const SizedBox(width: 8),
+        Expanded(child: _MoreButton(label: '우리 동네 같이해요', onTap: goCommunity)),
+      ]),
+    );
+  }
+
+  Widget _safetyNote() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(22, 16, 22, 0),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Icon(Icons.shield_outlined, size: 16, color: AppColors.faint),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            '공개된 장소에서 만나고, 앱 안에서 대화·정산 내역을 남겨 주세요. 선입금 요구는 신고해 주세요.',
+            style: AppType.caption.copyWith(height: 1.7),
+          ),
+        ),
+      ]),
     );
   }
 }
 
-/// 주요 서비스 한 줄 (동네 부탁 / 해외 부탁 / 단기알바)
-class _ServiceRow extends StatelessWidget {
+enum _ServiceTone { cream, blue, warm }
+
+/// 주요 서비스 타일 (.primary-services>button) — 세로 정렬, 3열
+class _ServiceTile extends StatelessWidget {
   final String icon, title, sub;
+  final _ServiceTone tone;
   final VoidCallback onTap;
-  const _ServiceRow({required this.icon, required this.title, required this.sub, required this.onTap});
+  const _ServiceTile({required this.icon, required this.title, required this.sub, this.tone = _ServiceTone.cream, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
+    final (bg, border, fg) = switch (tone) {
+      _ServiceTone.blue => (AppColors.blueSoft, const Color(0xFFDCE5F2), AppColors.blue),
+      _ServiceTone.warm => (const Color(0xFFF4F1E9), const Color(0xFFEAE5D6), const Color(0xFF8A7A4E)),
+      _ServiceTone.cream => (const Color(0xFFFFFDF5), const Color(0xFFEDE9DC), const Color(0xFF96722C)),
+    };
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(17),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-        decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(14)),
-        child: Row(children: [
-          Container(width: 44, height: 44, alignment: Alignment.center, decoration: BoxDecoration(color: AppColors.yellowSoft, borderRadius: BorderRadius.circular(13)), child: Text(icon, style: const TextStyle(fontSize: 22))),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.ink)),
-                Padding(padding: const EdgeInsets.only(top: 2), child: Text(sub, style: const TextStyle(fontSize: 11.5, color: AppColors.sub))),
-              ],
-            ),
-          ),
-          const Text('›', style: TextStyle(fontSize: 19, color: AppColors.faint)),
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 14),
+        decoration: BoxDecoration(color: bg, border: Border.all(color: border), borderRadius: BorderRadius.circular(17)),
+        child: Column(children: [
+          SizedBox(height: 28, child: Icon(AppIcon.data(icon), size: 26, color: fg)),
+          const SizedBox(height: 8),
+          Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.body.copyWith(fontSize: 14, fontWeight: AppType.w700, color: const Color(0xFF29271F))),
+          const SizedBox(height: 5),
+          Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.caption.copyWith(fontSize: 10, color: const Color(0xFF7C7C73))),
         ]),
       ),
     );
   }
 }
 
+/// 숏컷 한 칸 (.category-shortcuts button)
 class _Shortcut extends StatelessWidget {
   final String icon, label;
   final VoidCallback onTap;
@@ -553,11 +941,11 @@ class _Shortcut extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: 6),
           child: Column(children: [
-            Container(width: 44, height: 44, alignment: Alignment.center, decoration: BoxDecoration(color: AppColors.yellowSoft, borderRadius: BorderRadius.circular(14)), child: Text(icon, style: const TextStyle(fontSize: 20))),
-            const SizedBox(height: 6),
-            Text(label, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: AppColors.ink)),
+            Icon(AppIcon.data(icon), size: 20, color: const Color(0xFF737967)),
+            const SizedBox(height: 7),
+            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.caption.copyWith(color: const Color(0xFF5D6352))),
           ]),
         ),
       ),
@@ -565,76 +953,11 @@ class _Shortcut extends StatelessWidget {
   }
 }
 
-/// 짧은 시간 순으로 설문·체험 미션 두 개만. 전체는 '오늘 벌기' 허브에서 본다.
-class _LightMissions extends StatelessWidget {
-  final List<String> doneMissions;
-  final VoidCallback onOpenAll;
-  final void Function(PartnerMission) onOpen;
-  const _LightMissions({required this.doneMissions, required this.onOpenAll, required this.onOpen});
-
-  /// 소요 시간 문구를 분으로 읽는다. '1~2시간'을 1분으로 보면 좌담회가
-  /// '가볍게 모으기'에 올라오므로 시간 단위를 반드시 구분한다.
-  /// 숫자가 없는 '방문', '체험+후기' 같은 값은 짧은 일로 취급하지 않는다.
-  static int _minutes(String time) {
-    final n = int.tryParse(RegExp(r'\d+').stringMatch(time) ?? '');
-    if (n == null) return 999;
-    return time.contains('시간') ? n * 60 : n;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final rows = partnerMissions
-        .where((m) => !doneMissions.contains(m.id) && (m.cat == 'survey' || m.cat == 'experience'))
-        .toList()
-      ..sort((a, b) => _minutes(a.time).compareTo(_minutes(b.time)));
-    final top = rows.where((m) => _minutes(m.time) <= 30).take(2).toList();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SectionHeader(title: '가볍게 모으기', sub: '짧게 참여하고 포인트 받기', onAction: onOpenAll),
-        if (top.isEmpty)
-          const EmptyState(msg: '참여 가능한 미션을 모두 완료했어요.')
-        else
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(children: [
-              for (final m in top)
-                InkWell(
-                  onTap: () => onOpen(m),
-                  borderRadius: BorderRadius.circular(13),
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
-                    decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(13)),
-                    child: Row(children: [
-                      Container(width: 40, height: 40, alignment: Alignment.center, decoration: BoxDecoration(color: AppColors.purpleSoft, borderRadius: BorderRadius.circular(11)), child: Text(m.icon, style: const TextStyle(fontSize: 20))),
-                      const SizedBox(width: 11),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('${m.time} · ${m.cat == 'survey' ? '설문' : '체험'}', style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: AppColors.purple)),
-                            Padding(padding: const EdgeInsets.only(top: 1), child: Text(m.title, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.ink))),
-                            Padding(padding: const EdgeInsets.only(top: 2), child: Text(m.cond, style: const TextStyle(fontSize: 11, color: AppColors.sub))),
-                          ],
-                        ),
-                      ),
-                      Text('+${nf(m.points)}P', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.ink)),
-                    ]),
-                  ),
-                ),
-            ]),
-          ),
-      ],
-    );
-  }
-}
-
-class _MoreRow extends StatelessWidget {
-  final String label;
+/// 가볍게 모으기 카드 (.compact-mission)
+class _MissionCard extends StatelessWidget {
+  final PartnerMission m;
   final VoidCallback onTap;
-  const _MoreRow({required this.label, required this.onTap});
+  const _MissionCard({required this.m, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -642,62 +965,122 @@ class _MoreRow extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-        decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(12)),
-        child: Row(children: [
-          Expanded(child: Text(label, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.ink))),
-          const Text('›', style: TextStyle(fontSize: 18, color: AppColors.faint)),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          border: Border.all(color: const Color(0xFFEBEDE4)),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('${m.time} · ${m.cat == 'survey' ? '설문' : '체험'}',
+              maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: AppType.caption.copyWith(fontSize: 10, color: const Color(0xFF999E8B))),
+          Padding(
+            padding: const EdgeInsets.only(top: 5, bottom: 3),
+            child: Text(m.title, maxLines: 2, overflow: TextOverflow.ellipsis,
+                style: AppType.meta.copyWith(fontSize: 12, fontWeight: AppType.w500, color: const Color(0xFF3A402F), height: 1.5)),
+          ),
+          Text(m.cond, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: AppType.caption.copyWith(fontSize: 9.5, color: const Color(0xFF979C89))),
+          const SizedBox(height: 10),
+          Row(children: [
+            Expanded(
+              child: Text('+${nf(m.points)}P',
+                  style: AppType.meta.copyWith(fontSize: 12, fontWeight: AppType.w600, color: const Color(0xFF8D793A))),
+            ),
+            const Icon(Icons.chevron_right_rounded, size: 15, color: Color(0xFFB6B9A8)),
+          ]),
         ]),
       ),
     );
   }
 }
 
-/// 반경·정렬처럼 값을 하나 고르는 작은 드롭다운. 바텀시트로 열어 터치 영역을 넓게 둔다.
-class _Picker<T> extends StatelessWidget {
+/// 더 둘러보기 버튼 (.explore-more button)
+class _MoreButton extends StatelessWidget {
   final String label;
-  final T value;
-  final String display;
-  final List<List<Object>> items;
-  final void Function(T) onChanged;
-  const _Picker({required this.label, required this.value, required this.display, required this.items, required this.onChanged});
+  final VoidCallback onTap;
+  const _MoreButton({required this.label, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: () => _open(context),
-      borderRadius: BorderRadius.circular(10),
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-        decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(10)),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          border: Border.all(color: const Color(0xFFE8E8E4)),
+          borderRadius: BorderRadius.circular(12),
+        ),
         child: Row(children: [
-          Text('$label ', style: const TextStyle(fontSize: 11.5, color: AppColors.sub)),
-          Expanded(child: Text(display, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.ink))),
-          const Text('▾', style: TextStyle(fontSize: 11, color: AppColors.faint)),
+          Expanded(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta.copyWith(color: AppColors.ink))),
+          const Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.faint),
         ]),
       ),
     );
+  }
+}
+
+/// 시안의 `<select>` 자리. 라벨이 위에 붙은 테두리 상자를 누르면 바텀시트가 열린다.
+class _SelectField<T> extends StatelessWidget {
+  final String label;
+  final T value;
+  final String display;
+  final List<(T, String)> items;
+  final void Function(T) onChanged;
+  const _SelectField({required this.label, required this.value, required this.display, required this.items, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(label, style: AppType.caption.copyWith(fontSize: 10, color: const Color(0xFF777777))),
+      const SizedBox(height: 5),
+      InkWell(
+        onTap: () => _open(context),
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          height: 38,
+          padding: const EdgeInsets.symmetric(horizontal: 9),
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            border: Border.all(color: const Color(0xFFE6E6E2)),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(children: [
+            Expanded(
+              child: Text(display, maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: AppType.meta.copyWith(fontWeight: AppType.w600, color: const Color(0xFF24241F))),
+            ),
+            const Icon(Icons.expand_more_rounded, size: 16, color: AppColors.faint),
+          ]),
+        ),
+      ),
+    ]);
   }
 
   void _open(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppColors.card,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (sheet) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(padding: const EdgeInsets.fromLTRB(20, 18, 20, 6), child: Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.ink))),
-            for (final it in items)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(22, 20, 22, 6),
+              child: Text(label, style: AppType.pageTitle.copyWith(fontSize: 16)),
+            ),
+            for (final (v, text) in items)
               ListTile(
-                title: Text(it[1] as String, style: TextStyle(fontSize: 14, fontWeight: it[0] == value ? FontWeight.w800 : FontWeight.w500, color: AppColors.ink)),
-                trailing: it[0] == value ? const Text('✓', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w800)) : null,
+                title: Text(text, style: AppType.body.copyWith(fontWeight: v == value ? AppType.w700 : AppType.w400)),
+                trailing: v == value ? const Icon(Icons.check_rounded, size: 19, color: AppColors.ink) : null,
                 onTap: () {
                   Navigator.of(sheet).pop();
-                  onChanged(it[0] as T);
+                  onChanged(v);
                 },
               ),
             const SizedBox(height: 8),

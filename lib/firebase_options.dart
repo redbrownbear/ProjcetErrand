@@ -12,6 +12,15 @@ class DefaultFirebaseOptions {
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
         return android;
+      // Windows 데스크톱은 웹 앱과 같은 자격 증명을 쓴다. Firebase 콘솔에 따로
+      // 'Windows 앱'을 등록하는 항목이 없고, 데스크톱 SDK가 웹 API 키로 동작하기 때문이다.
+      // (콘솔 > 인증 > 승인된 도메인에 localhost가 있어야 로그인이 된다)
+      case TargetPlatform.windows:
+        return windows;
+      case TargetPlatform.macOS:
+        throw UnsupportedError(
+          'DefaultFirebaseOptions have not been configured for macos — register a macOS app in the Firebase console first.',
+        );
       case TargetPlatform.iOS:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for ios — register an iOS app in the Firebase console first.',
@@ -40,4 +49,7 @@ class DefaultFirebaseOptions {
     storageBucket: 'projecterrand.firebasestorage.app',
     measurementId: 'G-T8QZQ7FHMC',
   );
+
+  /// Windows 데스크톱. 웹 앱 자격 증명을 그대로 쓴다.
+  static const windows = web;
 }

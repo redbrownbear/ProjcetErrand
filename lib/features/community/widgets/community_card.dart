@@ -47,7 +47,15 @@ class CommunityCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    Text('${shortRegion(it.region ?? '')} · ${it.ago ?? ''}', style: const TextStyle(fontSize: 11, color: AppColors.faint)),
+                    Text(
+                      [
+                        shortRegion(it.region ?? ''),
+                        it.ago ?? '',
+                        // 미리 만들어 둔 데이터는 실제 모임이 아니다
+                        if (it.sample) '(예시)',
+                      ].where((s) => s.isNotEmpty).join(' · '),
+                      style: const TextStyle(fontSize: 11, color: AppColors.faint),
+                    ),
                   ],
                 ),
               ),

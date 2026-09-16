@@ -64,6 +64,11 @@ class _DetailPageState extends State<DetailPage> {
                       if (it.hot) ...[const Tag(label: '🔥 급해요', c: AppColors.red, bg: AppColors.redSoft), const SizedBox(width: 6)],
                       if (sea) ...[const Tag(label: '해외대행', c: AppColors.purple, bg: AppColors.purpleSoft), const SizedBox(width: 6)],
                       if (paid) Tag(label: catOf(it.cat).label, c: AppColors.sub, bg: AppColors.page),
+                      // 내가 올린 글인지, 미리 만들어 둔 예시인지 상세에서도 밝힌다.
+                      if (it.isMine)
+                        ...[const SizedBox(width: 6), const Tag(label: '내가 올림', c: AppColors.yellowDeep, bg: AppColors.yellowSoft)]
+                      else if (it.sample)
+                        ...[const SizedBox(width: 6), const Tag(label: '예시', c: AppColors.faint, bg: AppColors.page)],
                     ]),
                     const SizedBox(height: 12),
                     Text(it.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.ink, height: 1.34, letterSpacing: -0.3)),

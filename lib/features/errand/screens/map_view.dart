@@ -7,16 +7,8 @@ import '../data/categories.dart';
 import '../models/task_item.dart';
 import '../navigation/errand_actions.dart';
 import 'map/map_canvas.dart';
+import 'map/map_centers.dart';
 
-/// 지역별 지도 초기 중심 좌표.
-const _regionCenters = {
-  '서울 서초구': (37.4837, 127.0324),
-  '서울 강남구': (37.5172, 127.0473),
-  '서울 성동구': (37.5634, 127.0367),
-  '부산 수영구': (35.1455, 129.1132),
-  '대전 유성구': (36.3623, 127.3560),
-};
-const _koreaCenter = (36.5, 127.8);
 
 class MapView extends StatefulWidget {
   final List<TaskItem> items;
@@ -64,8 +56,8 @@ class _MapViewState extends State<MapView> {
 
   @override
   Widget build(BuildContext context) {
-    final center = _regionCenters[widget.scope] ?? _koreaCenter;
-    final zoom = _regionCenters.containsKey(widget.scope) ? 13.5 : 7.0;
+    final center = centerOf(widget.scope);
+    final zoom = zoomOf(widget.scope);
     final safeTop = MediaQuery.of(context).padding.top;
     final safeBottom = MediaQuery.of(context).padding.bottom;
 

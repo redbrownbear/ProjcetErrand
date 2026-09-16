@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:geolocator/geolocator.dart';
 
+import '../../../../core/config/naver_map_config.dart';
 import '../../../../core/theme/colors.dart';
 import '../../models/task_item.dart';
 import 'map_canvas.dart' show MapPin;
@@ -136,6 +137,28 @@ class _MapCanvasState extends State<MapCanvas> {
 
   @override
   Widget build(BuildContext context) {
+    // dart.library.io에는 Windows·macOS·Linux도 포함되지만 네이버 지도 SDK는
+    // Android·iOS만 지원한다. 데스크톱에서 NaverMap 위젯을 그리면 플러그인이 없어
+    // 그 자리에서 죽으므로, 안내 화면으로 대신한다. (initNaverMap도 같은 조건으로 건너뛴다)
+    if (!naverMapSupported) {
+      return Container(
+        color: const Color(0xFFE7ECE4),
+        alignment: Alignment.center,
+        padding: const EdgeInsets.all(24),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Icon(Icons.map_outlined, size: 34, color: AppColors.faint),
+          const SizedBox(height: 10),
+          const Text(
+            '지도는 모바일 앱(Android · iOS)에서만 볼 수 있어요',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13, color: AppColors.sub),
+          ),
+          const SizedBox(height: 4),
+          Text('주변 부탁 ${widget.pins.length}건', style: const TextStyle(fontSize: 12, color: AppColors.faint)),
+        ]),
+      );
+    }
+
     return Stack(children: [
       Positioned.fill(
         child: NaverMap(

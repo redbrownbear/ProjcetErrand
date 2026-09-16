@@ -60,8 +60,8 @@ flutter_launcher_icons:
   web:
     generate: true
     image_path: "assets/icon/app_icon.png"
-    background_color: "#FFD429"
-    theme_color: "#FFD429"
+    background_color: "#FADD53"
+    theme_color: "#FADD53"
   windows:
     generate: true
   macos:
@@ -81,6 +81,20 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/icon/app_icon.png
+
+  # 기획 시안 v9의 본문 서체. 웹 시안은 CDN(@import)으로 불러오지만,
+  # 앱은 네트워크 없이도 같은 글자 모양이 나와야 하므로 ttf를 번들한다.
+  fonts:
+    - family: Pretendard
+      fonts:
+        - asset: assets/fonts/Pretendard-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Pretendard-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Pretendard-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Pretendard-Bold.ttf
+          weight: 700
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

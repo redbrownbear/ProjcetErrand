@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/storage/local_store.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../benefits/data/point_rules.dart';
@@ -67,30 +68,30 @@ class _IncomeSummaryState extends State<IncomeSummary> {
     final percent = goal > 0 ? (total * 100 / goal).floor().clamp(0, 100) : 0;
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 6, 16, 10),
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
-      decoration: BoxDecoration(color: AppColors.ink, borderRadius: BorderRadius.circular(18)),
+      margin: const EdgeInsets.fromLTRB(22, 6, 22, 8),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+      decoration: BoxDecoration(color: AppColors.black, borderRadius: BorderRadius.circular(15)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('지금까지 모은 금액', style: TextStyle(fontSize: 12.5, color: Colors.white60)),
+          Text('지금까지 모은 금액', style: AppType.meta.copyWith(color: AppColors.onDarkSub)),
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Text.rich(TextSpan(children: [
-              TextSpan(text: nf(total), style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: AppColors.yellow)),
-              const TextSpan(text: '원', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.yellow)),
+              TextSpan(text: nf(total), style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: AppColors.gold)),
+              const TextSpan(text: '원', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.gold)),
             ])),
           ),
           Padding(
             padding: const EdgeInsets.only(top: 6),
             child: Text(
               '돈 ${nf(widget.cash)}원 + 포인트 ${nf(widget.points)}P · 1P = $pointValue원 기준',
-              style: const TextStyle(fontSize: 11.5, color: Colors.white54),
+              style: const TextStyle(fontSize: 11.5, color: AppColors.onDarkSub),
             ),
           ),
           const Padding(
             padding: EdgeInsets.only(top: 2),
-            child: Text('체험에서 완료한 내역 기준이에요. 실제 정산액이 아니에요.', style: TextStyle(fontSize: 10.5, color: Colors.white38)),
+            child: Text('체험에서 완료한 내역 기준이에요. 실제 정산액이 아니에요.', style: TextStyle(fontSize: 10.5, color: AppColors.onDarkFaint)),
           ),
 
           Padding(
@@ -103,14 +104,14 @@ class _IncomeSummaryState extends State<IncomeSummary> {
               if (goal > 0)
                 Padding(
                   padding: const EdgeInsets.only(right: 8),
-                  child: Text('$percent%', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.yellow)),
+                  child: Text('$percent%', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.gold)),
                 ),
               InkWell(
                 onTap: _openEditor,
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(color: const Color(0xFF2A2C30), borderRadius: BorderRadius.circular(8)),
+                  decoration: BoxDecoration(color: AppColors.onDarkFill, borderRadius: BorderRadius.circular(8)),
                   child: Text(goal > 0 ? '수정' : '설정', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Colors.white)),
                 ),
               ),
@@ -123,8 +124,8 @@ class _IncomeSummaryState extends State<IncomeSummary> {
               child: LinearProgressIndicator(
                 value: goal > 0 ? percent / 100 : 0,
                 minHeight: 7,
-                backgroundColor: const Color(0xFF2A2C30),
-                valueColor: const AlwaysStoppedAnimation(AppColors.yellow),
+                backgroundColor: AppColors.onDarkFill,
+                valueColor: const AlwaysStoppedAnimation(AppColors.gold),
               ),
             ),
           ),
@@ -177,7 +178,7 @@ class _IncomeSummaryState extends State<IncomeSummary> {
                   child: ElevatedButton(
                     onPressed: _save,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.yellow,
+                      backgroundColor: AppColors.gold,
                       foregroundColor: AppColors.ink,
                       elevation: 0,
                       padding: const EdgeInsets.symmetric(vertical: 11),

@@ -58,6 +58,8 @@ class _ListScreenState extends State<ListScreen> {
 
     // 급해요 우선은 추천순에서만. 사용자가 고른 정렬(가까운 순 등)을 덮어쓰지 않는다.
     base.sort((a, b) {
+      // '부탁하기'로 올린 진짜 부탁을 예시 데이터보다 항상 위에 둔다.
+      if (a.sample != b.sample) return a.sample ? 1 : -1;
       switch (sort) {
         case 'price':
           return b.price - a.price;
