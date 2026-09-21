@@ -51,13 +51,16 @@ class AppType {
   static TextStyle get button => _t(14, w600, AppColors.ink, tracking: -0.02);
 }
 
-/// 모서리 반경. 시안의 --radius(22px)를 기준으로 한 단계씩 줄여 쓴다.
+/// 모서리 반경.
+///
+/// 최신 시안(`gyumsa-refined`)은 v9보다 한 단계씩 더 둥글다.
+/// (카드 20~23px · 버튼/입력창 15px · 아이콘 타일 18px)
 class AppRadius {
-  static const surface = 22.0; // 큰 카드 · 시트
-  static const card = 16.0; // 일반 카드 · 배너
-  static const tile = 14.0; // 버튼 · 입력창
-  static const emblem = 15.0; // 아이콘 타일
-  static const chip = 11.0; // 목록 칩
+  static const surface = 23.0; // 큰 카드 · 시트
+  static const card = 20.0; // 일반 카드 · 배너
+  static const tile = 15.0; // 버튼 · 입력창
+  static const emblem = 18.0; // 아이콘 타일
+  static const chip = 12.0; // 목록 칩
   static const pill = 20.0; // 홈의 둥근 칩
 }
 

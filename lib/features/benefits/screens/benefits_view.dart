@@ -15,7 +15,6 @@ import '../models/coupon.dart';
 import '../models/reward_ledger.dart';
 import '../models/partner_mission.dart';
 import '../models/reward_product.dart';
-import '../widgets/attend_streak.dart';
 import '../widgets/mission_row.dart';
 import '../widgets/partner_card.dart';
 import '../widgets/walk_ring.dart';
@@ -400,9 +399,8 @@ class _BenefitsViewState extends State<BenefitsView> {
           ]),
         ),
 
-        // 연속 출석 포인트 보상 (지급 단위는 원이 아니라 P다)
-        _secTitle('📅 연속 출석하고 벌기', sub: '빠짐없이 오면 포인트가 커져요'),
-        AttendStreak(earn: widget.earn, isClaimed: widget.isClaimed),
+        // 출석은 홈의 달력 카드 한 곳으로 모았다. (시안 `gyumsa-refined`)
+        // 여기서 또 받을 수 있으면 같은 보상 진입점이 두 곳이 된다.
 
         // 같이 사고 벌기 (공동구매)
         InkWell(

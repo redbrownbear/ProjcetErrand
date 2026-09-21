@@ -18,16 +18,19 @@ import '../features/auth/services/auth_service.dart';
 import '../features/benefits/data/point_rules.dart';
 import '../features/benefits/models/coupon.dart';
 import '../features/benefits/models/partner_mission.dart';
+import '../features/benefits/models/attendance.dart';
 import '../features/benefits/models/reward_ledger.dart';
 import '../features/benefits/models/reward_product.dart';
-import '../features/benefits/screens/benefits_view.dart';
+import '../features/benefits/screens/side_job_view.dart';
 import '../features/chat/screens/chat_view.dart';
+import '../features/dayjob/screens/job_post_screen.dart';
 import '../features/errand/models/offer.dart';
 import '../features/errand/models/task_item.dart';
 import '../features/errand/models/trade.dart';
 import '../features/errand/navigation/errand_actions.dart';
 import '../features/errand/repositories/errand_repository.dart';
 import '../features/errand/repositories/request_repository.dart';
+import '../features/errand/screens/create_choice_screen.dart';
 import '../features/errand/screens/home_content.dart';
 import '../features/errand/screens/list_screen.dart';
 import '../features/errand/screens/post_request.dart';
@@ -366,6 +369,19 @@ class _HomeShellState extends State<HomeShell> {
 
   bool isClaimed(String key, {bool daily = true}) => _rewards.isClaimed(key, daily: daily);
 
+  /// 달력에 찍힌 출석 이력. 원장에 하루 한 칸씩 쌓인 기록에서 만든다.
+  Attendance get attendance => Attendance.fromLedger(_rewards.entries);
+
+  /// 오늘 출석 도장. 연속·월 누적 보너스까지 한 번에 받는다.
+  Future<void> checkIn() {
+    final today = attendance;
+    if (today.attendedToday) {
+      flash('오늘은 이미 받았어요');
+      return Future.value();
+    }
+    return earn(today.todayReward, '출석 적립', key: Attendance.keyFor(today.today), daily: false);
+  }
+
   /// [key]가 같은 보상은 한 번만 지급된다. [daily]가 true면 한국 시간 기준
   /// 하루에 한 번, false면 계정당 한 번.
   Future<void> earn(int amt, String label, {required String key, bool daily = true}) => requireLogin(() {
@@ -597,8 +613,33 @@ class _HomeShellState extends State<HomeShell> {
         : (it.hot ? '급해요로 목록 맨 위에 올렸어요' : '부탁을 올렸어요'));
   }
 
+  /// 부탁 등록 폼. [kind]는 ask(일상 부탁) | sea(해외 사다주기).
+  void _openRequestForm(String kind) => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => PostRequest(scope: scope, onSubmit: addRequest, initialKind: kind)),
+      );
+
+  /// 단기알바 모집 등록. 일상 부탁과 달리 근로 조건을 받는 별도 폼이다.
+  void openJobPost() => requireLogin(() {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => JobPostScreen(
+            scope: scope,
+            onSubmit: (job) => flash('단기알바를 등록했어요 · 이 기기에 저장돼요'),
+          )),
+        );
+      });
+
+  /// '부탁하기' — 일상 부탁 · 해외 사다주기 · 단기알바 모집 갈래부터 고른다.
   void openPost() => requireLogin(() {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => PostRequest(scope: scope, onSubmit: addRequest)));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => CreateChoiceScreen(
+            onLocal: () => _openRequestForm('ask'),
+            onOverseas: () => _openRequestForm('sea'),
+            onJob: openJobPost,
+          )),
+        );
       });
 
   /// 닉네임 변경. 계정(표시 이름)과 프로필 문서를 같이 맞춘다.
@@ -633,12 +674,11 @@ class _HomeShellState extends State<HomeShell> {
   Widget _body() {
     switch (tab) {
       case 'benefits':
-        return BenefitsView(
+        return SideJobView(
           points: points, steps: steps, coupons: coupons, items: items, scope: scope, actions: actions,
           monthEarn: monthEarnedCash, monthPoints: 0, freeLeft: freeLeft, doneMissions: doneMissions,
           earn: earn, isClaimed: isClaimed, redeem: redeem, useCoupon: useCoupon,
           completeMission: completeMission, goPointsHub: goPointsHub, flash: flash,
-          showHeader: true,
         );
       case 'chat':
         return ChatView(onGoActivity: goActivity);
@@ -669,6 +709,7 @@ class _HomeShellState extends State<HomeShell> {
           earn: earn, isClaimed: isClaimed, redeem: redeem, useCoupon: useCoupon, completeMission: completeMission,
           flash: flash, goPointsHub: goPointsHub,
           activeCount: activeCount, goActivity: goActivity,
+          attendance: attendance, checkIn: checkIn, openJobPost: openJobPost,
         );
     }
   }
