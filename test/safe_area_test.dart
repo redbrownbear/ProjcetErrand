@@ -98,12 +98,20 @@ void main() {
       )));
       await tester.pump();
 
+      // 참여 버튼은 화면 맨 아래 스크롤 콘텐츠라 먼저 끝까지 내려야 보인다.
+      await tester.dragUntilVisible(
+        find.byType(ElevatedButton),
+        find.byType(Scrollable).first,
+        const Offset(0, -400),
+      );
+      await tester.pump();
+
       final button = tester.getRect(find.byType(ElevatedButton));
       expect(button.bottom, lessThanOrEqualTo(812 - _bottomInset),
           reason: '참여 버튼이 제스처바에 깔린다');
 
       // 헤더도 같이 확인 — 같은 뼈대를 쓰므로 함께 밀려야 한다
-      expect(tester.getTopLeft(find.text('제휴 미션')).dy, greaterThanOrEqualTo(_topInset));
+      expect(tester.getTopLeft(find.text('미션 상세')).dy, greaterThanOrEqualTo(_topInset));
     });
   });
 }

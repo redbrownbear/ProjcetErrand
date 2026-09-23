@@ -253,6 +253,10 @@ class _BenefitsViewState extends State<BenefitsView> {
             )),
         Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Column(children: [for (final it in nearby) TaskCard(it: it, onOpen: () => widget.actions.open(context, it), done: widget.actions.grabbed.contains(it.id))])),
 
+        // 걷기 적립(WalkRing·WalkScreen)은 재원이 없어 화면에서 내렸다.
+        // 출석은 홈의 달력 카드 한 곳으로 모았다. (시안 `gyumsa-refined`)
+        // 여기서 또 받을 수 있으면 같은 보상 진입점이 두 곳이 된다.
+
         // 같이 사고 벌기 (공동구매)
         InkWell(
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GonguScreen(earn: widget.earn, isClaimed: widget.isClaimed))),

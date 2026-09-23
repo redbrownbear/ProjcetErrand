@@ -8,7 +8,7 @@ import '../../../core/widgets/app_icon.dart';
 import '../../../core/widgets/chip_widget.dart';
 import '../../../core/widgets/screen_frame.dart';
 import '../../../core/widgets/section_header.dart';
-import '../../benefits/data/attend_streak.dart';
+import '../../benefits/models/attendance.dart';
 import '../../benefits/models/coupon.dart';
 import '../../benefits/models/partner_mission.dart';
 import '../../benefits/models/reward_ledger.dart';
@@ -19,26 +19,32 @@ import '../../benefits/screens/point_shop_screen.dart';
 import '../../benefits/screens/walk_screen.dart';
 import '../../benefits/services/mission_engine.dart';
 import '../../benefits/services/mission_runner.dart';
+import '../../benefits/widgets/attendance_card.dart';
 import '../../benefits/widgets/daily_mission_row.dart';
 import '../../community/screens/community_screen.dart';
 import '../../dayjob/data/day_jobs.dart';
 import '../../dayjob/models/day_job.dart';
 import '../../dayjob/screens/day_job_screen.dart';
+import '../../dayjob/screens/job_guide_screen.dart';
 import '../../dayjob/widgets/day_job_card.dart';
 import '../../deals/screens/save_hub_screen.dart';
+import '../../partner/screens/brand_hub_screen.dart';
 import '../../pay/widgets/wallet_summary.dart';
 import '../../profile/models/trust_level.dart';
 import '../data/categories.dart';
 import '../data/home_ads.dart';
+import '../models/home_news.dart';
 import '../models/task_item.dart';
 import '../navigation/errand_actions.dart';
 import '../widgets/ad_banner.dart';
+import '../widgets/news_card.dart';
 import '../widgets/task_card.dart';
 import 'list_screen.dart';
 import 'local_errand_hub_screen.dart';
 import 'map/map_canvas.dart';
 import 'map/map_centers.dart';
 import 'map_screen.dart';
+import 'news_detail_screen.dart';
 import 'overseas_screen.dart';
 import 'search_screen.dart';
 
@@ -83,6 +89,13 @@ class HomeContent extends StatefulWidget {
   final int activeCount; // 진행 중인 지원 건수
   final VoidCallback goActivity;
 
+  /// 출석 달력에 그릴 이력과 오늘 도장
+  final Attendance attendance;
+  final VoidCallback checkIn;
+
+  /// 단기알바 모집 등록 (셸이 로그인 확인 후 띄운다)
+  final VoidCallback openJobPost;
+
   const HomeContent({
     super.key,
     required this.items,
@@ -107,6 +120,9 @@ class HomeContent extends StatefulWidget {
     required this.goPost,
     required this.activeCount,
     required this.goActivity,
+    required this.attendance,
+    required this.checkIn,
+    required this.openJobPost,
   });
 
   @override
@@ -125,8 +141,6 @@ class _HomeContentState extends State<HomeContent> {
   bool moreFilters = false; // 세부 조건 펼침
   int? pinned; // 지도에서 선택한 부탁
 
-  static const _attendKey = 'benefit:attend';
-
   /// 목록 영역으로 스크롤을 옮길 때 쓴다. (v9의 `#nearby-v5` 앵커)
   final _nearbyKey = GlobalKey();
 
@@ -139,7 +153,24 @@ class _HomeContentState extends State<HomeContent> {
   void goSearch() => _push(SearchScreen(items: widget.items, actions: widget.actions));
   void goOverseas() => _push(OverseasScreen(items: widget.items, actions: widget.actions));
   void goCommunity() => _push(CommunityScreen(items: widget.items, scope: widget.scope, actions: widget.actions));
-  void goDayJobs() => _push(DayJobScreen(onApply: _applyDayJob));
+  void goDayJobs() => _push(DayJobScreen(onApply: _applyDayJob, onPost: widget.openJobPost));
+
+  /// 단기알바 모집 안내 → 모집 등록
+  void goJobGuide() => _push(JobGuideScreen(onStart: widget.openJobPost));
+
+  /// 겸사겸사 소식. 광고 카드는 상세 대신 브랜드 협업 안내로 간다.
+  void openNews(HomeNews news) {
+    if (news.isAd) {
+      _push(const BrandHubScreen());
+      return;
+    }
+    final overseas = news.id == 'overseas';
+    _push(NewsDetailScreen(
+      news: news,
+      actionLabel: overseas ? '해외 사다주기 둘러보기' : '단기알바 모집 안내',
+      onAction: overseas ? goOverseas : goJobGuide,
+    ));
+  }
 
   /// 부탁 전체보기 — 카테고리·조건별 모아보기가 있는 동네 부탁 허브
   void goLocalHub({String initialCat = 'all'}) =>
@@ -264,6 +295,9 @@ class _HomeContentState extends State<HomeContent> {
       children: [
         _header(),
         if (widget.activeCount > 0) _activeBanner(),
+        _greeting(),
+        AttendanceCard(attendance: widget.attendance, onCheckIn: widget.checkIn),
+        NewsCard(onOpen: openNews),
         WalletSummary(
           payBalance: widget.payBalance,
           points: widget.points,
@@ -272,7 +306,6 @@ class _HomeContentState extends State<HomeContent> {
           onOpenPoints: widget.goPointsHub,
           onOpenLevel: widget.goProfile,
         ),
-        _attendance(),
         _primaryServices(),
         _shortcuts(),
         const HDivider(thick: true),
@@ -380,42 +413,22 @@ class _HomeContentState extends State<HomeContent> {
     );
   }
 
-  /// ④ 출석 한 줄 (.attendance-v8)
-  Widget _attendance() {
-    final attended = widget.isClaimed(_attendKey);
+  /// ③ 인사말 (.g3-greeting)
+  Widget _greeting() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(22, 0, 22, 16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(color: AppColors.attendSoft, borderRadius: BorderRadius.circular(AppRadius.tile)),
-        child: Row(children: [
-          Icon(attended ? Icons.check_circle_outline_rounded : Icons.calendar_today_outlined, size: 20, color: AppColors.yellowDeep),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(attended ? '오늘 출석 완료' : '오늘 출석하고 +${attendStreak[0].points}P',
-                  style: AppType.meta.copyWith(fontSize: 13, fontWeight: AppType.w600, color: AppColors.yellowDeep)),
-              Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Text(attended ? '내일도 들러서 이어가 보세요' : '연속 출석일수록 보상이 커져요',
-                    style: AppType.caption.copyWith(color: const Color(0xFF8D7A4A))),
-              ),
+      padding: const EdgeInsets.fromLTRB(22, 0, 22, 5),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('오늘도, 겸사겸사', style: AppType.meta.copyWith(fontSize: 12, color: AppColors.greetingSub)),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(0, 5, 0, 8),
+          child: Text.rich(
+            TextSpan(style: AppType.section.copyWith(fontSize: 23), children: const [
+              TextSpan(text: '작은 여유가 '),
+              TextSpan(text: '쌓이는 하루', style: TextStyle(color: AppColors.greetingPoint)),
             ]),
           ),
-          TextButton(
-            onPressed: attended ? null : () => widget.earn(attendStreak[0].points, '출석 적립', key: _attendKey),
-            style: TextButton.styleFrom(
-              backgroundColor: attended ? Colors.transparent : AppColors.yellow,
-              foregroundColor: AppColors.ink,
-              minimumSize: const Size(56, 34),
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
-            ),
-            child: Text(attended ? '완료' : '받기',
-                style: AppType.button.copyWith(fontSize: 12.5, color: attended ? AppColors.faint : AppColors.ink)),
-          ),
-        ]),
-      ),
+        ),
+      ]),
     );
   }
 
@@ -911,23 +924,33 @@ class _ServiceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (bg, border, fg) = switch (tone) {
-      _ServiceTone.blue => (AppColors.blueSoft, const Color(0xFFDCE5F2), AppColors.blue),
-      _ServiceTone.warm => (const Color(0xFFF4F1E9), const Color(0xFFEAE5D6), const Color(0xFF8A7A4E)),
-      _ServiceTone.cream => (const Color(0xFFFFFDF5), const Color(0xFFEDE9DC), const Color(0xFF96722C)),
+    // 시안 `gyumsa-refined`의 `.primary-services` — 테두리 없이 파스텔 면으로만 구분한다.
+    final (bg, fg) = switch (tone) {
+      _ServiceTone.blue => (const Color(0xFFE5F2FD), const Color(0xFF6C9CCD)),
+      _ServiceTone.warm => (const Color(0xFFF2EAFA), const Color(0xFFA083C3)),
+      _ServiceTone.cream => (const Color(0xFFFFF1D4), const Color(0xFFC48C31)),
     };
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(17),
+      borderRadius: BorderRadius.circular(AppRadius.surface),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 14),
-        decoration: BoxDecoration(color: bg, border: Border.all(color: border), borderRadius: BorderRadius.circular(17)),
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 16),
+        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(AppRadius.surface)),
         child: Column(children: [
-          SizedBox(height: 28, child: Icon(AppIcon.data(icon), size: 26, color: fg)),
-          const SizedBox(height: 8),
-          Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.body.copyWith(fontSize: 14, fontWeight: AppType.w700, color: const Color(0xFF29271F))),
+          Container(
+            width: 38,
+            height: 38,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.card.withValues(alpha: 0.66),
+              borderRadius: BorderRadius.circular(AppRadius.emblem),
+            ),
+            child: Icon(AppIcon.data(icon), size: 22, color: fg),
+          ),
+          const SizedBox(height: 9),
+          Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.body.copyWith(fontSize: 14, fontWeight: AppType.w700, color: AppColors.inkSoft)),
           const SizedBox(height: 5),
-          Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.caption.copyWith(fontSize: 10, color: const Color(0xFF7C7C73))),
+          Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.caption.copyWith(fontSize: 10, color: const Color(0xFF909184))),
         ]),
       ),
     );
