@@ -10,11 +10,21 @@
 
 제휴 카테고리와 규제 고지 설계는 [docs/제휴전략_앱적용.md](docs/제휴전략_앱적용.md)에 있습니다.
 
+'가볍게 모으기'의 미션은 실제 기업의 공개 API(공공데이터포털·카카오·네이버·쿠팡
+파트너스 등)에 붙어 있습니다. 어떤 키를 어디서 받아야 어떤 미션이 열리는지는
+[docs/제휴_API_연동.md](docs/제휴_API_연동.md)에 정리했습니다.
+
 ## 실행
 
 ```bash
 flutter pub get
 flutter run
+```
+
+제휴 미션까지 켜서 보려면 API 키를 넣고 실행합니다.
+
+```bash
+flutter run --dart-define-from-file=secrets.json
 ```
 
 기기를 지정하려면 `flutter devices`로 id를 확인한 뒤 `flutter run -d <id>`.

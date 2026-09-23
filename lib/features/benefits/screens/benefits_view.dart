@@ -15,27 +15,21 @@ import '../models/coupon.dart';
 import '../models/reward_ledger.dart';
 import '../models/partner_mission.dart';
 import '../models/reward_product.dart';
-import '../widgets/attend_streak.dart';
-import '../widgets/mission_row.dart';
 import '../widgets/partner_card.dart';
-import '../widgets/walk_ring.dart';
 import '../../deals/screens/save_hub_screen.dart';
 import '../../gongu/screens/gongu_screen.dart';
 import 'earn_hub_screen.dart';
 import 'my_coupons_screen.dart';
 import 'partner_mission_detail_screen.dart';
 import 'point_shop_screen.dart';
-import 'walk_screen.dart';
 
 class BenefitsView extends StatefulWidget {
   final int points;
-  final int steps;
   final List<Coupon> coupons;
   final List<TaskItem> items;
   final String scope;
   final ErrandActions actions;
   final int monthEarn;
-  final int monthPoints;
   final int freeLeft;
   final List<String> doneMissions;
   final EarnFn earn;
@@ -50,13 +44,11 @@ class BenefitsView extends StatefulWidget {
   const BenefitsView({
     super.key,
     required this.points,
-    required this.steps,
     required this.coupons,
     required this.items,
     required this.scope,
     required this.actions,
     required this.monthEarn,
-    required this.monthPoints,
     required this.freeLeft,
     required this.doneMissions,
     required this.earn,
@@ -75,29 +67,13 @@ class BenefitsView extends StatefulWidget {
 }
 
 class _BenefitsViewState extends State<BenefitsView> {
-  static const todayMax = 8430; // 오늘 받을 수 있는 예상 포인트(예상치)
-
-  /// 출석 계열만 매일 다시 받을 수 있고, 나머지(가입·프로필·첫 거래 등)는 1회성이다.
-  static bool _isDaily(String k) => k.startsWith('attend');
-
-  bool _claimed(String k) => widget.isClaimed('benefit:$k', daily: _isDaily(k));
-
-  /// 오늘 본 광고 수. 개별 시청을 각각 원장에 기록해서 5회 제한이 화면을 나갔다
-  /// 와도 유지되게 한다.
-  int get _adCount => List.generate(5, (i) => i).where((i) => widget.isClaimed('ad:$i')).length;
-
-  Future<void> _claim(String k, int amt, String label) async {
-    if (_claimed(k)) return;
-    await widget.earn(amt, label, key: 'benefit:$k', daily: _isDaily(k));
-    if (mounted) setState(() {});
-  }
-
-  Future<void> _watchAd() async {
-    final watched = _adCount;
-    if (watched >= 5) return;
-    await widget.earn(PointRules.adView, '광고 시청', key: 'ad:$watched');
-    if (mounted) setState(() {});
-  }
+  // 예전에는 여기서 출석·광고·프로필·친구초대 같은 미션을 `benefit:*` 키로 따로
+  // 굴렸다. 전부 제휴사가 돈을 대지 않는 자체 지급이라, 사람이 늘수록 손실이
+  // 정비례로 커지는 구조였다. 게다가 홈의 `daily:*` 미션과 항목이 겹쳐서
+  // 어느 쪽이 진짜인지 코드만 봐서는 알 수 없었다.
+  //
+  // 지금은 미션을 [dailyMissions] 한 곳에서만 관리한다. 여기 남은 건 실제 값이
+  // 있는 것(내 포인트·이번 달 수익·수수료 면제)과 제휴 캠페인 목록뿐이다.
 
   Widget _secTitle(String t, {String? sub, Widget? action}) {
     return Padding(
@@ -165,9 +141,8 @@ class _BenefitsViewState extends State<BenefitsView> {
   Widget build(BuildContext context) {
     final goal = nextRewardGoal(widget.points);
     final liveCoupons = widget.coupons.where((c) => !c.used).length;
-    final claimable = walkClaimable(widget.steps);
-    final walkGot = widget.isClaimed(walkRewardKey);
     final nearby = widget.items.where((it) => it.mode != 'together').take(2).toList();
+    final seaCount = widget.items.where((it) => it.mode == 'sea').length;
 
     return ListView(
       padding: const EdgeInsets.only(bottom: 26),
@@ -185,19 +160,15 @@ class _BenefitsViewState extends State<BenefitsView> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // '오늘 최대 +8,430P'를 옆에 띄우던 자리였다. 근거 없는 숫자였고,
+              // 실제로 받을 수 있는 양은 제휴 연동 상태에 따라 매일 달라진다.
+              // 그 계산은 [MissionEngine.remainToday]가 하고 미션 화면에서 보여 준다.
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text('내 포인트', style: TextStyle(fontSize: 12.5, color: Colors.white70)),
                     Padding(padding: const EdgeInsets.only(top: 4), child: Text('${nf(widget.points)}P', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: AppColors.yellow))),
-                  ],
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    const Text('오늘 받을 수 있는 포인트', style: TextStyle(fontSize: 11, color: Colors.white54)),
-                    Padding(padding: const EdgeInsets.only(top: 3), child: Text('최대 +${nf(todayMax)}P', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white))),
                   ],
                 ),
               ]),
@@ -241,38 +212,23 @@ class _BenefitsViewState extends State<BenefitsView> {
           ),
         ),
 
-        // 이번 달 수익 / 포인트 + 수수료 혜택
+        // 이번 달 수익. 옆에 있던 '이번 달 적립(P)'은 뺐다 — 셸이 늘 0을 넘기고
+        // 있어서 아무 값도 못 보여주는 칸이었다. 포인트 원장을 월별로 집계할 수
+        // 있게 되면 그때 되살린다.
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-          child: Row(children: [
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
-                decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(13)),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('이번 달 겸사 수익', style: TextStyle(fontSize: 11, color: AppColors.sub)),
-                    Padding(padding: const EdgeInsets.only(top: 3), child: Text('+${nf(widget.monthEarn)}원', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.ink))),
-                  ],
-                ),
-              ),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
+            decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(13)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('이번 달 겸사 수익', style: TextStyle(fontSize: 11, color: AppColors.sub)),
+                Padding(padding: const EdgeInsets.only(top: 3), child: Text('+${nf(widget.monthEarn)}원', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.ink))),
+              ],
             ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
-                decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(13)),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('이번 달 적립', style: TextStyle(fontSize: 11, color: AppColors.sub)),
-                    Padding(padding: const EdgeInsets.only(top: 3), child: Text('+${nf(widget.monthPoints)}P', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.blue))),
-                  ],
-                ),
-              ),
-            ),
-          ]),
+          ),
         ),
         if (widget.freeLeft > 0)
           Container(
@@ -286,36 +242,6 @@ class _BenefitsViewState extends State<BenefitsView> {
             ]),
           ),
 
-        // 오늘의 수익 기회
-        _secTitle('오늘의 수익 기회'),
-        SizedBox(
-          height: 104,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-            children: [
-              for (final c in const [
-                ['🚶', '걷기', '+30P', AppColors.blue],
-                ['🤝', '근처 부탁', '+7,000원', AppColors.ink],
-                ['🎁', '제휴 미션', '+2,000P', AppColors.blue],
-                ['✈️', '해외', '+20,000원', AppColors.ink],
-                ['👥', '친구추천', '+400P', AppColors.blue],
-              ])
-                Container(
-                  width: 96,
-                  margin: const EdgeInsets.only(right: 8),
-                  padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 12),
-                  decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(13)),
-                  child: Column(children: [
-                    Text(c[0] as String, style: const TextStyle(fontSize: 19)),
-                    Padding(padding: const EdgeInsets.only(top: 5), child: Text(c[1] as String, style: const TextStyle(fontSize: 11, color: AppColors.sub))),
-                    Padding(padding: const EdgeInsets.only(top: 2), child: Text(c[2] as String, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: c[3] as Color))),
-                  ]),
-                ),
-            ],
-          ),
-        ),
-
         // A. 근처에서 벌기
         _secTitle('📍 근처에서 벌기',
             action: InkWell(
@@ -326,83 +252,6 @@ class _BenefitsViewState extends State<BenefitsView> {
               child: const Text('더 보기 ›', style: TextStyle(color: AppColors.sub, fontSize: 12, fontWeight: FontWeight.w700)),
             )),
         Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Column(children: [for (final it in nearby) TaskCard(it: it, onOpen: () => widget.actions.open(context, it), done: widget.actions.grabbed.contains(it.id))])),
-
-        // B. 걸어서 벌기
-        _secTitle('🚶 걸어서 벌기', sub: '걷다가 근처 부탁까지'),
-        Container(
-          margin: const EdgeInsets.fromLTRB(16, 4, 16, 2),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(16)),
-          child: Column(children: [
-            Row(children: [
-              WalkRing(steps: widget.steps, size: 72),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text.rich(TextSpan(style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.ink), children: [
-                      TextSpan(text: nf(widget.steps)),
-                      TextSpan(text: ' / ${nf(walkGoal)}걸음', style: const TextStyle(fontSize: 13, color: AppColors.sub, fontWeight: FontWeight.w600)),
-                    ])),
-                    Padding(padding: const EdgeInsets.only(top: 4), child: Text('오늘 +$claimable P 적립 가능', style: const TextStyle(fontSize: 12.5, color: AppColors.green, fontWeight: FontWeight.w700))),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 10),
-                      child: InkWell(
-                        onTap: () async {
-                          if (walkGot) return;
-                          await widget.earn(claimable, '걸음 적립', key: walkRewardKey);
-                          if (mounted) setState(() {});
-                        },
-                        borderRadius: BorderRadius.circular(10),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
-                          decoration: BoxDecoration(color: walkGot ? AppColors.page : AppColors.yellow, borderRadius: BorderRadius.circular(10)),
-                          child: Text(walkGot ? '오늘 적립 완료' : '포인트 받기', style: TextStyle(color: walkGot ? AppColors.sub : AppColors.ink, fontSize: 13, fontWeight: FontWeight.w800)),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ]),
-            Padding(
-              padding: const EdgeInsets.only(top: 14),
-              child: Row(children: [
-                for (final w in walkRules)
-                  Expanded(
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 3),
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      decoration: BoxDecoration(color: widget.steps >= w.steps ? AppColors.greenSoft : AppColors.page, borderRadius: BorderRadius.circular(9)),
-                      child: Column(children: [
-                        Text(nf(w.steps), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: widget.steps >= w.steps ? AppColors.green : AppColors.faint)),
-                        Padding(padding: const EdgeInsets.only(top: 2), child: Text('+${w.p}P', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: widget.steps >= w.steps ? AppColors.green : AppColors.sub))),
-                      ]),
-                    ),
-                  ),
-              ]),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => WalkScreen(
-                    items: widget.items, scope: widget.scope, steps: widget.steps, points: widget.points, coupons: widget.coupons,
-                    actions: widget.actions, earn: widget.earn, isClaimed: widget.isClaimed, redeem: widget.redeem, useCoupon: widget.useCoupon, goPointsHub: widget.goPointsHub,
-                  ))),
-                  style: OutlinedButton.styleFrom(foregroundColor: AppColors.ink, side: const BorderSide(color: AppColors.line), padding: const EdgeInsets.symmetric(vertical: 11), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11))),
-                  child: const Text('걸으면서 할 수 있는 근처 부탁 보기 ›', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-                ),
-              ),
-            ),
-          ]),
-        ),
-
-        // 연속 출석 포인트 보상 (지급 단위는 원이 아니라 P다)
-        _secTitle('📅 연속 출석하고 벌기', sub: '빠짐없이 오면 포인트가 커져요'),
-        AttendStreak(earn: widget.earn, isClaimed: widget.isClaimed),
 
         // 같이 사고 벌기 (공동구매)
         InkWell(
@@ -515,66 +364,18 @@ class _BenefitsViewState extends State<BenefitsView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('여행 가는 김에, +20,000원부터', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white)),
-                Padding(padding: const EdgeInsets.only(top: 4), child: Text('지금 도쿄에서 할 수 있는 부탁 14개 · 해외 부탁 보기 ›', style: TextStyle(fontSize: 12.5, color: Colors.white.withValues(alpha: .9)))),
+                // '도쿄에서 14개'는 어디에도 없는 숫자였다. 실제 목록에서 센다.
+                Text('여행 가는 김에, ${won(seaMin)}부터', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white)),
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    seaCount > 0 ? '지금 올라온 해외 부탁 $seaCount개 · 보러 가기 ›' : '해외 부탁 보러 가기 ›',
+                    style: TextStyle(fontSize: 12.5, color: Colors.white.withValues(alpha: .9)),
+                  ),
+                ),
               ],
             ),
           ),
-        ),
-
-        // F. 친구랑 벌기
-        _secTitle('👥 친구랑 벌기', sub: '실제 거래까지 이어지면 더'),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-          child: Column(children: [
-            MissionRow(icon: '💬', label: '카카오톡 채널 친구 추가', points: PointRules.kakaoFriend, cta: '추가', done: _claimed('kakao'), onClaim: () => _claim('kakao', PointRules.kakaoFriend, '카카오톡 채널 친구 추가')),
-            MissionRow(icon: '👥', label: '친구 추천', sub: '친구가 가입하면 +100P · 첫 거래 완료 시 +300P', points: PointRules.referral, cta: '초대', prog: const [2, 5], done: _claimed('referral'), onClaim: () => _claim('referral', PointRules.referral, '친구 추천')),
-            MissionRow(icon: '📲', label: '초대 링크 공유', points: PointRules.invite, cta: '공유', done: _claimed('invite'), onClaim: () => _claim('invite', PointRules.invite, '초대 링크 공유')),
-          ]),
-        ),
-
-        // 오늘 받을 수 있는 포인트 (광고 + 기본 미션)
-        _secTitle('오늘 받을 수 있는 포인트'),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-          child: Column(children: [
-            Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(13)),
-              child: Row(children: [
-                Container(width: 38, height: 38, alignment: Alignment.center, decoration: BoxDecoration(color: AppColors.page, borderRadius: BorderRadius.circular(11)), child: const Text('▶️', style: TextStyle(fontSize: 18))),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text.rich(TextSpan(style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.ink), children: [
-                        const TextSpan(text: '광고 보기 '),
-                        TextSpan(text: '+${PointRules.adView}P', style: const TextStyle(color: AppColors.blue)),
-                      ])),
-                      Padding(padding: const EdgeInsets.only(top: 2), child: Text('오늘 $_adCount/5회', style: const TextStyle(fontSize: 11.5, color: AppColors.sub))),
-                    ],
-                  ),
-                ),
-                InkWell(
-                  onTap: _adCount >= 5 ? null : _watchAd,
-                  borderRadius: BorderRadius.circular(9),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-                    decoration: BoxDecoration(color: _adCount >= 5 ? AppColors.page : AppColors.ink, borderRadius: BorderRadius.circular(9)),
-                    child: Text(_adCount >= 5 ? '완료' : '보기', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: _adCount >= 5 ? AppColors.faint : Colors.white)),
-                  ),
-                ),
-              ]),
-            ),
-            MissionRow(icon: '✅', label: '출석 체크', points: PointRules.attendance, cta: '출석', done: _claimed('attend'), onClaim: () => _claim('attend', PointRules.attendance, '출석 체크')),
-            MissionRow(icon: '📅', label: '7일 연속 출석', points: PointRules.attendance7, prog: const [4, 7], done: false),
-            MissionRow(icon: '🙂', label: '프로필 완성', points: PointRules.profile, cta: '완성', done: _claimed('profile'), onClaim: () => _claim('profile', PointRules.profile, '프로필 완성')),
-            MissionRow(icon: '🙋', label: '첫 부탁 등록', points: PointRules.firstRequest, cta: '등록', done: _claimed('firstReq'), onClaim: () => _claim('firstReq', PointRules.firstRequest, '첫 부탁 등록')),
-            MissionRow(icon: '🤝', label: '첫 도와주기 완료', points: PointRules.firstHelp, done: false),
-            MissionRow(icon: '⭐', label: '후기 작성', points: PointRules.review, cta: '작성', done: _claimed('review'), onClaim: () => _claim('review', PointRules.review, '후기 작성')),
-          ]),
         ),
       ],
     );

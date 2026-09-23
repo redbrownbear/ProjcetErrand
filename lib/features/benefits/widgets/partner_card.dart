@@ -44,7 +44,14 @@ class PartnerCard extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(done ? '적립 완료' : '+${nf(m.points)}P', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: done ? AppColors.green : AppColors.blue)),
+                  // 좌담회처럼 자릿수가 큰 미션(+50,000P)이 오면 '참여하기' 칩과
+                  // 부딪힌다. 카드 폭이 고정이라 숫자 쪽을 줄여서 받아낸다.
+                  Flexible(
+                    child: Text(done ? '적립 완료' : '+${nf(m.points)}P',
+                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: done ? AppColors.green : AppColors.blue)),
+                  ),
+                  const SizedBox(width: 6),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
                     decoration: BoxDecoration(color: done ? AppColors.greenSoft : AppColors.yellow, borderRadius: BorderRadius.circular(9)),

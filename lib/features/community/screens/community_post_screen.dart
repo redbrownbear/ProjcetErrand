@@ -45,7 +45,8 @@ class _CommunityPostScreenState extends State<CommunityPostScreen> {
 
     return Material(
       color: AppColors.page,
-      child: Column(children: [
+      // edge-to-edge(targetSdk 36)에서 헤더가 상태바에, 본문 끝이 제스처바에 깔린다.
+      child: SafeArea(child: Column(children: [
         Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -229,7 +230,7 @@ class _CommunityPostScreenState extends State<CommunityPostScreen> {
                     ),
                   ),
           ),
-        ]),
+        ])),
     );
   }
 }

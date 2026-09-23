@@ -20,6 +20,13 @@ class PartnerMission {
   /// 규제 고지 키 — partner | insurance | clinical | research | realEstate | finance
   final String disclosureKey;
 
+  /// [missionProviders]의 id. 캠페인을 실제로 집행하는 곳이다.
+  ///
+  /// 비어 있으면 우리가 직접 뚫어야 하는 제휴(모델하우스·임상·연구처럼 기관과
+  /// 개별 계약하는 것)이고, 값이 있으면 그 회사에 가입만 하면 물량이 내려오는
+  /// 공개 프로그램이다. 둘을 구분해야 '지금 당장 채울 수 있는 미션'이 보인다.
+  final String providerId;
+
   const PartnerMission({
     required this.id,
     required this.cat,
@@ -35,5 +42,6 @@ class PartnerMission {
     this.verify = '앱에서 자동 확인',
     this.payout = '조건 충족 시 자동 적립',
     this.disclosureKey = 'partner',
+    this.providerId = '',
   });
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../benefits/services/mission_tracker.dart';
 import '../../community/screens/community_post_screen.dart';
 import '../models/offer.dart';
 import '../models/task_item.dart';
@@ -20,6 +21,9 @@ class ErrandActions {
   });
 
   void open(BuildContext context, TaskItem it) {
+    // '근처 부탁 3개 열어보기' 미션 진행도. 상세를 여는 길목이 여기 하나뿐이라
+    // 어느 화면에서 들어왔든 한 번만 세진다. 같은 부탁을 여러 번 열어도 1회다.
+    MissionTracker.bump(MissionTracker.openDetail, unique: it.id);
     Navigator.push(
       context,
       MaterialPageRoute(

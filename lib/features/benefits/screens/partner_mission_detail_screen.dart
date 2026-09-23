@@ -4,6 +4,7 @@ import '../../../core/compliance/disclosures.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/screen_frame.dart';
+import '../data/mission_providers.dart';
 import '../models/partner_mission.dart';
 
 class PartnerMissionDetailScreen extends StatelessWidget {
@@ -40,8 +41,15 @@ class PartnerMissionDetailScreen extends StatelessWidget {
               margin: const EdgeInsets.only(top: 16),
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
               decoration: BoxDecoration(color: AppColors.ink, borderRadius: BorderRadius.circular(16)),
+              // 글자 크기를 키운 기기나 좁은 화면에서 두 글자 덩어리가 한 줄에 못 들어간다.
+              // 설명 쪽을 먼저 줄이고 포인트 숫자는 끝까지 온전히 보이게 한다.
               child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                const Text('참여하면 받는 포인트', style: TextStyle(fontSize: 13, color: Colors.white70)),
+                const Flexible(
+                  child: Text('참여하면 받는 포인트',
+                      maxLines: 2, overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 13, color: Colors.white70)),
+                ),
+                const SizedBox(width: 10),
                 Text('+${nf(m.points)}P', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: AppColors.yellow)),
               ]),
             ),
@@ -78,6 +86,10 @@ class PartnerMissionDetailScreen extends StatelessWidget {
                 for (final e in [
                   ['✅', '완료 인정', m.verify],
                   ['💵', '지급 시점', m.payout],
+                  // 캠페인을 집행하는 곳과 지금 연동 상태. 제휴가 아직이면
+                  // 참여 버튼을 누르기 전에 여기서 먼저 보인다.
+                  if (m.providerId.isNotEmpty)
+                    ['🔗', '공급', '${providerOf(m.providerId).name} · ${providerOf(m.providerId).statusLabel}'],
                 ])
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),

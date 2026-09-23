@@ -9,15 +9,17 @@ import '../../../core/widgets/chip_widget.dart';
 import '../../../core/widgets/screen_frame.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../benefits/data/attend_streak.dart';
-import '../../benefits/data/partner_missions.dart';
 import '../../benefits/models/coupon.dart';
 import '../../benefits/models/partner_mission.dart';
 import '../../benefits/models/reward_ledger.dart';
 import '../../benefits/models/reward_product.dart';
+import '../../benefits/screens/daily_mission_screen.dart';
 import '../../benefits/screens/earn_hub_screen.dart';
-import '../../benefits/screens/partner_mission_detail_screen.dart';
 import '../../benefits/screens/point_shop_screen.dart';
 import '../../benefits/screens/walk_screen.dart';
+import '../../benefits/services/mission_engine.dart';
+import '../../benefits/services/mission_runner.dart';
+import '../../benefits/widgets/daily_mission_row.dart';
 import '../../community/screens/community_screen.dart';
 import '../../dayjob/data/day_jobs.dart';
 import '../../dayjob/models/day_job.dart';
@@ -75,6 +77,9 @@ class HomeContent extends StatefulWidget {
   final void Function(PartnerMission) completeMission;
   final void Function(String) flash;
   final VoidCallback goPointsHub;
+
+  /// 부탁 올리기 — '첫 부탁 올리기' 미션에서 쓴다
+  final VoidCallback goPost;
   final int activeCount; // 진행 중인 지원 건수
   final VoidCallback goActivity;
 
@@ -99,6 +104,7 @@ class HomeContent extends StatefulWidget {
     required this.completeMission,
     required this.flash,
     required this.goPointsHub,
+    required this.goPost,
     required this.activeCount,
     required this.goActivity,
   });
@@ -471,22 +477,12 @@ class _HomeContentState extends State<HomeContent> {
                     ),
                 ],
               ),
-              InkWell(
-                onTap: goWalk,
-                borderRadius: BorderRadius.circular(10),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Row(children: [
-                    const Icon(Icons.directions_walk_rounded, size: 18, color: Color(0xFF616754)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text('걷기 혜택 · ${nf(widget.steps)}걸음',
-                          style: AppType.meta.copyWith(fontSize: 12.5, color: const Color(0xFF616754))),
-                    ),
-                    const Icon(Icons.chevron_right_rounded, size: 17, color: AppColors.faint),
-                  ]),
-                ),
-              ),
+              // '걷기 혜택' 진입점이 있던 자리.
+              //
+              // 걷기 적립(5·10·15·30P)은 제휴사가 비용을 대지 않는 자체 지급이라,
+              // 재원이 정해질 때까지 화면에서 내렸다. [WalkScreen]과 [walkClaimable],
+              // 그리고 [parkedMissions]의 걷기 미션은 그대로 남아 있으므로,
+              // 재원이 생기면 이 InkWell 하나만 되살리면 된다. ([goWalk] 참고)
             ]),
           ),
         ],
@@ -494,55 +490,65 @@ class _HomeContentState extends State<HomeContent> {
     );
   }
 
-  /// ⑦ 가볍게 모으기 — 30분 이내 미션 2개 (.compact-missions)
+  /// ⑦ 가볍게 모으기 — 지금 눌러서 바로 끝나는 미션 (.compact-missions)
+  ///
+  /// 예전에는 제휴 미션 중 '30분 이내'인 것을 골라 카드 두 장으로 보여 줬다.
+  /// 그런데 그 미션들은 제휴가 붙기 전까지 눌러도 할 게 없었다.
+  /// 지금은 [MissionEngine]이 **오늘 실제로 받을 수 있는 것만** 골라 주고,
+  /// 제휴가 아직인 미션은 홈에 올리지 않는다.
   Widget _lightMissions() {
-    // 소요 시간 문구를 분으로 읽는다. '1~2시간'을 1분으로 보면 좌담회가 여기 올라오므로
-    // 시간 단위를 반드시 구분한다. 숫자가 없는 '방문' 같은 값은 짧은 일로 취급하지 않는다.
-    int minutes(String time) {
-      final n = int.tryParse(RegExp(r'\d+').stringMatch(time) ?? '');
-      if (n == null) return 999;
-      return time.contains('시간') ? n * 60 : n;
-    }
+    final rows = _engine.forHome(take: 3);
+    final remain = _engine.remainToday;
 
-    final rows = partnerMissions
-        .where((m) => !widget.doneMissions.contains(m.id) && (m.cat == 'survey' || m.cat == 'experience'))
-        .toList()
-      ..sort((a, b) => minutes(a.time).compareTo(minutes(b.time)));
-    final top = rows.where((m) => minutes(m.time) <= 30).take(2).toList();
+    // 목록이 빈 이유가 둘이다 — 오늘 다 받았거나, 제휴가 아직 안 붙었거나.
+    // 같은 문구로 뭉개면 "다 했다"는 거짓말이 되므로 갈라서 말한다.
+    final anyOpen = _engine.todayProgress.$2 > 0;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(22, 17, 22, 20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Expanded(child: Text('가볍게 모으기', style: AppType.sectionSmall)),
-          TextAction(label: '전체 미션', onTap: goEarnHub),
+          TextAction(label: '전체 보기', onTap: goDailyMissions),
         ]),
-        const SizedBox(height: 12),
-        if (top.isEmpty)
-          Text('참여 가능한 미션을 모두 완료했어요.', style: AppType.meta)
-        else
-          // 두 카드의 높이를 맞추려면 stretch가 필요한데, 스크롤 안이라 세로 제약이
-          // 무한이다. IntrinsicHeight로 높이를 먼저 확정한 뒤 stretch를 건다.
-          IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (var i = 0; i < top.length; i++) ...[
-                  if (i > 0) const SizedBox(width: 10),
-                  Expanded(child: _MissionCard(m: top[i], onTap: () => _openMission(top[i]))),
-                ],
-                // 미션이 하나뿐이면 나머지 칸을 비워 폭을 맞춘다.
-                if (top.length == 1) ...[const SizedBox(width: 10), const Expanded(child: SizedBox())],
-              ],
-            ),
+        if (remain > 0)
+          Padding(
+            padding: const EdgeInsets.only(top: 3),
+            child: Text('오늘 아직 +${nf(remain)}P 남았어요', style: AppType.caption.copyWith(color: AppColors.yellowDeep)),
           ),
+        const SizedBox(height: 12),
+        if (rows.isEmpty)
+          _MoreButton(
+            label: anyOpen ? '오늘 할 수 있는 건 다 했어요 · 참여·리워드 보러 가기' : '참여·리워드 미션 보러 가기',
+            onTap: goEarnHub,
+          )
+        else
+          for (final s in rows) DailyMissionRow(s: s, onTap: () => _tapMission(s)),
       ]),
     );
   }
 
-  void _openMission(PartnerMission m) => _push(PartnerMissionDetailScreen(
-        m: m, done: widget.doneMissions.contains(m.id), onComplete: widget.completeMission,
-      ));
+  /// 미션 상태 계산기. 적립 원장은 셸이 들고 있어서 콜백으로만 읽는다.
+  MissionEngine get _engine => MissionEngine(widget.isClaimed);
+
+  MissionRunner get _runner => MissionRunner(
+        earn: widget.earn,
+        flash: widget.flash,
+        scope: widget.scope,
+        goWalk: goWalk,
+        goProfile: widget.goProfile,
+        goPost: widget.goPost,
+        goList: goLocalHub,
+      );
+
+  void goDailyMissions() => _push(DailyMissionScreen(runner: _runner, engine: _engine, goEarnHub: goEarnHub));
+
+  /// 적립이 끝나면 셸의 원장이 바뀐다. 홈도 바로 다시 읽어서 방금 받은 미션이
+  /// '완료'로 바뀌게 한다.
+  Future<void> _tapMission(MissionState s) async {
+    await _runner.run(context, s);
+    if (mounted) setState(() {});
+  }
 
   /// 빠른 종류 칩 (.quick-task-categories)
   Widget _quickCats() {
@@ -948,49 +954,6 @@ class _Shortcut extends StatelessWidget {
             Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.caption.copyWith(color: const Color(0xFF5D6352))),
           ]),
         ),
-      ),
-    );
-  }
-}
-
-/// 가볍게 모으기 카드 (.compact-mission)
-class _MissionCard extends StatelessWidget {
-  final PartnerMission m;
-  final VoidCallback onTap;
-  const _MissionCard({required this.m, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          border: Border.all(color: const Color(0xFFEBEDE4)),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('${m.time} · ${m.cat == 'survey' ? '설문' : '체험'}',
-              maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: AppType.caption.copyWith(fontSize: 10, color: const Color(0xFF999E8B))),
-          Padding(
-            padding: const EdgeInsets.only(top: 5, bottom: 3),
-            child: Text(m.title, maxLines: 2, overflow: TextOverflow.ellipsis,
-                style: AppType.meta.copyWith(fontSize: 12, fontWeight: AppType.w500, color: const Color(0xFF3A402F), height: 1.5)),
-          ),
-          Text(m.cond, maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: AppType.caption.copyWith(fontSize: 9.5, color: const Color(0xFF979C89))),
-          const SizedBox(height: 10),
-          Row(children: [
-            Expanded(
-              child: Text('+${nf(m.points)}P',
-                  style: AppType.meta.copyWith(fontSize: 12, fontWeight: AppType.w600, color: const Color(0xFF8D793A))),
-            ),
-            const Icon(Icons.chevron_right_rounded, size: 15, color: Color(0xFFB6B9A8)),
-          ]),
-        ]),
       ),
     );
   }

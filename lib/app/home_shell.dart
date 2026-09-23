@@ -20,6 +20,7 @@ import '../features/benefits/models/coupon.dart';
 import '../features/benefits/models/partner_mission.dart';
 import '../features/benefits/models/reward_ledger.dart';
 import '../features/benefits/models/reward_product.dart';
+import '../features/benefits/services/mission_tracker.dart';
 import '../features/benefits/screens/benefits_view.dart';
 import '../features/chat/screens/chat_view.dart';
 import '../features/errand/models/offer.dart';
@@ -457,6 +458,9 @@ class _HomeShellState extends State<HomeShell> {
     setState(() => bookmarks = saved ? bookmarks.where((x) => x != id).toList() : [...bookmarks, id]);
     _saveBookmarks();
     _user?.setBookmark(id, !saved);
+    // '관심 부탁 저장하기' 미션 진행도. 같은 부탁을 껐다 켜며 채우지 못하도록
+    // 부탁 id를 넘겨 하루에 한 번만 센다.
+    if (!saved) MissionTracker.bump(MissionTracker.saveTask, unique: id);
     flash(saved ? '관심 저장을 해제했어요' : '관심 저장했어요 · 내 정보에서 볼 수 있어요');
   }
 
@@ -591,6 +595,7 @@ class _HomeShellState extends State<HomeShell> {
       tab = 'home';
     });
     _saveRequests();
+    MissionTracker.bump(MissionTracker.postTask, unique: it.id);
     if (uid != null) _requests.add(it);
     flash(uid == null
         ? '부탁을 올렸어요 · 로그인하면 계정에 저장돼요'
@@ -634,8 +639,8 @@ class _HomeShellState extends State<HomeShell> {
     switch (tab) {
       case 'benefits':
         return BenefitsView(
-          points: points, steps: steps, coupons: coupons, items: items, scope: scope, actions: actions,
-          monthEarn: monthEarnedCash, monthPoints: 0, freeLeft: freeLeft, doneMissions: doneMissions,
+          points: points, coupons: coupons, items: items, scope: scope, actions: actions,
+          monthEarn: monthEarnedCash, freeLeft: freeLeft, doneMissions: doneMissions,
           earn: earn, isClaimed: isClaimed, redeem: redeem, useCoupon: useCoupon,
           completeMission: completeMission, goPointsHub: goPointsHub, flash: flash,
           showHeader: true,
@@ -667,7 +672,7 @@ class _HomeShellState extends State<HomeShell> {
           coupons: coupons, doneMissions: doneMissions,
           openRegion: openRegion,
           earn: earn, isClaimed: isClaimed, redeem: redeem, useCoupon: useCoupon, completeMission: completeMission,
-          flash: flash, goPointsHub: goPointsHub,
+          flash: flash, goPointsHub: goPointsHub, goPost: openPost,
           activeCount: activeCount, goActivity: goActivity,
         );
     }

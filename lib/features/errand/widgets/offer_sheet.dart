@@ -45,7 +45,10 @@ class _OfferSheetState extends State<OfferSheet> {
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(22, 20, 22, 26),
               decoration: const BoxDecoration(color: AppColors.page, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-              child: Column(
+              // 딤은 화면 전체를 덮되, 실제로 누르는 패널은 제스처바 위로 올린다.
+              child: SafeArea(
+                top: false,
+                child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -123,6 +126,7 @@ class _OfferSheetState extends State<OfferSheet> {
                     ),
                   ),
                 ],
+                ),
               ),
             ),
           ),

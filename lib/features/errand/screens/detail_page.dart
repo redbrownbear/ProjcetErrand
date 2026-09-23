@@ -40,7 +40,10 @@ class _DetailPageState extends State<DetailPage> {
     return Material(
       color: AppColors.page,
       child: Stack(children: [
-        Column(children: [
+        // 본문만 안전 영역 안에 둔다. 가격 제안 시트는 화면 전체를 덮는 딤이라
+        // 여기 같이 넣으면 상태바 자리만 덮이지 않아 어색해진다 ([OfferSheet] 참고).
+        SafeArea(
+          child: Column(children: [
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -219,16 +222,17 @@ class _DetailPageState extends State<DetailPage> {
                     ]),
             ),
           ]),
-          if (offerOpen)
-            OfferSheet(
-              it: it,
-              onClose: () => setState(() => offerOpen = false),
-              onSend: (price, msg) {
-                widget.onOffer(it, price, msg);
-                setState(() => offerOpen = false);
-              },
-            ),
-        ]),
+        ),
+        if (offerOpen)
+          OfferSheet(
+            it: it,
+            onClose: () => setState(() => offerOpen = false),
+            onSend: (price, msg) {
+              widget.onOffer(it, price, msg);
+              setState(() => offerOpen = false);
+            },
+          ),
+      ]),
     );
   }
 

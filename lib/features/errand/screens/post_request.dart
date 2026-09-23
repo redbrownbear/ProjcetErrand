@@ -182,7 +182,8 @@ class _PostRequestState extends State<PostRequest> {
     final hint = _hintAt(step);
     return Material(
       color: AppColors.page,
-      child: Column(children: [
+      // edge-to-edge(targetSdk 36)에서 헤더가 상태바에, 본문 끝이 제스처바에 깔린다.
+      child: SafeArea(child: Column(children: [
         Container(
           padding: const EdgeInsets.fromLTRB(18, 15, 18, 14),
           decoration: const BoxDecoration(color: AppColors.card, border: Border(bottom: BorderSide(color: AppColors.line))),
@@ -248,7 +249,7 @@ class _PostRequestState extends State<PostRequest> {
               ],
             ),
           ),
-        ]),
+        ])),
     );
   }
 

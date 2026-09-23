@@ -49,3 +49,6 @@ app.*.map.json
 
 # Claude Code 작업용 worktree·세션 파일 (프로젝트 안에 생기지만 커밋 대상이 아니다)
 .claude/worktrees/
+
+# 제휴 API 키 (docs/제휴_API_연동.md 참고). 절대 커밋하지 않는다.
+secrets.json

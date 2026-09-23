@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gyeomsa/features/errand/navigation/errand_actions.dart';
 import 'package:gyeomsa/features/errand/repositories/errand_repository.dart';
 import 'package:gyeomsa/features/errand/screens/home_content.dart';
+import 'package:gyeomsa/features/profile/models/trust_level.dart';
 
 /// 홈은 기획 시안 v9 구조를 따른다. 진입점이 한 곳씩만 있는지와
 /// 기준 폰 폭에서 레이아웃이 넘치지 않는지를 확인한다.
@@ -17,11 +18,12 @@ Widget _home() {
     home: Scaffold(
       body: HomeContent(
         items: items, scope: '서울 서초구', actions: actions, points: 3200, steps: 6430,
-        earnedCash: 0, coupons: const [], doneMissions: const [],
+        payBalance: 0, trust: const TrustLevel(0), coupons: const [], doneMissions: const [],
         isClaimed: (k, {daily = true}) => false,
         openRegion: () {},
         earn: (a, l, {required key, daily = true}) async {},
         redeem: (_) {}, useCoupon: (_) {}, completeMission: (_) {}, flash: (_) {},
+        goPay: () {}, goProfile: () {}, goPost: () {},
         goPointsHub: () {}, activeCount: 0, goActivity: () {},
       ),
     ),
@@ -37,8 +39,9 @@ void main() {
     await tester.pumpWidget(_home());
     await tester.pump();
 
-    // 누적 수익 + 목표, 출석, 주요 서비스 3개
-    expect(find.text('지금까지 모은 금액'), findsOneWidget);
+    // 지갑 요약(겸사페이·포인트) + 목표, 출석, 주요 서비스 3개
+    expect(find.text('겸사페이'), findsWidgets);
+    expect(find.text('포인트'), findsWidgets);
     expect(find.text('나의 목표 금액'), findsOneWidget);
     expect(find.textContaining('오늘 출석하고'), findsOneWidget);
     for (final s in ['동네 부탁', '해외 부탁', '단기알바']) {
@@ -59,10 +62,14 @@ void main() {
     await tester.pumpWidget(_home());
     await tester.pump();
 
-    // 걷기·미션·공동구매는 예전 홈에서 서너 군데씩 있었다. 지금은 숏컷 하나씩만 둔다.
+    // 미션·공동구매는 예전 홈에서 서너 군데씩 있었다. 지금은 숏컷 하나씩만 둔다.
     expect(find.text('공동구매'), findsOneWidget);
     expect(find.text('미션'), findsOneWidget);
-    // 걷기는 '전체'를 펼쳐야만 나온다
+
+    // 걷기 적립은 재원이 없어 화면에서 내렸다. 숏컷도 배너도 없어야 한다.
+    // (코드는 남아 있다 — WalkScreen·walkClaimable·parkedMissions·parkedAds)
     expect(find.textContaining('걷기 혜택'), findsNothing);
+    expect(find.textContaining('걷기 챌린지'), findsNothing);
+    expect(find.textContaining('걷기 리워드'), findsNothing);
   });
 }

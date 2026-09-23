@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'core/backend/backend.dart';
 import 'core/config/naver_map_init.dart';
@@ -12,6 +13,11 @@ import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 화면 가장자리까지 그린다. targetSdk 36에서는 안드로이드 15+가 어차피 이걸
+  // 강제하는데, 명시해 두면 구버전 안드로이드에서도 같은 모양이 나온다.
+  // 시스템 바에 가리는 건 각 화면의 SafeArea가 막는다 ([ScreenFrame] 참고).
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
   // Firebase가 없어도 앱은 떠야 한다. 플러그인이 덜 붙은 플랫폼(데스크톱)이나
   // 네트워크가 끊긴 상태에서 여기서 예외가 나면 runApp까지 못 가서 화면이 통째로
@@ -50,13 +56,23 @@ class GyeomsaApp extends StatelessWidget {
       // 버튼 사이가 벌어지는 것을 막는다. 폰 폭(<=560)에서는 아무 영향이 없고,
       // 그보다 넓으면 가운데 정렬된 폰 폭 화면으로 보여준다.
       // builder에 두면 푸시되는 상세·목록 화면까지 모두 적용된다.
-      builder: (context, child) => ColoredBox(
-        // 시안은 앱 본문을 흰 바탕으로 두고, 프레임 바깥만 회색으로 깐다.
-        color: AppColors.page,
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 560),
-            child: child,
+      builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
+        // 앱 바탕이 밝아서 시스템 바 아이콘은 어두워야 보인다. 지정하지 않으면
+        // 기기 테마에 따라 흰 아이콘이 흰 배경 위에 얹혀 아무것도 안 보인다.
+        value: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.dark, // 안드로이드
+          statusBarBrightness: Brightness.light, // iOS
+          systemNavigationBarIconBrightness: Brightness.dark,
+        ),
+        child: ColoredBox(
+          // 시안은 앱 본문을 흰 바탕으로 두고, 프레임 바깥만 회색으로 깐다.
+          color: AppColors.page,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 560),
+              child: child,
+            ),
           ),
         ),
       ),
