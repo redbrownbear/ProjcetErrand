@@ -32,8 +32,7 @@ class RewardLedger {
   }
 
   /// [daily]가 true면 "오늘 이미 받았는지", false면 "한 번이라도 받았는지".
-  bool isClaimed(String key, {bool daily = true}) =>
-      daily ? _claims[key] == todayKey() : _claims.containsKey(key);
+  bool isClaimed(String key, {bool daily = true}) => daily ? _claims[key] == todayKey() : _claims.containsKey(key);
 
   /// 아직 안 받은 보상이면 기록하고 **저장할 값**을, 이미 받았으면 null을 돌려준다.
   /// 이 값을 그대로 서버 원장에 올리면 기기가 달라도 같은 판단이 나온다.

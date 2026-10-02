@@ -39,3 +39,7 @@ linter:
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options
+
+# 포매터 줄 폭. 위젯 트리가 깊어서 기본값(80)으로는 지나치게 잘게 쪼개진다.
+formatter:
+  page_width: 130

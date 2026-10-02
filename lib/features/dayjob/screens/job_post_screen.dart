@@ -58,7 +58,23 @@ class _JobPostScreenState extends State<JobPostScreen> {
 
   @override
   void dispose() {
-    for (final c in [title, company, companyAddress, businessNo, desc, requirements, location, schedule, breakMin, headcount, benefits, pay, payNote, contact, email]) {
+    for (final c in [
+      title,
+      company,
+      companyAddress,
+      businessNo,
+      desc,
+      requirements,
+      location,
+      schedule,
+      breakMin,
+      headcount,
+      benefits,
+      pay,
+      payNote,
+      contact,
+      email,
+    ]) {
       c.dispose();
     }
     _scroll.dispose();
@@ -76,8 +92,7 @@ class _JobPostScreenState extends State<JobPostScreen> {
     return e.difference(s).inMinutes - _breakMin;
   }
 
-  bool get _emailOk =>
-      contactMethod != '이메일 지원' || RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email.text.trim());
+  bool get _emailOk => contactMethod != '이메일 지원' || RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email.text.trim());
 
   bool _validAt(int s) {
     switch (s) {
@@ -97,8 +112,13 @@ class _JobPostScreenState extends State<JobPostScreen> {
       default:
         final d = deadline, p = payDate, s = start, e = end;
         return _pay > 0 &&
-            p != null && e != null && !p.isBefore(DateTime(e.year, e.month, e.day)) &&
-            d != null && s != null && d.isAfter(DateTime.now()) && !d.isAfter(s) &&
+            p != null &&
+            e != null &&
+            !p.isBefore(DateTime(e.year, e.month, e.day)) &&
+            d != null &&
+            s != null &&
+            d.isAfter(DateTime.now()) &&
+            !d.isAfter(s) &&
             contact.text.trim().isNotEmpty &&
             confirmed &&
             _emailOk;
@@ -167,13 +187,19 @@ class _JobPostScreenState extends State<JobPostScreen> {
         padding: const EdgeInsets.fromLTRB(20, 18, 20, 40),
         children: [
           _stepBar(),
-          Text(['어떤 일을 함께하나요?', '언제, 어디서 일하나요?', '급여와 지원 방법을 알려주세요'][step],
-              style: AppType.section.copyWith(fontSize: 22, height: 1.4)),
+          Text(
+            ['어떤 일을 함께하나요?', '언제, 어디서 일하나요?', '급여와 지원 방법을 알려주세요'][step],
+            style: AppType.section.copyWith(fontSize: 22, height: 1.4),
+          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(0, 10, 0, 8),
             child: Text('필수 항목 · 작성 내용은 등록할 때 이 기기에 저장돼요.', style: AppType.caption.copyWith(height: 1.7)),
           ),
-          ...switch (step) { 0 => _step0(), 1 => _step1(), _ => _step2() },
+          ...switch (step) {
+            0 => _step0(),
+            1 => _step1(),
+            _ => _step2(),
+          },
           if (error != null)
             Padding(
               padding: const EdgeInsets.only(top: 10),
@@ -181,8 +207,7 @@ class _JobPostScreenState extends State<JobPostScreen> {
             ),
           Padding(
             padding: const EdgeInsets.fromLTRB(0, 23, 0, 12),
-            child: Text('시안에서는 이 기기에만 등록돼요. 실제 지원 접수는 연동 전입니다.',
-                style: AppType.caption.copyWith(fontSize: 11, height: 1.7)),
+            child: Text('시안에서는 이 기기에만 등록돼요. 실제 지원 접수는 연동 전입니다.', style: AppType.caption.copyWith(fontSize: 11, height: 1.7)),
           ),
           ElevatedButton(onPressed: _next, child: Text(step == 2 ? '단기알바 등록하기' : '다음')),
         ],
@@ -193,51 +218,39 @@ class _JobPostScreenState extends State<JobPostScreen> {
   Widget _stepBar() {
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
-      child: Row(children: [
-        for (int i = 0; i < _steps.length; i++)
-          Expanded(
-            child: Container(
-              margin: EdgeInsets.only(right: i == _steps.length - 1 ? 0 : 8),
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: i == step ? AppColors.green : AppColors.line, width: 2)),
-              ),
-              child: Text(_steps[i],
+      child: Row(
+        children: [
+          for (int i = 0; i < _steps.length; i++)
+            Expanded(
+              child: Container(
+                margin: EdgeInsets.only(right: i == _steps.length - 1 ? 0 : 8),
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  border: Border(bottom: BorderSide(color: i == step ? AppColors.green : AppColors.line, width: 2)),
+                ),
+                child: Text(
+                  _steps[i],
                   style: AppType.caption.copyWith(
                     fontSize: 11,
                     fontWeight: i == step ? AppType.w700 : AppType.w400,
                     color: i == step ? AppColors.green : AppColors.faint,
-                  )),
+                  ),
+                ),
+              ),
             ),
-          ),
-      ]),
+        ],
+      ),
     );
   }
 
   List<Widget> _step0() => [
-        AppField(label: '모집 제목', required: true, controller: title, placeholder: '예: 주말 공연 안내 스태프 모집'),
-        AppField(label: '회사·상호명', required: true, controller: company, placeholder: '실제 고용하는 회사 또는 사업장 이름'),
-        AppField(label: '회사 주소', required: true, controller: companyAddress, placeholder: '도로명 주소와 상세 주소'),
-        AppField(
-          label: '사업자등록번호 (선택)',
-          controller: businessNo,
-          placeholder: '000-00-00000',
-          hint: '입력만으로 사업자 인증이 완료되지는 않아요.',
-        ),
-        AppField(
-          label: '하는 일',
-          required: true,
-          controller: desc,
-          maxLines: 4,
-          placeholder: '담당 업무, 업무 범위, 현장 환경을 10자 이상 작성해 주세요.',
-        ),
-        AppField(
-          label: '지원 자격·우대사항 (선택)',
-          controller: requirements,
-          maxLines: 2,
-          placeholder: '필요한 경험·기술, 준비물·복장 등',
-        ),
-      ];
+    AppField(label: '모집 제목', required: true, controller: title, placeholder: '예: 주말 공연 안내 스태프 모집'),
+    AppField(label: '회사·상호명', required: true, controller: company, placeholder: '실제 고용하는 회사 또는 사업장 이름'),
+    AppField(label: '회사 주소', required: true, controller: companyAddress, placeholder: '도로명 주소와 상세 주소'),
+    AppField(label: '사업자등록번호 (선택)', controller: businessNo, placeholder: '000-00-00000', hint: '입력만으로 사업자 인증이 완료되지는 않아요.'),
+    AppField(label: '하는 일', required: true, controller: desc, maxLines: 4, placeholder: '담당 업무, 업무 범위, 현장 환경을 10자 이상 작성해 주세요.'),
+    AppField(label: '지원 자격·우대사항 (선택)', controller: requirements, maxLines: 2, placeholder: '필요한 경험·기술, 준비물·복장 등'),
+  ];
 
   List<Widget> _step1() {
     final net = _netMinutes;
@@ -248,153 +261,148 @@ class _JobPostScreenState extends State<JobPostScreen> {
         options: JobPosting.workTypes,
         onChanged: (v) => setState(() => workType = v),
       ),
-      AppField(
-        label: '실제 근무 장소',
-        required: true,
-        controller: location,
-        placeholder: '회사와 다르면 별도 입력 · 재택이면 \'재택\' 입력',
-      ),
-      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Expanded(
-          child: AppDateField(
-            label: '근무 시작',
-            required: true,
-            value: start,
-            onChanged: (v) => setState(() => start = v),
-            first: DateTime.now(),
-          ),
-        ),
-        const SizedBox(width: 13),
-        Expanded(
-          child: AppDateField(
-            label: '근무 종료',
-            required: true,
-            value: end,
-            onChanged: (v) => setState(() => end = v),
-            first: start ?? DateTime.now(),
-          ),
-        ),
-      ]),
-      AppField(
-        label: '반복 일정 (선택)',
-        controller: schedule,
-        placeholder: '예: 10월 매주 토요일 · 날짜가 여러 개면 적어주세요',
-      ),
-      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Expanded(
-          child: AppField(
-            label: '휴게시간 (분)',
-            required: true,
-            controller: breakMin,
-            keyboardType: TextInputType.number,
-            onChanged: (_) => setState(() {}),
-          ),
-        ),
-        const SizedBox(width: 13),
-        Expanded(
-          child: AppField(
-            label: '모집 인원 (명)',
-            required: true,
-            controller: headcount,
-            keyboardType: TextInputType.number,
-            onChanged: (_) => setState(() {}),
-          ),
-        ),
-      ]),
-      if (net != null && net > 0)
-        Container(
-          padding: const EdgeInsets.all(15),
-          decoration: BoxDecoration(color: AppColors.page, borderRadius: BorderRadius.circular(12)),
-          child: Text('입력한 첫 근무 기준 · 휴게 제외 ${net ~/ 60}시간 ${net % 60}분',
-              style: AppType.meta.copyWith(fontSize: 12, height: 1.8, color: AppColors.goalMintInk)),
-        ),
-      AppField(
-        label: '식사·교통비·기타 지원 (선택)',
-        controller: benefits,
-        maxLines: 2,
-        placeholder: '예: 식사 제공, 교통비 별도 지급',
-      ),
-    ];
-  }
-
-  List<Widget> _step2() => [
-        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      AppField(label: '실제 근무 장소', required: true, controller: location, placeholder: '회사와 다르면 별도 입력 · 재택이면 \'재택\' 입력'),
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           Expanded(
-            child: AppSelectField(
-              label: '급여 기준',
+            child: AppDateField(
+              label: '근무 시작',
               required: true,
-              value: payType,
-              options: JobPosting.payTypes,
-              onChanged: (v) => setState(() => payType = v),
+              value: start,
+              onChanged: (v) => setState(() => start = v),
+              first: DateTime.now(),
+            ),
+          ),
+          const SizedBox(width: 13),
+          Expanded(
+            child: AppDateField(
+              label: '근무 종료',
+              required: true,
+              value: end,
+              onChanged: (v) => setState(() => end = v),
+              first: start ?? DateTime.now(),
+            ),
+          ),
+        ],
+      ),
+      AppField(label: '반복 일정 (선택)', controller: schedule, placeholder: '예: 10월 매주 토요일 · 날짜가 여러 개면 적어주세요'),
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: AppField(
+              label: '휴게시간 (분)',
+              required: true,
+              controller: breakMin,
+              keyboardType: TextInputType.number,
+              onChanged: (_) => setState(() {}),
             ),
           ),
           const SizedBox(width: 13),
           Expanded(
             child: AppField(
-              label: '급여 (원, 세전)',
+              label: '모집 인원 (명)',
               required: true,
-              controller: pay,
+              controller: headcount,
               keyboardType: TextInputType.number,
               onChanged: (_) => setState(() {}),
             ),
           ),
-        ]),
-        AppDateField(
-          label: '급여 지급 예정일',
-          required: true,
-          withTime: false,
-          value: payDate,
-          onChanged: (v) => setState(() => payDate = v),
-          first: end ?? DateTime.now(),
-        ),
-        AppField(
-          label: '급여 상세 조건 (선택)',
-          controller: payNote,
-          maxLines: 2,
-          placeholder: '지급 방식, 수당·공제, 휴게시간 급여 포함 여부 등',
-        ),
-        AppDateField(
-          label: '지원 마감',
-          required: true,
-          value: deadline,
-          onChanged: (v) => setState(() => deadline = v),
-          first: DateTime.now(),
-          last: start,
-          hint: '현재 이후, 근무 시작 이전으로 설정해 주세요.',
-        ),
-        AppField(label: '채용 담당자', required: true, controller: contact, placeholder: '담당자 이름 또는 부서'),
-        AppSelectField(
-          label: '지원 방법',
-          value: contactMethod,
-          options: JobPosting.contactMethods,
-          onChanged: (v) => setState(() => contactMethod = v),
-        ),
-        if (contactMethod == '이메일 지원')
-          AppField(
-            label: '지원 이메일',
-            required: true,
-            controller: email,
-            keyboardType: TextInputType.emailAddress,
-            onChanged: (_) => setState(() {}),
-          ),
-        AppCheckRow(
-          value: confirmed,
-          onChanged: (v) => setState(() => confirmed = v),
-          label: '업무·근무 조건·급여 내용을 확인했습니다.',
-        ),
+        ],
+      ),
+      if (net != null && net > 0)
         Container(
           padding: const EdgeInsets.all(15),
           decoration: BoxDecoration(color: AppColors.page, borderRadius: BorderRadius.circular(12)),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title.text.trim().isEmpty ? '모집 제목' : title.text.trim(),
-                style: AppType.body.copyWith(fontSize: 13, fontWeight: AppType.w600)),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 5),
-              child: Text('${company.text.trim()} · $_headcount명 모집', style: AppType.caption.copyWith(fontSize: 12)),
-            ),
-            Text('$payType ${nf(_pay)}원 · 세전',
-                style: AppType.body.copyWith(fontSize: 13, fontWeight: AppType.w700, color: AppColors.green)),
-          ]),
+          child: Text(
+            '입력한 첫 근무 기준 · 휴게 제외 ${net ~/ 60}시간 ${net % 60}분',
+            style: AppType.meta.copyWith(fontSize: 12, height: 1.8, color: AppColors.goalMintInk),
+          ),
         ),
-      ];
+      AppField(label: '식사·교통비·기타 지원 (선택)', controller: benefits, maxLines: 2, placeholder: '예: 식사 제공, 교통비 별도 지급'),
+    ];
+  }
+
+  List<Widget> _step2() => [
+    Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: AppSelectField(
+            label: '급여 기준',
+            required: true,
+            value: payType,
+            options: JobPosting.payTypes,
+            onChanged: (v) => setState(() => payType = v),
+          ),
+        ),
+        const SizedBox(width: 13),
+        Expanded(
+          child: AppField(
+            label: '급여 (원, 세전)',
+            required: true,
+            controller: pay,
+            keyboardType: TextInputType.number,
+            onChanged: (_) => setState(() {}),
+          ),
+        ),
+      ],
+    ),
+    AppDateField(
+      label: '급여 지급 예정일',
+      required: true,
+      withTime: false,
+      value: payDate,
+      onChanged: (v) => setState(() => payDate = v),
+      first: end ?? DateTime.now(),
+    ),
+    AppField(label: '급여 상세 조건 (선택)', controller: payNote, maxLines: 2, placeholder: '지급 방식, 수당·공제, 휴게시간 급여 포함 여부 등'),
+    AppDateField(
+      label: '지원 마감',
+      required: true,
+      value: deadline,
+      onChanged: (v) => setState(() => deadline = v),
+      first: DateTime.now(),
+      last: start,
+      hint: '현재 이후, 근무 시작 이전으로 설정해 주세요.',
+    ),
+    AppField(label: '채용 담당자', required: true, controller: contact, placeholder: '담당자 이름 또는 부서'),
+    AppSelectField(
+      label: '지원 방법',
+      value: contactMethod,
+      options: JobPosting.contactMethods,
+      onChanged: (v) => setState(() => contactMethod = v),
+    ),
+    if (contactMethod == '이메일 지원')
+      AppField(
+        label: '지원 이메일',
+        required: true,
+        controller: email,
+        keyboardType: TextInputType.emailAddress,
+        onChanged: (_) => setState(() {}),
+      ),
+    AppCheckRow(value: confirmed, onChanged: (v) => setState(() => confirmed = v), label: '업무·근무 조건·급여 내용을 확인했습니다.'),
+    Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(color: AppColors.page, borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title.text.trim().isEmpty ? '모집 제목' : title.text.trim(),
+            style: AppType.body.copyWith(fontSize: 13, fontWeight: AppType.w600),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 5),
+            child: Text('${company.text.trim()} · $_headcount명 모집', style: AppType.caption.copyWith(fontSize: 12)),
+          ),
+          Text(
+            '$payType ${nf(_pay)}원 · 세전',
+            style: AppType.body.copyWith(fontSize: 13, fontWeight: AppType.w700, color: AppColors.green),
+          ),
+        ],
+      ),
+    ),
+  ];
 }

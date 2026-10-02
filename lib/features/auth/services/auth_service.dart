@@ -54,14 +54,18 @@ class AuthService {
       // 프로필 문서 저장은 부가 기능 — Firestore가 아직 준비 안 됐거나 느려도
       // 계정 생성(로그인) 자체는 막지 않도록 타임아웃을 두고 실패를 삼킴.
       // (실패해도 다음 로그인 때 UserRepository.ensureProfile이 다시 만든다)
-      await _db?.collection('users').doc(cred.user!.uid).set({
-        'email': email,
-        'nickname': nickname,
-        'points': 0,
-        'verified': false,
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      }).timeout(const Duration(seconds: 8));
+      await _db
+          ?.collection('users')
+          .doc(cred.user!.uid)
+          .set({
+            'email': email,
+            'nickname': nickname,
+            'points': 0,
+            'verified': false,
+            'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          })
+          .timeout(const Duration(seconds: 8));
     } catch (_) {
       // ignore
     }

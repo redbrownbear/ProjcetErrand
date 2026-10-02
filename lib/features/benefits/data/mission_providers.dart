@@ -119,8 +119,7 @@ const missionProviders = <MissionProvider>[
   ),
 ];
 
-MissionProvider providerOf(String id) =>
-    missionProviders.firstWhere((p) => p.id == id, orElse: () => missionProviders.first);
+MissionProvider providerOf(String id) => missionProviders.firstWhere((p) => p.id == id, orElse: () => missionProviders.first);
 
 /// 지금 당장 쓸 수 있는 공급원 (키가 들어와 있거나 키가 필요 없는 것)
 List<MissionProvider> get liveProviders => missionProviders.where((p) => p.usable).toList();

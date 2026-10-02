@@ -26,9 +26,7 @@ class DefaultFirebaseOptions {
           'DefaultFirebaseOptions have not been configured for ios — register an iOS app in the Firebase console first.',
         );
       default:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions are not supported for this platform.',
-        );
+        throw UnsupportedError('DefaultFirebaseOptions are not supported for this platform.');
     }
   }
 

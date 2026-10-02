@@ -145,46 +145,45 @@ class _MapCanvasState extends State<MapCanvas> {
         color: const Color(0xFFE7ECE4),
         alignment: Alignment.center,
         padding: const EdgeInsets.all(24),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Icon(Icons.map_outlined, size: 34, color: AppColors.faint),
-          const SizedBox(height: 10),
-          const Text(
-            '지도는 모바일 앱(Android · iOS)에서만 볼 수 있어요',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13, color: AppColors.sub),
-          ),
-          const SizedBox(height: 4),
-          Text('주변 부탁 ${widget.pins.length}건', style: const TextStyle(fontSize: 12, color: AppColors.faint)),
-        ]),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.map_outlined, size: 34, color: AppColors.faint),
+            const SizedBox(height: 10),
+            const Text(
+              '지도는 모바일 앱(Android · iOS)에서만 볼 수 있어요',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: AppColors.sub),
+            ),
+            const SizedBox(height: 4),
+            Text('주변 부탁 ${widget.pins.length}건', style: const TextStyle(fontSize: 12, color: AppColors.faint)),
+          ],
+        ),
       );
     }
 
-    return Stack(children: [
-      Positioned.fill(
-        child: NaverMap(
-          options: NaverMapViewOptions(
-            initialCameraPosition: NCameraPosition(
-              target: NLatLng(widget.centerLat, widget.centerLng),
-              zoom: widget.zoom,
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: NaverMap(
+            options: NaverMapViewOptions(
+              initialCameraPosition: NCameraPosition(target: NLatLng(widget.centerLat, widget.centerLng), zoom: widget.zoom),
+              locationButtonEnable: false,
             ),
-            locationButtonEnable: false,
+            onMapReady: (controller) {
+              setState(() => _controller = controller);
+              _syncMarkers();
+            },
+            onCameraIdle: _syncFollowingState,
           ),
-          onMapReady: (controller) {
-            setState(() => _controller = controller);
-            _syncMarkers();
-          },
-          onCameraIdle: _syncFollowingState,
         ),
-      ),
-      Positioned(
-        top: 10, right: 10,
-        child: _LocationButton(
-          following: _following,
-          loading: _controller?.myLocationTracker.isLoading,
-          onTap: _toggleFollow,
+        Positioned(
+          top: 10,
+          right: 10,
+          child: _LocationButton(following: _following, loading: _controller?.myLocationTracker.isLoading, onTap: _toggleFollow),
         ),
-      ),
-    ]);
+      ],
+    );
   }
 }
 
@@ -205,13 +204,17 @@ class _LocationButton extends StatelessWidget {
         customBorder: const CircleBorder(),
         onTap: onTap,
         child: SizedBox(
-          width: 42, height: 42,
+          width: 42,
+          height: 42,
           child: loading == null
               ? _icon()
               : ValueListenableBuilder<bool>(
                   valueListenable: loading!,
                   builder: (context, isLoading, _) => isLoading
-                      ? const Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.blue))
+                      ? const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.blue),
+                        )
                       : _icon(),
                 ),
         ),

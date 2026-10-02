@@ -37,47 +37,53 @@ class ScreenFrame extends StatelessWidget {
       // 아래쪽까지 감싸는 이유는, 상세 화면들이 이 안에서 `Positioned(bottom: 0)`으로
       // 참여 버튼을 깔기 때문이다 — 그 0이 제스처바 위가 되어야 누를 수 있다.
       child: SafeArea(
-        child: Column(children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(9, 6, 9, 8),
-            decoration: const BoxDecoration(
-              color: AppColors.card,
-              border: Border(bottom: BorderSide(color: Color(0xFFF2F3F5))),
-            ),
-            child: Column(children: [
-              SizedBox(
-                height: 44,
-                child: Row(children: [
-                  IconBtn(icon: 'arrowLeft', label: '뒤로 가기', onTap: onBack),
-                  Expanded(
-                    child: Text(
-                      title,
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppType.pageTitle.copyWith(fontSize: 16, color: accent ?? AppColors.ink),
+        child: Column(
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(9, 6, 9, 8),
+              decoration: const BoxDecoration(
+                color: AppColors.card,
+                border: Border(bottom: BorderSide(color: Color(0xFFF2F3F5))),
+              ),
+              child: Column(
+                children: [
+                  SizedBox(
+                    height: 44,
+                    child: Row(
+                      children: [
+                        IconBtn(icon: 'arrowLeft', label: '뒤로 가기', onTap: onBack),
+                        Expanded(
+                          child: Text(
+                            title,
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppType.pageTitle.copyWith(fontSize: 16, color: accent ?? AppColors.ink),
+                          ),
+                        ),
+                        // 오른쪽 액션이 없어도 제목이 가운데에 오도록 같은 폭을 비워둔다.
+                        SizedBox(width: 44, child: Center(child: right)),
+                      ],
                     ),
                   ),
-                  // 오른쪽 액션이 없어도 제목이 가운데에 오도록 같은 폭을 비워둔다.
-                  SizedBox(width: 44, child: Center(child: right)),
-                ]),
+                  if (subtitle != null)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 1, 20, 4),
+                      child: Text(subtitle!, textAlign: TextAlign.center, style: AppType.meta.copyWith(height: 1.5)),
+                    ),
+                ],
               ),
-              if (subtitle != null)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 1, 20, 4),
-                  child: Text(subtitle!, textAlign: TextAlign.center, style: AppType.meta.copyWith(height: 1.5)),
-                ),
-            ]),
-          ),
-          Expanded(child: child),
-        ]),
+            ),
+            Expanded(child: child),
+          ],
+        ),
       ),
     );
   }
 }
 
-/// 44x44 아이콘 버튼 (.icon-button). 헤더 액션은 전부 이걸 쓴다.
+/// 44x44 아이콘 버튼. 헤더 액션은 전부 이걸 쓴다.
 class IconBtn extends StatelessWidget {
   final String icon;
   final String label;

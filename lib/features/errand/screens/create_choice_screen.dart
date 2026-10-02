@@ -15,12 +15,7 @@ class CreateChoiceScreen extends StatelessWidget {
   final VoidCallback onOverseas;
   final VoidCallback onJob;
 
-  const CreateChoiceScreen({
-    super.key,
-    required this.onLocal,
-    required this.onOverseas,
-    required this.onJob,
-  });
+  const CreateChoiceScreen({super.key, required this.onLocal, required this.onOverseas, required this.onJob});
 
   @override
   Widget build(BuildContext context) {
@@ -39,8 +34,10 @@ class CreateChoiceScreen extends StatelessWidget {
           Text('필요한 도움에 맞게', style: AppType.caption.copyWith(fontSize: 11, color: AppColors.greetingPoint)),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 10),
-            child: Text('어떤 일을 맡기고 싶으세요?',
-                style: AppType.section.copyWith(fontSize: 24, height: 1.4, color: AppColors.attendTitle)),
+            child: Text(
+              '어떤 일을 맡기고 싶으세요?',
+              style: AppType.section.copyWith(fontSize: 24, height: 1.4, color: AppColors.attendTitle),
+            ),
           ),
           Text('일상 속 부탁과 근무 조건이 있는 채용을 나누어 등록해요.', style: AppType.meta.copyWith(height: 1.8)),
           const SizedBox(height: 8),
@@ -56,29 +53,34 @@ class CreateChoiceScreen extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
                   decoration: BoxDecoration(color: c.bg, borderRadius: BorderRadius.circular(AppRadius.surface)),
-                  child: Row(children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: AppColors.card.withValues(alpha: 0.63),
-                        borderRadius: BorderRadius.circular(AppRadius.emblem),
-                      ),
-                      child: AppIcon(c.icon, size: 22, color: AppColors.goalMintInk),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(c.title, style: AppType.sectionSmall.copyWith(fontSize: 16)),
-                        Padding(
-                          padding: const EdgeInsets.only(top: 7),
-                          child: Text(c.desc, style: AppType.caption.copyWith(fontSize: 11, height: 1.7)),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: AppColors.card.withValues(alpha: 0.63),
+                          borderRadius: BorderRadius.circular(AppRadius.emblem),
                         ),
-                      ]),
-                    ),
-                    const AppIcon('chevron', size: 18, color: AppColors.faint),
-                  ]),
+                        child: AppIcon(c.icon, size: 22, color: AppColors.goalMintInk),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(c.title, style: AppType.sectionSmall.copyWith(fontSize: 16)),
+                            Padding(
+                              padding: const EdgeInsets.only(top: 7),
+                              child: Text(c.desc, style: AppType.caption.copyWith(fontSize: 11, height: 1.7)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const AppIcon('chevron', size: 18, color: AppColors.faint),
+                    ],
+                  ),
                 ),
               ),
             ),

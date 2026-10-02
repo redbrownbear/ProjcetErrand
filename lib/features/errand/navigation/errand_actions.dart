@@ -16,8 +16,12 @@ class ErrandActions {
   final bool Function(int id) isSaved;
   final void Function(int id) toggleSave;
   const ErrandActions({
-    required this.grabbed, required this.onGrab, required this.onOffer, required this.offers,
-    required this.isSaved, required this.toggleSave,
+    required this.grabbed,
+    required this.onGrab,
+    required this.onOffer,
+    required this.offers,
+    required this.isSaved,
+    required this.toggleSave,
   });
 
   void open(BuildContext context, TaskItem it) {
@@ -29,7 +33,15 @@ class ErrandActions {
       MaterialPageRoute(
         builder: (_) => it.mode == 'together'
             ? CommunityPostScreen(it: it, grabbed: grabbed, onGrab: onGrab, isSaved: isSaved, toggleSave: toggleSave)
-            : DetailPage(it: it, grabbed: grabbed, myOffers: offers[it.id] ?? const [], onGrab: onGrab, onOffer: onOffer, isSaved: isSaved, toggleSave: toggleSave),
+            : DetailPage(
+                it: it,
+                grabbed: grabbed,
+                myOffers: offers[it.id] ?? const [],
+                onGrab: onGrab,
+                onOffer: onOffer,
+                isSaved: isSaved,
+                toggleSave: toggleSave,
+              ),
       ),
     );
   }

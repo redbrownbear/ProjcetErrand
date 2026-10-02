@@ -53,24 +53,23 @@ class HubScaffold extends StatelessWidget {
       accent: accent,
       right: right,
       onBack: () => Navigator.of(context).pop(),
-      child: Column(children: [
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.only(top: 4, bottom: 28),
-            children: children,
+      child: Column(
+        children: [
+          Expanded(
+            child: ListView(padding: const EdgeInsets.only(top: 4, bottom: 28), children: children),
           ),
-        ),
-        if (bottom != null)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
-            decoration: const BoxDecoration(
-              color: AppColors.card,
-              border: Border(top: BorderSide(color: AppColors.line)),
+          if (bottom != null)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+              decoration: const BoxDecoration(
+                color: AppColors.card,
+                border: Border(top: BorderSide(color: AppColors.line)),
+              ),
+              child: bottom,
             ),
-            child: bottom,
-          ),
-      ]),
+        ],
+      ),
     );
   }
 }
@@ -105,30 +104,33 @@ class HubSection extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 18, 16, 10),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: AppType.section.copyWith(fontSize: 16)),
-                  if (sub != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Text(sub!, style: AppType.meta),
-                    ),
-                ],
-              ),
-            ),
-            if (onAction != null)
-              InkWell(
-                onTap: onAction,
-                borderRadius: BorderRadius.circular(8),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
-                  child: Text('$actionLabel ›', style: AppType.meta),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: AppType.section.copyWith(fontSize: 16)),
+                    if (sub != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(sub!, style: AppType.meta),
+                      ),
+                  ],
                 ),
               ),
-          ]),
+              if (onAction != null)
+                InkWell(
+                  onTap: onAction,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+                    child: Text('$actionLabel ›', style: AppType.meta),
+                  ),
+                ),
+            ],
+          ),
         ),
         padded ? Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: child) : child,
       ],
@@ -178,30 +180,42 @@ class HubRow extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-        decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(13)),
-        child: Row(children: [
-          Icon(AppIcon.data(icon), size: 19, color: AppColors.sub),
-          const SizedBox(width: 11),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.ink)),
-                if (sub != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Text(sub!, style: const TextStyle(fontSize: 11.5, color: AppColors.sub)),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          border: Border.all(color: AppColors.line),
+          borderRadius: BorderRadius.circular(13),
+        ),
+        child: Row(
+          children: [
+            Icon(AppIcon.data(icon), size: 19, color: AppColors.sub),
+            const SizedBox(width: 11),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.ink),
                   ),
-              ],
+                  if (sub != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(sub!, style: const TextStyle(fontSize: 11.5, color: AppColors.sub)),
+                    ),
+                ],
+              ),
             ),
-          ),
-          if (trailing != null)
-            Padding(
-              padding: const EdgeInsets.only(right: 6),
-              child: Text(trailing!, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.sub)),
-            ),
-          const Text('›', style: TextStyle(fontSize: 18, color: AppColors.faint)),
-        ]),
+            if (trailing != null)
+              Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: Text(
+                  trailing!,
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.sub),
+                ),
+              ),
+            const Text('›', style: TextStyle(fontSize: 18, color: AppColors.faint)),
+          ],
+        ),
       ),
     );
   }

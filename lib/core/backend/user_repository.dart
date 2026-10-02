@@ -50,71 +50,66 @@ class UserRepository {
         return profile;
       }
       final fresh = UserProfile.blank(uid: uid, email: email, nickname: nickname);
-      await _doc.set({
-        ...fresh.toMap(),
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+      await _doc.set({...fresh.toMap(), 'createdAt': FieldValue.serverTimestamp(), 'updatedAt': FieldValue.serverTimestamp()});
       return fresh;
     }, null);
   }
 
-  Future<void> savePoints(int points) => Backend.push(
-        () => _doc.set({'points': points, 'updatedAt': FieldValue.serverTimestamp()}, SetOptions(merge: true)),
-      );
+  Future<void> savePoints(int points) =>
+      Backend.push(() => _doc.set({'points': points, 'updatedAt': FieldValue.serverTimestamp()}, SetOptions(merge: true)));
 
   Future<void> saveProfileFields({String? nickname, String? region, bool? verified}) => Backend.push(
-        () => _doc.set({
-          if (nickname != null) 'nickname': nickname,
-          if (region != null) 'region': region,
-          if (verified != null) 'verified': verified,
-          'updatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true)),
-      );
+    () => _doc.set({
+      'nickname': ?nickname,
+      'region': ?region,
+      'verified': ?verified,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true)),
+  );
 
   // ── 관심 저장 ───────────────────────────────────────────────────────────
 
   Future<List<int>> loadBookmarks() => Backend.guard<List<int>>(() async {
-        final snap = await _sub('bookmarks').get();
-        return [
-          for (final d in snap.docs)
-            if (int.tryParse(d.id) != null) int.parse(d.id),
-        ];
-      }, const []);
+    final snap = await _sub('bookmarks').get();
+    return [
+      for (final d in snap.docs)
+        if (int.tryParse(d.id) != null) int.parse(d.id),
+    ];
+  }, const []);
 
   Future<void> setBookmark(int requestId, bool on) => Backend.push(() async {
-        final doc = _sub('bookmarks').doc('$requestId');
-        if (on) {
-          await doc.set({'createdAt': FieldValue.serverTimestamp()});
-        } else {
-          await doc.delete();
-        }
-      });
+    final doc = _sub('bookmarks').doc('$requestId');
+    if (on) {
+      await doc.set({'createdAt': FieldValue.serverTimestamp()});
+    } else {
+      await doc.delete();
+    }
+  });
 
   // ── 지원·거래 단계 ──────────────────────────────────────────────────────
 
   Future<Map<int, Trade>> loadTrades() => Backend.guard<Map<int, Trade>>(() async {
-        final snap = await _sub('trades').get();
-        final out = <int, Trade>{};
-        for (final d in snap.docs) {
-          final id = int.tryParse(d.id);
-          final t = _tradeFrom(d.data());
-          if (id != null && t != null) out[id] = t;
-        }
-        return out;
-      }, const {});
+    final snap = await _sub('trades').get();
+    final out = <int, Trade>{};
+    for (final d in snap.docs) {
+      final id = int.tryParse(d.id);
+      final t = _tradeFrom(d.data());
+      if (id != null && t != null) out[id] = t;
+    }
+    return out;
+  }, const {});
 
   /// 거래 단계를 저장한다. [title]·[price]는 나중에 정산 내역을 서버만 보고
   /// 그릴 수 있도록 같이 남기는 사본이다.
   Future<void> saveTrade(int requestId, Trade trade, {String? title, int? price, String? mode}) => Backend.push(
-        () => _sub('trades').doc('$requestId').set({
-          'status': trade.status,
-          'updatedAt': Timestamp.fromDate(trade.updatedAt),
-          if (title != null) 'title': title,
-          if (price != null) 'price': price,
-          if (mode != null) 'mode': mode,
-        }, SetOptions(merge: true)),
-      );
+    () => _sub('trades').doc('$requestId').set({
+      'status': trade.status,
+      'updatedAt': Timestamp.fromDate(trade.updatedAt),
+      'title': ?title,
+      'price': ?price,
+      'mode': ?mode,
+    }, SetOptions(merge: true)),
+  );
 
   static Trade? _tradeFrom(Map<String, dynamic> m) {
     final status = m['status'];
@@ -127,87 +122,82 @@ class UserRepository {
   // ── 가격 제안 ───────────────────────────────────────────────────────────
 
   Future<Map<int, List<Offer>>> loadOffers() => Backend.guard<Map<int, List<Offer>>>(() async {
-        final snap = await _sub('offers').get();
-        final out = <int, List<Offer>>{};
-        for (final d in snap.docs) {
-          final id = int.tryParse(d.id);
-          final raw = d.data()['items'];
-          if (id == null || raw is! List) continue;
-          out[id] = [
-            for (final o in raw)
-              if (o is Map && o['price'] is int) Offer(o['price'] as int, o['msg'] is String ? o['msg'] as String : ''),
-          ];
-        }
-        return out;
-      }, const {});
+    final snap = await _sub('offers').get();
+    final out = <int, List<Offer>>{};
+    for (final d in snap.docs) {
+      final id = int.tryParse(d.id);
+      final raw = d.data()['items'];
+      if (id == null || raw is! List) continue;
+      out[id] = [
+        for (final o in raw)
+          if (o is Map && o['price'] is int) Offer(o['price'] as int, o['msg'] is String ? o['msg'] as String : ''),
+      ];
+    }
+    return out;
+  }, const {});
 
   Future<void> saveOffers(int requestId, List<Offer> offers) => Backend.push(
-        () => _sub('offers').doc('$requestId').set({
-          'items': [for (final o in offers) {'price': o.price, 'msg': o.msg}],
-          'updatedAt': FieldValue.serverTimestamp(),
-        }),
-      );
+    () => _sub('offers').doc('$requestId').set({
+      'items': [
+        for (final o in offers) {'price': o.price, 'msg': o.msg},
+      ],
+      'updatedAt': FieldValue.serverTimestamp(),
+    }),
+  );
 
   // ── 쿠폰 ────────────────────────────────────────────────────────────────
 
   Future<List<Coupon>> loadCoupons() => Backend.guard<List<Coupon>>(() async {
-        final snap = await _sub('coupons').orderBy('createdAt', descending: true).get();
-        return [
-          for (final d in snap.docs)
-            if (int.tryParse(d.id) != null)
-              Coupon(
-                id: int.parse(d.id),
-                brandK: '${d.data()['brandK'] ?? ''}',
-                name: '${d.data()['name'] ?? ''}',
-                points: d.data()['points'] is int ? d.data()['points'] as int : 0,
-                exp: '${d.data()['exp'] ?? ''}',
-                code: '${d.data()['code'] ?? ''}',
-                used: d.data()['used'] == true,
-              ),
-        ];
-      }, const []);
+    final snap = await _sub('coupons').orderBy('createdAt', descending: true).get();
+    return [
+      for (final d in snap.docs)
+        if (int.tryParse(d.id) != null)
+          Coupon(
+            id: int.parse(d.id),
+            brandK: '${d.data()['brandK'] ?? ''}',
+            name: '${d.data()['name'] ?? ''}',
+            points: d.data()['points'] is int ? d.data()['points'] as int : 0,
+            exp: '${d.data()['exp'] ?? ''}',
+            code: '${d.data()['code'] ?? ''}',
+            used: d.data()['used'] == true,
+          ),
+    ];
+  }, const []);
 
   Future<void> saveCoupon(Coupon c) => Backend.push(
-        () => _sub('coupons').doc('${c.id}').set({
-          'brandK': c.brandK,
-          'name': c.name,
-          'points': c.points,
-          'exp': c.exp,
-          'code': c.code,
-          'used': c.used,
-          'createdAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true)),
-      );
+    () => _sub('coupons').doc('${c.id}').set({
+      'brandK': c.brandK,
+      'name': c.name,
+      'points': c.points,
+      'exp': c.exp,
+      'code': c.code,
+      'used': c.used,
+      'createdAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true)),
+  );
 
   // ── 포인트 적립 원장 ────────────────────────────────────────────────────
 
   /// key -> 받은 날짜('YYYY-MM-DD') 또는 '*'(1회성)
   Future<Map<String, String>> loadLedger() => Backend.guard<Map<String, String>>(() async {
-        final snap = await _sub('ledger').get();
-        return {
-          for (final d in snap.docs) d.id: '${d.data()['on'] ?? '*'}',
-        };
-      }, const {});
+    final snap = await _sub('ledger').get();
+    return {for (final d in snap.docs) d.id: '${d.data()['on'] ?? '*'}'};
+  }, const {});
 
   Future<void> saveLedgerEntry(String key, String value, int amount, String label) => Backend.push(
-        () => _sub('ledger').doc(key).set({
-          'on': value,
-          'amount': amount,
-          'label': label,
-          'claimedAt': FieldValue.serverTimestamp(),
-        }),
-      );
+    () => _sub('ledger').doc(key).set({'on': value, 'amount': amount, 'label': label, 'claimedAt': FieldValue.serverTimestamp()}),
+  );
 
   // ── 첫 로그인 이관 ──────────────────────────────────────────────────────
 
   /// 이 기기에 있던 자료를 이미 이 계정으로 올렸는지.
   /// 여러 번 올려서 관심 목록이 두 배가 되는 걸 막는다.
   Future<bool> isMigrated() => Backend.guard<bool>(() async {
-        final snap = await _doc.get();
-        return snap.data()?['migratedFromDevice'] == true;
-      }, true); // 서버를 못 읽으면 "이미 했다"로 봐서 중복 업로드를 피한다
+    final snap = await _doc.get();
+    return snap.data()?['migratedFromDevice'] == true;
+  }, true); // 서버를 못 읽으면 "이미 했다"로 봐서 중복 업로드를 피한다
 
   Future<void> markMigrated() => Backend.push(
-        () => _doc.set({'migratedFromDevice': true, 'updatedAt': FieldValue.serverTimestamp()}, SetOptions(merge: true)),
-      );
+    () => _doc.set({'migratedFromDevice': true, 'updatedAt': FieldValue.serverTimestamp()}, SetOptions(merge: true)),
+  );
 }

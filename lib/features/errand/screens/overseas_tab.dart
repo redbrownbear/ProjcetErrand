@@ -50,9 +50,11 @@ class _OverseasTabState extends State<OverseasTab> {
   List<TaskItem> get _sea => widget.items.where((i) => i.mode == 'sea' && !i.isExpired).toList();
 
   void _openSearch() => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => OverseasScreen(items: widget.items, actions: widget.actions)),
-      );
+    context,
+    MaterialPageRoute(
+      builder: (_) => OverseasScreen(items: widget.items, actions: widget.actions),
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -96,7 +98,7 @@ class _OverseasTabState extends State<OverseasTab> {
     ];
   }
 
-  /// 이렇게 진행돼요 (.ost2-how)
+  /// 이렇게 진행돼요
   Widget _howItWorks() {
     const steps = [
       ('부탁 올리기', '상품과 예상가, 부탁 비용을 적어 올려요'),
@@ -104,53 +106,73 @@ class _OverseasTabState extends State<OverseasTab> {
       ('받고 정산', '물건을 받으면 물건값과 부탁 비용이 정산돼요'),
     ];
     return SecCard(
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const SecHead(title: '이렇게 진행돼요'),
-        for (int i = 0; i < steps.length; i++)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Container(
-                width: 24,
-                height: 24,
-                alignment: Alignment.center,
-                decoration: const BoxDecoration(color: AppColors.page, shape: BoxShape.circle),
-                child: Text('${i + 1}', style: AppType.caption.copyWith(fontSize: 12, fontWeight: AppType.w700, color: AppColors.ink)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SecHead(title: '이렇게 진행돼요'),
+          for (int i = 0; i < steps.length; i++)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 24,
+                    height: 24,
+                    alignment: Alignment.center,
+                    decoration: const BoxDecoration(color: AppColors.page, shape: BoxShape.circle),
+                    child: Text(
+                      '${i + 1}',
+                      style: AppType.caption.copyWith(fontSize: 12, fontWeight: AppType.w700, color: AppColors.ink),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(steps[i].$1, style: AppType.body.copyWith(fontWeight: AppType.w700)),
+                        const SizedBox(height: 2),
+                        Text(steps[i].$2, style: AppType.meta.copyWith(fontSize: 12.5)),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(steps[i].$1, style: AppType.body.copyWith(fontWeight: AppType.w700)),
-                  const SizedBox(height: 2),
-                  Text(steps[i].$2, style: AppType.meta.copyWith(fontSize: 12.5)),
-                ]),
-              ),
-            ]),
-          ),
-        _customsNote(),
-      ]),
+            ),
+          _customsNote(),
+        ],
+      ),
     );
   }
 
-  /// 통관 안내 (.os-note)
+  /// 통관 안내
   Widget _customsNote() {
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 10, 20, 4),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(color: AppColors.page, borderRadius: BorderRadius.circular(AppRadius.tile)),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const AppIcon('shield', size: 17, color: AppColors.sub),
-        const SizedBox(width: 9),
-        Expanded(
-          child: Text.rich(
-            TextSpan(children: [
-              TextSpan(text: '통관비용은 따로 상의해 주세요\n', style: AppType.meta.copyWith(fontSize: 13, fontWeight: AppType.w700, color: AppColors.ink2)),
-              const TextSpan(text: '구매 금액과 상품 종류에 따라 관세·부가세가 달라져요. 부탁하기 전에 여행자와 꼭 이야기해 주세요.'),
-            ]),
-            style: AppType.meta.copyWith(height: 1.55),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const AppIcon('shield', size: 17, color: AppColors.sub),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: '통관비용은 따로 상의해 주세요\n',
+                    style: AppType.meta.copyWith(fontSize: 13, fontWeight: AppType.w700, color: AppColors.ink2),
+                  ),
+                  const TextSpan(text: '구매 금액과 상품 종류에 따라 관세·부가세가 달라져요. 부탁하기 전에 여행자와 꼭 이야기해 주세요.'),
+                ],
+              ),
+              style: AppType.meta.copyWith(height: 1.55),
+            ),
           ),
-        ),
-      ]),
+        ],
+      ),
     );
   }
 
@@ -177,40 +199,45 @@ class _OverseasTabState extends State<OverseasTab> {
       ),
       SecCard(
         key: _listKey,
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          SecHead(title: '해외 요청 사다주기', action: '전체보기', onAction: _openSearch),
-          SizedBox(
-            height: 34,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              children: [
-                ChipWidget(label: '전체', active: cc == 'all', onTap: () => setState(() => cc = 'all')),
-                for (final c in codes) ...[
-                  const SizedBox(width: 7),
-                  ChipWidget(label: countryOf(c).name, active: cc == c, onTap: () => setState(() => cc = c)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SecHead(title: '해외 요청 사다주기', action: '전체보기', onAction: _openSearch),
+            SizedBox(
+              height: 34,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                children: [
+                  ChipWidget(label: '전체', active: cc == 'all', onTap: () => setState(() => cc = 'all')),
+                  for (final c in codes) ...[
+                    const SizedBox(width: 7),
+                    ChipWidget(label: countryOf(c).name, active: cc == c, onTap: () => setState(() => cc = c)),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-          if (list.isEmpty)
-            const EmptyState(compact: true, msg: '이 나라에 올라온 요청이 아직 없어요.')
-          else
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
-              child: Column(children: [
-                for (int i = 0; i < list.length; i++)
-                  _OsRow(it: list[i], last: i == list.length - 1, onOpen: () => widget.actions.open(context, list[i])),
-              ]),
-            ),
-          _customsNote(),
-        ]),
+            if (list.isEmpty)
+              const EmptyState(compact: true, msg: '이 나라에 올라온 요청이 아직 없어요.')
+            else
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+                child: Column(
+                  children: [
+                    for (int i = 0; i < list.length; i++)
+                      _OsRow(it: list[i], last: i == list.length - 1, onOpen: () => widget.actions.open(context, list[i])),
+                  ],
+                ),
+              ),
+            _customsNote(),
+          ],
+        ),
       ),
     ];
   }
 }
 
-/// 해외 요청 한 줄 (.osrow)
+/// 해외 요청 한 줄
 class _OsRow extends StatelessWidget {
   final TaskItem it;
   final bool last;
@@ -224,46 +251,70 @@ class _OsRow extends StatelessWidget {
       onTap: onOpen,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 15),
-        decoration: BoxDecoration(border: last ? null : const Border(bottom: BorderSide(color: AppColors.line))),
-        child: Row(children: [
-          CountryFlag(cc: it.cc),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(it.sample ? '$place · 예시' : place,
-                  style: AppType.meta.copyWith(fontWeight: AppType.w700, color: AppColors.blue)),
-              Padding(
-                padding: const EdgeInsets.only(top: 1),
-                child: Text(it.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppType.body.copyWith(fontSize: 15, fontWeight: AppType.w700)),
-              ),
-              if (it.budget > 0)
-                Padding(
-                  padding: const EdgeInsets.only(top: 3),
-                  child: Text.rich(
-                    TextSpan(children: [
-                      const TextSpan(text: '물건 예산 '),
-                      TextSpan(text: won(it.budget), style: const TextStyle(fontWeight: AppType.w700, color: AppColors.ink2)),
-                    ]),
-                    style: AppType.meta.copyWith(fontWeight: AppType.w600),
+        decoration: BoxDecoration(
+          border: last ? null : const Border(bottom: BorderSide(color: AppColors.line)),
+        ),
+        child: Row(
+          children: [
+            CountryFlag(cc: it.cc),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    it.sample ? '$place · 예시' : place,
+                    style: AppType.meta.copyWith(fontWeight: AppType.w700, color: AppColors.blue),
                   ),
-                ),
-            ]),
-          ),
-          const SizedBox(width: 10),
-          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text('부탁 비용', style: AppType.caption.copyWith(fontWeight: AppType.w700)),
-            Text.rich(
-              TextSpan(children: [
-                TextSpan(text: nf(it.price)),
-                const TextSpan(text: '원', style: TextStyle(fontSize: 13, color: AppColors.ink2)),
-              ]),
-              style: const TextStyle(fontSize: 17, fontWeight: AppType.w700, color: AppColors.ink, letterSpacing: -0.5),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 1),
+                    child: Text(
+                      it.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppType.body.copyWith(fontSize: 15, fontWeight: AppType.w700),
+                    ),
+                  ),
+                  if (it.budget > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 3),
+                      child: Text.rich(
+                        TextSpan(
+                          children: [
+                            const TextSpan(text: '물건 예산 '),
+                            TextSpan(
+                              text: won(it.budget),
+                              style: const TextStyle(fontWeight: AppType.w700, color: AppColors.ink2),
+                            ),
+                          ],
+                        ),
+                        style: AppType.meta.copyWith(fontWeight: AppType.w600),
+                      ),
+                    ),
+                ],
+              ),
             ),
-          ]),
-        ]),
+            const SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text('부탁 비용', style: AppType.caption.copyWith(fontWeight: AppType.w700)),
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(text: nf(it.price)),
+                      const TextSpan(
+                        text: '원',
+                        style: TextStyle(fontSize: 13, color: AppColors.ink2),
+                      ),
+                    ],
+                  ),
+                  style: const TextStyle(fontSize: 17, fontWeight: AppType.w700, color: AppColors.ink, letterSpacing: -0.5),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

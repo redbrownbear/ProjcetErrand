@@ -13,18 +13,31 @@ import 'package:gyeomsa/features/errand/repositories/errand_repository.dart';
 Widget _view({List<String> done = const []}) {
   final items = LocalErrandRepository().fetchSeedItems();
   final actions = ErrandActions(
-    grabbed: const [], onGrab: (_) {}, onOffer: (_, _, _) {}, offers: const {},
-    isSaved: (_) => false, toggleSave: (_) {},
+    grabbed: const [],
+    onGrab: (_) {},
+    onOffer: (_, _, _) {},
+    offers: const {},
+    isSaved: (_) => false,
+    toggleSave: (_) {},
   );
   return MaterialApp(
     home: Scaffold(
       body: SideJobView(
-        points: 3200, coupons: const [], items: items, scope: '서울 서초구',
-        actions: actions, monthEarn: 0, freeLeft: 3, doneMissions: done,
+        points: 3200,
+        coupons: const [],
+        items: items,
+        scope: '서울 서초구',
+        actions: actions,
+        monthEarn: 0,
+        freeLeft: 3,
+        doneMissions: done,
         earn: (a, l, {required key, daily = true}) async {},
         isClaimed: (k, {daily = true}) => false,
-        redeem: (_) {}, useCoupon: (_) {}, completeMission: (_) {},
-        goPointsHub: () {}, flash: (_) {},
+        redeem: (_) {},
+        useCoupon: (_) {},
+        completeMission: (_) {},
+        goPointsHub: () {},
+        flash: (_) {},
       ),
     ),
   );
@@ -58,11 +71,7 @@ void main() {
     await tester.pumpWidget(_view());
     await tester.pump();
 
-    await tester.dragUntilVisible(
-      find.text('브랜드·가게 제휴 문의'),
-      find.byType(ListView).first,
-      const Offset(0, -400),
-    );
+    await tester.dragUntilVisible(find.text('브랜드·가게 제휴 문의'), find.byType(ListView).first, const Offset(0, -400));
     expect(find.text('브랜드·가게 제휴 문의'), findsOneWidget);
 
     await tester.drag(find.byType(ListView).first, const Offset(0, 4000));

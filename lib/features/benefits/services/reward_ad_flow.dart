@@ -25,11 +25,11 @@ class RewardAdFlow {
 
   /// 시청 전 안내에 쓰는 문구. 상세 화면·테스트에서도 같은 문장을 쓴다.
   static List<(String, String)> notice(MissionState s) => [
-        ('보상 조건', '광고 영상을 끝까지 보면 받아요'),
-        ('지급', '+${nf(s.m.points)}P · 시청이 끝나는 즉시 포인트로 들어와요'),
-        ('하루 한도', '${s.m.cap}번까지 · 오늘 ${s.left}번 남았어요'),
-        ('지급 제외', '중간에 닫았을 때, 보여 줄 광고가 없을 때, 한도를 넘겼을 때, 비정상적인 반복 시청으로 확인될 때'),
-      ];
+    ('보상 조건', '광고 영상을 끝까지 보면 받아요'),
+    ('지급', '+${nf(s.m.points)}P · 시청이 끝나는 즉시 포인트로 들어와요'),
+    ('하루 한도', '${s.m.cap}번까지 · 오늘 ${s.left}번 남았어요'),
+    ('지급 제외', '중간에 닫았을 때, 보여 줄 광고가 없을 때, 한도를 넘겼을 때, 비정상적인 반복 시청으로 확인될 때'),
+  ];
 
   Future<void> run(BuildContext context, MissionState s) async {
     if (s.done) {
@@ -78,35 +78,49 @@ class _NoticeSheet extends StatelessWidget {
         margin: const EdgeInsets.all(10),
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
         decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(AppRadius.surface)),
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('광고 보고 포인트 받기', style: AppType.section),
-          Padding(
-            padding: const EdgeInsets.only(top: 3, bottom: 14),
-            child: Text('카카오 애드핏 광고 영상이 재생돼요', style: AppType.caption),
-          ),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(color: AppColors.page, borderRadius: BorderRadius.circular(AppRadius.tile)),
-            child: Column(children: [
-              for (final (k, v) in rows)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    SizedBox(width: 64, child: Text(k, style: AppType.meta.copyWith(fontWeight: AppType.w600))),
-                    Expanded(child: Text(v, style: AppType.meta.copyWith(color: AppColors.ink2, height: 1.5))),
-                  ]),
-                ),
-            ]),
-          ),
-          const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(onPressed: onWatch, child: const Text('광고 보고 받기')),
-          ),
-          Center(
-            child: TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('다음에 할게요')),
-          ),
-        ]),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('광고 보고 포인트 받기', style: AppType.section),
+            Padding(
+              padding: const EdgeInsets.only(top: 3, bottom: 14),
+              child: Text('카카오 애드핏 광고 영상이 재생돼요', style: AppType.caption),
+            ),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(color: AppColors.page, borderRadius: BorderRadius.circular(AppRadius.tile)),
+              child: Column(
+                children: [
+                  for (final (k, v) in rows)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: 64,
+                            child: Text(k, style: AppType.meta.copyWith(fontWeight: AppType.w600)),
+                          ),
+                          Expanded(
+                            child: Text(v, style: AppType.meta.copyWith(color: AppColors.ink2, height: 1.5)),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(onPressed: onWatch, child: const Text('광고 보고 받기')),
+            ),
+            Center(
+              child: TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('다음에 할게요')),
+            ),
+          ],
+        ),
       ),
     );
   }

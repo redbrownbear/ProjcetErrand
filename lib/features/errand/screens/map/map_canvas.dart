@@ -16,11 +16,5 @@ class MapPin {
   final double lat, lng;
   final String label;
   final Color color;
-  const MapPin({
-    required this.item,
-    required this.lat,
-    required this.lng,
-    required this.label,
-    required this.color,
-  });
+  const MapPin({required this.item, required this.lat, required this.lng, required this.label, required this.color});
 }

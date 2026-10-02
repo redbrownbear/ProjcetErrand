@@ -60,9 +60,22 @@ void main() {
 
   test('내가 올린 부탁은 거래 조건까지 JSON으로 보관된다', () {
     final it = TaskItem(
-      id: 1757480000000, mode: 'ask', cat: 'buy', title: '커피 픽업', who: '나', desc: '아메리카노 2잔 부탁해요',
-      distM: null, place: '서초역 1번 출구', deliveryPlace: '서초역 2번 출구', deadline: DateTime(2026, 9, 11, 9),
-      budget: 9000, payment: 'reimburse', completion: '수령 후 확인', price: 3000, verified: false, rating: 0,
+      id: 1757480000000,
+      mode: 'ask',
+      cat: 'buy',
+      title: '커피 픽업',
+      who: '나',
+      desc: '아메리카노 2잔 부탁해요',
+      distM: null,
+      place: '서초역 1번 출구',
+      deliveryPlace: '서초역 2번 출구',
+      deadline: DateTime(2026, 9, 11, 9),
+      budget: 9000,
+      payment: 'reimburse',
+      completion: '수령 후 확인',
+      price: 3000,
+      verified: false,
+      rating: 0,
     );
     LocalStore.write('requests', [it.toJson()]);
     final back = TaskItem.fromJson(LocalStore.read<List<dynamic>>('requests', const []).single)!;

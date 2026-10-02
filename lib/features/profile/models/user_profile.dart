@@ -47,29 +47,26 @@ class UserProfile {
   }
 
   /// 서버에 문서가 아직 없을 때 쓰는 기본값. 로그인 계정 정보만 채운다.
-  factory UserProfile.blank({required String uid, required String email, String? nickname}) => UserProfile(
-        uid: uid,
-        email: email,
-        nickname: (nickname == null || nickname.isEmpty) ? defaultNickname : nickname,
-      );
+  factory UserProfile.blank({required String uid, required String email, String? nickname}) =>
+      UserProfile(uid: uid, email: email, nickname: (nickname == null || nickname.isEmpty) ? defaultNickname : nickname);
 
   Map<String, Object?> toMap() => {
-        'email': email,
-        'nickname': nickname,
-        'region': region,
-        'verified': verified,
-        'points': points,
-      };
+    'email': email,
+    'nickname': nickname,
+    'region': region,
+    'verified': verified,
+    'points': points,
+  };
 
   UserProfile copyWith({String? nickname, String? region, bool? verified, int? points}) => UserProfile(
-        uid: uid,
-        email: email,
-        nickname: nickname ?? this.nickname,
-        region: region ?? this.region,
-        verified: verified ?? this.verified,
-        points: points ?? this.points,
-        createdAt: createdAt,
-      );
+    uid: uid,
+    email: email,
+    nickname: nickname ?? this.nickname,
+    region: region ?? this.region,
+    verified: verified ?? this.verified,
+    points: points ?? this.points,
+    createdAt: createdAt,
+  );
 }
 
 /// 내 정보 화면의 숫자들. 전부 실제 기록에서 센 값이고, 셀 자료가 없으면 null이다.

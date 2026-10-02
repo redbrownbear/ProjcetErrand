@@ -49,14 +49,16 @@ class _DayJobScreenState extends State<DayJobScreen> {
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
         children: [
           if (widget.onPost != null) ...[
-            Row(children: [
-              Expanded(child: Text('내가 올린 모집 ${mine.length}건', style: AppType.sectionSmall.copyWith(fontSize: 13))),
-              TextButton(
-                onPressed: _post,
-                style: TextButton.styleFrom(foregroundColor: AppColors.green, minimumSize: const Size(0, 34)),
-                child: Text('알바 모집하기 +', style: AppType.caption.copyWith(fontSize: 12, color: AppColors.green)),
-              ),
-            ]),
+            Row(
+              children: [
+                Expanded(child: Text('내가 올린 모집 ${mine.length}건', style: AppType.sectionSmall.copyWith(fontSize: 13))),
+                TextButton(
+                  onPressed: _post,
+                  style: TextButton.styleFrom(foregroundColor: AppColors.green, minimumSize: const Size(0, 34)),
+                  child: Text('알바 모집하기 +', style: AppType.caption.copyWith(fontSize: 12, color: AppColors.green)),
+                ),
+              ],
+            ),
             for (final p in mine) _MyPostingCard(job: p),
             const SizedBox(height: 10),
           ],
@@ -68,7 +70,10 @@ class _DayJobScreenState extends State<DayJobScreen> {
                 scrollDirection: Axis.horizontal,
                 children: [
                   for (final c in dayJobCats)
-                    Padding(padding: const EdgeInsets.only(right: 7), child: ChipWidget(label: c[1], active: cat == c[0], onTap: () => setState(() => cat = c[0]))),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 7),
+                      child: ChipWidget(label: c[1], active: cat == c[0], onTap: () => setState(() => cat = c[0])),
+                    ),
                 ],
               ),
             ),
@@ -90,7 +95,7 @@ class _DayJobScreenState extends State<DayJobScreen> {
   }
 }
 
-/// 내가 올린 모집글 카드 (.g2-job-card)
+/// 내가 올린 모집글 카드
 class _MyPostingCard extends StatelessWidget {
   final JobPosting job;
   const _MyPostingCard({required this.job});
@@ -98,7 +103,8 @@ class _MyPostingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     String two(int n) => n.toString().padLeft(2, '0');
-    final start = '${job.start.year}.${two(job.start.month)}.${two(job.start.day)} ${two(job.start.hour)}:${two(job.start.minute)}';
+    final start =
+        '${job.start.year}.${two(job.start.month)}.${two(job.start.day)} ${two(job.start.hour)}:${two(job.start.minute)}';
     return InkWell(
       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => JobPostingDetailScreen(job: job))),
       borderRadius: BorderRadius.circular(AppRadius.card),
@@ -110,19 +116,24 @@ class _MyPostingCard extends StatelessWidget {
           border: Border.all(color: AppColors.line),
           borderRadius: BorderRadius.circular(AppRadius.card),
         ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('${job.company} · ${job.headcount}명 모집', style: AppType.caption.copyWith(fontSize: 11)),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 9),
-            child: Text(job.title, style: AppType.sectionSmall.copyWith(fontSize: 16)),
-          ),
-          Text('$start · ${job.location}', style: AppType.caption.copyWith(fontSize: 11)),
-          Padding(
-            padding: const EdgeInsets.only(top: 9),
-            child: Text('${job.payType} ${nf(job.pay)}원',
-                style: AppType.body.copyWith(fontSize: 14, fontWeight: AppType.w700, color: AppColors.green)),
-          ),
-        ]),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${job.company} · ${job.headcount}명 모집', style: AppType.caption.copyWith(fontSize: 11)),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 9),
+              child: Text(job.title, style: AppType.sectionSmall.copyWith(fontSize: 16)),
+            ),
+            Text('$start · ${job.location}', style: AppType.caption.copyWith(fontSize: 11)),
+            Padding(
+              padding: const EdgeInsets.only(top: 9),
+              child: Text(
+                '${job.payType} ${nf(job.pay)}원',
+                style: AppType.body.copyWith(fontSize: 14, fontWeight: AppType.w700, color: AppColors.green),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -130,5 +141,10 @@ class _MyPostingCard extends StatelessWidget {
 
 /// 공고 상세 열기. 홈 탭과 전체 화면이 같은 경로를 쓰게 한곳에 둔다.
 void openDayJob(BuildContext context, DayJob j, void Function(DayJob) onApply) {
-  Navigator.push(context, MaterialPageRoute(builder: (_) => DayJobDetailScreen(j: j, onApply: () => onApply(j))));
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => DayJobDetailScreen(j: j, onApply: () => onApply(j)),
+    ),
+  );
 }

@@ -14,13 +14,15 @@ void main() {
     addTearDown(tester.view.reset);
 
     final picked = <String>[];
-    await tester.pumpWidget(MaterialApp(
-      home: CreateChoiceScreen(
-        onLocal: () => picked.add('ask'),
-        onOverseas: () => picked.add('sea'),
-        onJob: () => picked.add('job'),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: CreateChoiceScreen(
+          onLocal: () => picked.add('ask'),
+          onOverseas: () => picked.add('sea'),
+          onJob: () => picked.add('job'),
+        ),
       ),
-    ));
+    );
     await tester.pump();
 
     expect(find.text('어떤 일을 맡기고 싶으세요?'), findsOneWidget);
@@ -35,9 +37,11 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(MaterialApp(
-      home: JobPostScreen(scope: '서울 서초구', onSubmit: (_) {}),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: JobPostScreen(scope: '서울 서초구', onSubmit: (_) {}),
+      ),
+    );
     await tester.pump();
 
     expect(find.text('어떤 일을 함께하나요?'), findsOneWidget);
@@ -53,14 +57,30 @@ void main() {
 
   test('모집글 — 휴게시간을 뺀 근무 시간과 마감 여부', () {
     final job = JobPosting(
-      id: '1', title: '주말 공연 안내 스태프', company: '○○기획', companyAddress: '서울 서초구 1',
-      businessNo: '', desc: '관람객 동선을 안내해요.', requirements: '',
-      workType: '현장 근무', location: '양재시민의숲',
-      start: DateTime(2026, 10, 3, 10), end: DateTime(2026, 10, 3, 18),
-      schedule: '', breakMin: 60, headcount: 3, benefits: '',
-      payType: '일급', pay: 110000, payDate: DateTime(2026, 10, 5), payNote: '',
-      deadline: DateTime(2026, 10, 1, 18), contact: '김담당',
-      contactMethod: '앱 내 지원', email: '', region: '서울 서초구',
+      id: '1',
+      title: '주말 공연 안내 스태프',
+      company: '○○기획',
+      companyAddress: '서울 서초구 1',
+      businessNo: '',
+      desc: '관람객 동선을 안내해요.',
+      requirements: '',
+      workType: '현장 근무',
+      location: '양재시민의숲',
+      start: DateTime(2026, 10, 3, 10),
+      end: DateTime(2026, 10, 3, 18),
+      schedule: '',
+      breakMin: 60,
+      headcount: 3,
+      benefits: '',
+      payType: '일급',
+      pay: 110000,
+      payDate: DateTime(2026, 10, 5),
+      payNote: '',
+      deadline: DateTime(2026, 10, 1, 18),
+      contact: '김담당',
+      contactMethod: '앱 내 지원',
+      email: '',
+      region: '서울 서초구',
     );
 
     expect(job.workMinutes, 8 * 60 - 60);

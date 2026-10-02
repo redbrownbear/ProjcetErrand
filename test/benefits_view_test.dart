@@ -13,8 +13,12 @@ import 'package:gyeomsa/features/errand/repositories/errand_repository.dart';
 Widget _benefits() {
   final items = LocalErrandRepository().fetchSeedItems();
   final actions = ErrandActions(
-    grabbed: const [], onGrab: (_) {}, onOffer: (_, _, _) {}, offers: const {},
-    isSaved: (_) => false, toggleSave: (_) {},
+    grabbed: const [],
+    onGrab: (_) {},
+    onOffer: (_, _, _) {},
+    offers: const {},
+    isSaved: (_) => false,
+    toggleSave: (_) {},
   );
   return MaterialApp(
     home: Scaffold(
@@ -49,13 +53,7 @@ void main() {
     await tester.pump();
 
     // 전부 제휴사가 돈을 대지 않는 자체 지급이었다
-    for (final gone in [
-      '🚶 걸어서 벌기',
-      '📅 연속 출석하고 벌기',
-      '👥 친구랑 벌기',
-      '오늘 받을 수 있는 포인트',
-      '오늘의 수익 기회',
-    ]) {
+    for (final gone in ['걸어서 벌기', '연속 출석하고 벌기', '친구랑 벌기', '오늘 받을 수 있는 포인트', '오늘의 수익 기회']) {
       expect(find.text(gone), findsNothing, reason: '$gone — 재원 없는 섹션이 돌아왔다');
     }
     expect(tester.takeException(), isNull);

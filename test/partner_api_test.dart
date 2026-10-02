@@ -35,10 +35,7 @@ void main() {
 
       final fake = _FakeClient('{}');
       ApiClient.client = fake;
-      await expectLater(
-        api.goldbox(),
-        throwsA(isA<ApiFailure>().having((e) => e.kind, 'kind', ApiFailKind.noKey)),
-      );
+      await expectLater(api.goldbox(), throwsA(isA<ApiFailure>().having((e) => e.kind, 'kind', ApiFailKind.noKey)));
       expect(fake.lastUrl, isNull, reason: '키도 없이 요청을 보냈다');
     });
 
@@ -84,7 +81,8 @@ void main() {
   group('쿠팡 파트너스 서명', () {
     test('signed-date는 GMT yyMMddTHHmmssZ 형식이다', () {
       final header = CoupangPartnersApi.authHeader(
-        'GET', '/v2/providers/affiliate_open_api/apis/openapi/v1/products/goldbox',
+        'GET',
+        '/v2/providers/affiliate_open_api/apis/openapi/v1/products/goldbox',
         now: DateTime.utc(2026, 9, 18, 5, 7, 9),
       );
       expect(header, startsWith('CEA algorithm=HmacSHA256,'));

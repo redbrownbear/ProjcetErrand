@@ -32,7 +32,13 @@ class _SearchScreenState extends State<SearchScreen> {
     final term = qCtrl.text.trim().toLowerCase();
     final results = term.isEmpty
         ? <TaskItem>[]
-        : widget.items.where((i) => ('${i.title} ${i.desc} ${catOf(i.cat).label} ${i.country ?? ''} ${i.region ?? ''}').toLowerCase().contains(term)).toList();
+        : widget.items
+              .where(
+                (i) => ('${i.title} ${i.desc} ${catOf(i.cat).label} ${i.country ?? ''} ${i.region ?? ''}').toLowerCase().contains(
+                  term,
+                ),
+              )
+              .toList();
 
     return ScreenFrame(
       title: '검색',
@@ -45,17 +51,31 @@ class _SearchScreenState extends State<SearchScreen> {
             autofocus: true,
             onChanged: (_) => setState(() {}),
             decoration: InputDecoration(
-              hintText: '🔍 줄서기, 사오기, 사진, 대행, 영화 같이…',
-              filled: true, fillColor: AppColors.card,
+              hintText: '줄서기, 사오기, 사진, 대행, 영화 같이…',
+              filled: true,
+              fillColor: AppColors.card,
               contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.line)),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.line)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.line),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.line),
+              ),
             ),
           ),
           if (term.isEmpty) ...[
-            const Padding(padding: EdgeInsets.fromLTRB(0, 14, 0, 9), child: Text('추천 검색어', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.ink))),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(0, 14, 0, 9),
+              child: Text(
+                '추천 검색어',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.ink),
+              ),
+            ),
             Wrap(
-              spacing: 7, runSpacing: 7,
+              spacing: 7,
+              runSpacing: 7,
               children: [
                 for (final s in suggestions)
                   InkWell(
@@ -66,7 +86,11 @@ class _SearchScreenState extends State<SearchScreen> {
                     borderRadius: BorderRadius.circular(99),
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(borderRadius: BorderRadius.circular(99), border: Border.all(color: AppColors.line), color: AppColors.card),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(99),
+                        border: Border.all(color: AppColors.line),
+                        color: AppColors.card,
+                      ),
                       child: Text(s, style: const TextStyle(fontSize: 12.5, color: AppColors.ink)),
                     ),
                   ),
@@ -78,7 +102,12 @@ class _SearchScreenState extends State<SearchScreen> {
           for (final it in results)
             it.mode == 'together'
                 ? CommunityCard(it: it, onOpen: () => widget.actions.open(context, it))
-                : TaskCard(it: it, onOpen: () => widget.actions.open(context, it), done: widget.actions.grabbed.contains(it.id), rich: true),
+                : TaskCard(
+                    it: it,
+                    onOpen: () => widget.actions.open(context, it),
+                    done: widget.actions.grabbed.contains(it.id),
+                    rich: true,
+                  ),
         ],
       ),
     );

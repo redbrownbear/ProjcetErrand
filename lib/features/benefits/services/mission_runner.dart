@@ -16,6 +16,7 @@ import '../models/daily_mission.dart';
 import '../models/reward_ledger.dart';
 import 'mission_engine.dart';
 import 'reward_ad_flow.dart';
+import '../widgets/mission_sheet.dart';
 
 /// 미션을 실제로 실행하는 쪽.
 ///
@@ -116,8 +117,7 @@ class MissionRunner {
   }
 
   /// 적립 한 번. 회차가 있는 미션은 아직 안 받은 회차의 키로 넣는다.
-  Future<void> _claim(MissionState s, String label) =>
-      earn(s.m.points, label, key: s.m.ledgerKey(s.claimed), daily: s.m.daily);
+  Future<void> _claim(MissionState s, String label) => earn(s.m.points, label, key: s.m.ledgerKey(s.claimed), daily: s.m.daily);
 
   // ── 자체 미션 ───────────────────────────────────────────────────────────
 
@@ -127,17 +127,19 @@ class MissionRunner {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (sheet) => _Sheet(
+      builder: (sheet) => MissionSheet(
         title: '오늘의 퀴즈',
         subtitle: '맞히면 +${nf(s.m.points)}P',
         children: [
-          Text(quiz.q,
-              style: AppType.meta.copyWith(fontSize: 15, fontWeight: AppType.w600, color: AppColors.ink, height: 1.5)),
+          Text(
+            quiz.q,
+            style: AppType.meta.copyWith(fontSize: 15, fontWeight: AppType.w600, color: AppColors.ink, height: 1.5),
+          ),
           const SizedBox(height: 14),
           for (var i = 0; i < quiz.choices.length; i++)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
-              child: _ChoiceButton(label: quiz.choices[i], onTap: () => Navigator.of(sheet).pop(i)),
+              child: MissionChoiceButton(label: quiz.choices[i], onTap: () => Navigator.of(sheet).pop(i)),
             ),
         ],
       ),
@@ -177,14 +179,14 @@ class MissionRunner {
         context: context,
         backgroundColor: Colors.transparent,
         isScrollControlled: true,
-        builder: (sheet) => _Sheet(
+        builder: (sheet) => MissionSheet(
           title: '근처 매장 체크인',
           subtitle: '지금 자리에서 500m 안 · 카카오 로컬 확인',
           children: [
             for (final p in places.take(6))
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: _ChoiceButton(
+                child: MissionChoiceButton(
                   label: p.name,
                   hint: [p.distanceLabel, p.address].where((v) => v.isNotEmpty).join(' · '),
                   onTap: () => Navigator.of(sheet).pop(p),
@@ -211,14 +213,14 @@ class MissionRunner {
       if (!context.mounted) return;
       await _show(
         context,
-        _Sheet(
+        MissionSheet(
           title: '오늘의 특가',
           subtitle: '쿠팡 파트너스 골드박스 · ${s.m.payoutLabel} 적립',
           children: [
             for (final d in deals)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: _ChoiceButton(
+                child: MissionChoiceButton(
                   label: d.name,
                   hint: [
                     won(d.price),
@@ -257,11 +259,11 @@ class MissionRunner {
   }
 
   Future<void> _show(BuildContext context, Widget sheet) => showModalBottomSheet<void>(
-        context: context,
-        backgroundColor: Colors.transparent,
-        isScrollControlled: true,
-        builder: (_) => sheet,
-      );
+    context: context,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
+    builder: (_) => sheet,
+  );
 
   Future<void> _open(String url) async {
     if (url.isEmpty) return;
@@ -291,70 +293,5 @@ class MissionRunner {
     }
     final center = centerOf(scope);
     return (center.$1, center.$2, requirePrecise);
-  }
-}
-
-/// 미션 결과를 보여 주는 바텀시트. 미션마다 내용만 갈아 끼운다.
-class _Sheet extends StatelessWidget {
-  final String title, subtitle;
-  final List<Widget> children;
-  const _Sheet({required this.title, required this.subtitle, required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: Container(
-        width: double.infinity,
-        margin: const EdgeInsets.all(10),
-        padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
-        decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(AppRadius.surface)),
-        child: SingleChildScrollView(
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: AppType.section),
-            Padding(
-              padding: const EdgeInsets.only(top: 3, bottom: 14),
-              child: Text(subtitle, style: AppType.caption),
-            ),
-            ...children,
-          ]),
-        ),
-      ),
-    );
-  }
-}
-
-class _ChoiceButton extends StatelessWidget {
-  final String label;
-  final String hint;
-  final VoidCallback onTap;
-  const _ChoiceButton({required this.label, this.hint = '', required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.tile),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-        decoration: BoxDecoration(
-          color: AppColors.page,
-          border: Border.all(color: AppColors.line),
-          borderRadius: BorderRadius.circular(AppRadius.tile),
-        ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: AppType.meta.copyWith(fontSize: 14, fontWeight: AppType.w600, color: AppColors.ink, height: 1.4)),
-          if (hint.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 3),
-              child: Text(hint, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.caption),
-            ),
-        ]),
-      ),
-    );
   }
 }

@@ -60,16 +60,10 @@ class PointRules {
   ///
   /// 오퍼월 콜백이 들어왔을 때 서버가 쓸 식이다. [DailyMission.pointsFor]와 같은
   /// 이유로 내림한다 — 재원보다 더 주는 방향으로 반올림되면 건마다 적자가 난다.
-  static int offerwallPoints(int partnerPayout) =>
-      partnerPayout <= 0 ? 0 : (partnerPayout * offerwallShare).floor();
+  static int offerwallPoints(int partnerPayout) => partnerPayout <= 0 ? 0 : (partnerPayout * offerwallShare).floor();
 }
 
-const walkRules = [
-  WalkRule(1000, 5),
-  WalkRule(3000, 10),
-  WalkRule(5000, 15),
-  WalkRule(10000, 30),
-];
+const walkRules = [WalkRule(1000, 5), WalkRule(3000, 10), WalkRule(5000, 15), WalkRule(10000, 30)];
 const walkGoal = 10000;
 
 /// 걷기 적립 원장 키. 홈·혜택 탭·걷기 화면 세 곳에 버튼이 있어서, 같은 키를 써야

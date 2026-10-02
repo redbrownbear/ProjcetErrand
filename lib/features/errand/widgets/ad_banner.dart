@@ -25,15 +25,16 @@ class _AdBannerState extends State<AdBanner> {
   int idx = 0;
   Timer? _timer;
 
-  static const _icons = {'shop': 'gift', 'earn': 'hand', 'sea': 'globe', 'walk': 'walk'};
-
   @override
   void initState() {
     super.initState();
     _timer = Timer.periodic(const Duration(milliseconds: 4200), (_) {
       if (!mounted || !controller.hasClients || widget.ads.length < 2) return;
-      controller.animateToPage((idx + 1) % widget.ads.length,
-          duration: const Duration(milliseconds: 420), curve: Curves.easeOutCubic);
+      controller.animateToPage(
+        (idx + 1) % widget.ads.length,
+        duration: const Duration(milliseconds: 420),
+        curve: Curves.easeOutCubic,
+      );
     });
   }
 
@@ -52,83 +53,104 @@ class _AdBannerState extends State<AdBanner> {
       height: 89,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(AppRadius.card)),
-      child: Stack(children: [
-        PageView.builder(
-          controller: controller,
-          itemCount: widget.ads.length,
-          onPageChanged: (i) => setState(() => idx = i),
-          itemBuilder: (context, i) {
-            final a = widget.ads[i];
-            return InkWell(
-              onTap: () => widget.onTap(a.nav),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment(-1, -0.6),
-                    end: Alignment(1, 0.6),
-                    colors: [Color(0xFFFFF6EC), Color(0xFFFDF1E6)],
-                  ),
-                ),
-                child: Row(children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(13)),
-                    child: Icon(AppIcon.data(_icons[a.k] ?? 'sparkles'), size: 22, color: AppColors.orange),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(children: [
-                          Text(a.tag,
-                              style: AppType.caption.copyWith(fontSize: 11.5, fontWeight: AppType.w600, color: AppColors.newsPeachInk)),
-                          const SizedBox(width: 5),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                            decoration: BoxDecoration(color: const Color(0x0F000000), borderRadius: BorderRadius.circular(4)),
-                            child: Text('광고', style: AppType.caption.copyWith(fontSize: 9.5, fontWeight: AppType.w600)),
-                          ),
-                        ]),
-                        Padding(
-                          padding: const EdgeInsets.only(top: 3),
-                          child: Text('${a.t1} ${a.t2}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppType.body.copyWith(fontSize: 14.5, fontWeight: AppType.w700)),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: Text(a.cta,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppType.caption.copyWith(fontSize: 11.5, fontWeight: AppType.w600)),
-                        ),
-                      ],
+      child: Stack(
+        children: [
+          PageView.builder(
+            controller: controller,
+            itemCount: widget.ads.length,
+            onPageChanged: (i) => setState(() => idx = i),
+            itemBuilder: (context, i) {
+              final a = widget.ads[i];
+              return InkWell(
+                onTap: () => widget.onTap(a.nav),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment(-1, -0.6),
+                      end: Alignment(1, 0.6),
+                      colors: [Color(0xFFFFF6EC), Color(0xFFFDF1E6)],
                     ),
                   ),
-                ]),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(13)),
+                        child: Icon(AppIcon.data(a.icon), size: 22, color: AppColors.orange),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Text(
+                                  a.tag,
+                                  style: AppType.caption.copyWith(
+                                    fontSize: 11.5,
+                                    fontWeight: AppType.w600,
+                                    color: AppColors.newsPeachInk,
+                                  ),
+                                ),
+                                const SizedBox(width: 5),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0x0F000000),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text('광고', style: AppType.caption.copyWith(fontSize: 9.5, fontWeight: AppType.w600)),
+                                ),
+                              ],
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.only(top: 3),
+                              child: Text(
+                                '${a.t1} ${a.t2}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppType.body.copyWith(fontSize: 14.5, fontWeight: AppType.w700),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(
+                                a.cta,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppType.caption.copyWith(fontSize: 11.5, fontWeight: AppType.w600),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+          Positioned(
+            right: 10,
+            bottom: 10,
+            child: IgnorePointer(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+                decoration: BoxDecoration(color: const Color(0x59191F28), borderRadius: BorderRadius.circular(8)),
+                child: Text(
+                  '${idx + 1} / ${widget.ads.length}',
+                  style: AppType.caption.copyWith(fontSize: 10.5, fontWeight: AppType.w600, color: Colors.white),
+                ),
               ),
-            );
-          },
-        ),
-        Positioned(
-          right: 10,
-          bottom: 10,
-          child: IgnorePointer(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
-              decoration: BoxDecoration(color: const Color(0x59191F28), borderRadius: BorderRadius.circular(8)),
-              child: Text('${idx + 1} / ${widget.ads.length}',
-                  style: AppType.caption.copyWith(fontSize: 10.5, fontWeight: AppType.w600, color: Colors.white)),
             ),
           ),
-        ),
-      ]),
+        ],
+      ),
     );
   }
 }

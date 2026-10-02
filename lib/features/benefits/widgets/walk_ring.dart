@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/colors.dart';
+import '../../../core/widgets/app_icon.dart';
 import '../data/point_rules.dart';
 
 class WalkRing extends StatelessWidget {
@@ -14,11 +15,15 @@ class WalkRing extends StatelessWidget {
   Widget build(BuildContext context) {
     final pct = (steps / walkGoal).clamp(0, 1).toDouble();
     return SizedBox(
-      width: size, height: size,
-      child: Stack(alignment: Alignment.center, children: [
-        CustomPaint(size: Size(size, size), painter: _RingPainter(pct)),
-        Text('🚶', style: TextStyle(fontSize: size * 0.27)),
-      ]),
+      width: size,
+      height: size,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          CustomPaint(size: Size(size, size), painter: _RingPainter(pct)),
+          AppIcon('walk', size: size * 0.27, color: AppColors.ink2),
+        ],
+      ),
     );
   }
 }

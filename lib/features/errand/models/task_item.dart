@@ -111,15 +111,48 @@ class TaskItem {
 
   /// 주인 표시만 바꾼 사본. 다른 값은 그대로 둔다.
   TaskItem copyWith({String? ownerUid, bool? mine}) => TaskItem(
-        id: id, mode: mode, cat: cat, tcat: tcat, title: title, region: region, place: place,
-        country: country, cc: cc, city: city, distM: distM, mins: mins, price: price, who: who,
-        rating: rating, reviews: reviews, deals: deals, resp: resp, verified: verified,
-        helpCnt: helpCnt, reqCnt: reqCnt, x: x, y: y, desc: desc, hot: hot, extra: extra, ago: ago,
-        likes: likes, joinCur: joinCur, joinMax: joinMax, comments: comments, lat: lat, lng: lng,
-        deadline: deadline, deliveryPlace: deliveryPlace, budget: budget, payment: payment,
-        completion: completion, sample: sample,
-        ownerUid: ownerUid ?? this.ownerUid, mine: mine ?? this.mine,
-      );
+    id: id,
+    mode: mode,
+    cat: cat,
+    tcat: tcat,
+    title: title,
+    region: region,
+    place: place,
+    country: country,
+    cc: cc,
+    city: city,
+    distM: distM,
+    mins: mins,
+    price: price,
+    who: who,
+    rating: rating,
+    reviews: reviews,
+    deals: deals,
+    resp: resp,
+    verified: verified,
+    helpCnt: helpCnt,
+    reqCnt: reqCnt,
+    x: x,
+    y: y,
+    desc: desc,
+    hot: hot,
+    extra: extra,
+    ago: ago,
+    likes: likes,
+    joinCur: joinCur,
+    joinMax: joinMax,
+    comments: comments,
+    lat: lat,
+    lng: lng,
+    deadline: deadline,
+    deliveryPlace: deliveryPlace,
+    budget: budget,
+    payment: payment,
+    completion: completion,
+    sample: sample,
+    ownerUid: ownerUid ?? this.ownerUid,
+    mine: mine ?? this.mine,
+  );
 
   /// 로그인 전에 이 기기에만 저장돼 있던 글을 내 계정 글로 만들 때 쓴다.
   /// (첫 로그인 이관 — HomeShell 참고)
@@ -131,8 +164,7 @@ class TaskItem {
   /// 내가 올린 부탁인지. 서버 글은 uid로, 이 기기에만 있는 글은 작성자 이름으로 가린다.
   /// 세 가지 중 하나라도 맞으면 내 글이다.
   /// 올릴 때 남긴 표시 · 로그인한 uid와 같은 주인 · 이 기기에만 있던 옛 글의 작성자 이름.
-  bool get isMine =>
-      mine || (ownerUid != null && currentUid != null && ownerUid == currentUid) || who == '나';
+  bool get isMine => mine || (ownerUid != null && currentUid != null && ownerUid == currentUid) || who == '나';
 
   /// 마감 시각이 지났는지. 마감 시각과 정확히 같은 순간부터 마감으로 본다.
   bool isExpiredAt(DateTime now) => deadline != null && !deadline!.isAfter(now);
@@ -140,14 +172,37 @@ class TaskItem {
 
   /// 이 기기에 보관하는 내가 올린 부탁용. 같이해요 댓글·지도 좌표는 담지 않는다.
   Map<String, dynamic> toJson() => {
-        'id': id, 'mode': mode, 'cat': cat, 'title': title, 'region': region, 'place': place,
-        'country': country, 'cc': cc, 'city': city, 'distM': distM, 'mins': mins, 'price': price,
-        'who': who, 'rating': rating, 'reviews': reviews, 'deals': deals, 'resp': resp,
-        'verified': verified, 'helpCnt': helpCnt, 'reqCnt': reqCnt, 'desc': desc, 'hot': hot,
-        'deadline': deadline?.toIso8601String(), 'deliveryPlace': deliveryPlace, 'budget': budget,
-        'payment': payment, 'completion': completion, 'sample': sample, 'ownerUid': ownerUid,
-        'mine': mine,
-      };
+    'id': id,
+    'mode': mode,
+    'cat': cat,
+    'title': title,
+    'region': region,
+    'place': place,
+    'country': country,
+    'cc': cc,
+    'city': city,
+    'distM': distM,
+    'mins': mins,
+    'price': price,
+    'who': who,
+    'rating': rating,
+    'reviews': reviews,
+    'deals': deals,
+    'resp': resp,
+    'verified': verified,
+    'helpCnt': helpCnt,
+    'reqCnt': reqCnt,
+    'desc': desc,
+    'hot': hot,
+    'deadline': deadline?.toIso8601String(),
+    'deliveryPlace': deliveryPlace,
+    'budget': budget,
+    'payment': payment,
+    'completion': completion,
+    'sample': sample,
+    'ownerUid': ownerUid,
+    'mine': mine,
+  };
 
   static TaskItem? fromJson(Object? json) {
     if (json is! Map) return null;
@@ -156,16 +211,33 @@ class TaskItem {
     String? s(String k) => json[k] is String ? json[k] as String : null;
     int n(String k) => json[k] is int ? json[k] as int : 0;
     return TaskItem(
-      id: id, mode: mode, cat: s('cat') ?? 'etc', title: title, region: s('region'), place: s('place'),
-      country: s('country'), cc: s('cc'), city: s('city'),
+      id: id,
+      mode: mode,
+      cat: s('cat') ?? 'etc',
+      title: title,
+      region: s('region'),
+      place: s('place'),
+      country: s('country'),
+      cc: s('cc'),
+      city: s('city'),
       distM: json['distM'] is num ? (json['distM'] as num).toDouble() : null,
-      mins: n('mins'), price: n('price'), who: s('who') ?? '나',
+      mins: n('mins'),
+      price: n('price'),
+      who: s('who') ?? '나',
       rating: json['rating'] is num ? (json['rating'] as num).toDouble() : 0,
-      reviews: n('reviews'), deals: n('deals'), resp: n('resp'),
-      verified: json['verified'] == true, helpCnt: n('helpCnt'), reqCnt: n('reqCnt'),
-      desc: desc, hot: json['hot'] == true,
-      deadline: DateTime.tryParse(s('deadline') ?? ''), deliveryPlace: s('deliveryPlace'),
-      budget: n('budget'), payment: s('payment'), completion: s('completion'),
+      reviews: n('reviews'),
+      deals: n('deals'),
+      resp: n('resp'),
+      verified: json['verified'] == true,
+      helpCnt: n('helpCnt'),
+      reqCnt: n('reqCnt'),
+      desc: desc,
+      hot: json['hot'] == true,
+      deadline: DateTime.tryParse(s('deadline') ?? ''),
+      deliveryPlace: s('deliveryPlace'),
+      budget: n('budget'),
+      payment: s('payment'),
+      completion: s('completion'),
       // 이 기기에 보관되는 건 사용자가 올린 진짜 부탁뿐이다.
       // (sample 필드가 없던 시절에 저장된 기록도 예시가 아니다)
       sample: json['sample'] == true,

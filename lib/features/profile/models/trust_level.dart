@@ -33,16 +33,8 @@ class TrustLevel {
   final int score;
   const TrustLevel(this.score);
 
-  factory TrustLevel.from({
-    required int completed,
-    required int helped,
-    required int cancelled,
-    required bool verified,
-  }) {
-    final raw = completed * perCompleted +
-        helped * perHelped +
-        (verified ? verifiedBonus : 0) -
-        cancelled * perCancelled;
+  factory TrustLevel.from({required int completed, required int helped, required int cancelled, required bool verified}) {
+    final raw = completed * perCompleted + helped * perHelped + (verified ? verifiedBonus : 0) - cancelled * perCancelled;
     return TrustLevel(raw < 0 ? 0 : raw);
   }
 
@@ -90,14 +82,15 @@ class TrustLevel {
   }
 
   Color get color => switch (level) {
-        2 => AppColors.green,
-        3 => AppColors.blue,
-        4 => AppColors.purple,
-        >= 5 => AppColors.yellowDeep,
-        _ => AppColors.sub,
-      };
+    2 => AppColors.green,
+    3 => AppColors.blue,
+    4 => AppColors.purple,
+    >= 5 => AppColors.yellowDeep,
+    _ => AppColors.sub,
+  };
 
   /// 무엇을 하면 오르는지. 규칙을 숨기지 않고 그대로 보여준다.
-  static const rule = '거래를 끝까지 마치면 +$perCompleted점 · 도와준 거래는 +$perHelped점 더 · '
+  static const rule =
+      '거래를 끝까지 마치면 +$perCompleted점 · 도와준 거래는 +$perHelped점 더 · '
       '본인인증 +$verifiedBonus점 · 시작한 거래를 취소하면 −$perCancelled점';
 }

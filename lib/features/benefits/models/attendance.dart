@@ -11,7 +11,8 @@ class AttendRules {
   static const monthTarget = 20;
   static const monthBonus = 100;
 
-  static const guide = '매일 1P, 7일 연속마다 10P, 월 누적 20일 달성 시 100P를 추가로 받아요. '
+  static const guide =
+      '매일 1P, 7일 연속마다 10P, 월 누적 20일 달성 시 100P를 추가로 받아요. '
       '한국 시간 자정 기준이며 하루 쉬면 연속 일수만 초기화돼요. 월 누적은 매월 1일 새로 시작해요.';
 }
 

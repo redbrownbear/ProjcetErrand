@@ -63,25 +63,25 @@ class AppColors {
   static const purple = Color(0xFF7461F0); // --v
   static const purpleSoft = Color(0xFFF0EEFE); // --v-soft
 
-  /// 히어로 제목의 강조색 (.h2-t b)
+  /// 히어로 제목의 강조색
   static const heroAccent = Color(0xFFE08A00);
 
-  /// 주황 계열 아이콘 타일 (.ct · .sr-ic · .bn-ic)
+  /// 주황 계열 아이콘 타일
   static const orange = Color(0xFFE07A1F);
   static const orangeSoft = Color(0xFFFCF2E9);
 
-  /// 짙은 바탕 — 토스트·출국 보드 (.toast, .osb-board)
+  /// 짙은 바탕 — 토스트·출국 보드
   static const black = ink;
 
   // ── 컴포넌트 토큰 ─────────────────────────────────────────────────────────
-  /// 하단 내비게이션 (.nav button)
+  /// 하단 내비게이션
   static const navIdle = faint;
   static const navActive = ink;
 
   /// 예전 가운데 '부탁하기' 버튼 색
   static const createYellow = yellow;
 
-  /// 주 버튼 · 보조 버튼 (.h2-cta · .mw-a.main / .morebtn · .mw-a)
+  /// 주 버튼 · 보조 버튼
   static const btnPrimary = yellow;
   static const btnPrimaryInk = ink;
   static const btnSecondary = page;
@@ -93,11 +93,11 @@ class AppColors {
   static const pillNeutral = page;
   static const pillNeutralInk = sub;
 
-  /// 선택된 칩 (.chip.on)
+  /// 선택된 칩
   static const chipSelected = ink;
   static const chipSelectedWarm = ink;
 
-  /// '급해요' (.bd.urg)
+  /// '급해요'
   static const urgent = red;
 
   /// 출석 줄
@@ -148,7 +148,7 @@ class AppColors {
   static const newsMintBg = greenSoft;
   static const newsMintInk = green;
 
-  /// 광고 표시 (.adtag · .bn-tx em i)
+  /// 광고 표시
   static const adLabel = sub;
   static const adLabelLine = line;
 
@@ -163,7 +163,7 @@ class AppColors {
   /// 섹션과 섹션 사이를 끊는 두꺼운 구분선
   static const band = page;
 
-  /// 부탁 종류 아이콘 타일 (`.tile` 인라인 색). 없는 종류는 [taskIconFallback].
+  /// 부탁 종류 아이콘 타일. 없는 종류는 [taskIconFallback].
   static const taskIconFallback = (bg: Color(0xFFF3F3F0), fg: Color(0xFF5E5E63));
   static const taskIcon = <String, ({Color bg, Color fg})>{
     'buy': (bg: Color(0xFFF3F0E6), fg: Color(0xFF8A6400)),

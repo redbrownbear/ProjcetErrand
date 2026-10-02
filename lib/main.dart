@@ -70,10 +70,7 @@ class GyeomsaApp extends StatelessWidget {
           // 시안은 앱 본문을 흰 바탕으로 두고, 프레임 바깥만 회색으로 깐다.
           color: AppColors.page,
           child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 560),
-              child: child,
-            ),
+            child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 560), child: child),
           ),
         ),
       ),
@@ -94,9 +91,5 @@ class _AppScrollBehavior extends MaterialScrollBehavior {
   // 기본값은 터치·스타일러스만 드래그 스크롤을 허용한다. 웹·데스크톱에서
   // 마우스로 클릭한 채 끌거나 트랙패드로 스와이프하면 안 움직이던 이유다.
   @override
-  Set<PointerDeviceKind> get dragDevices => {
-        ...super.dragDevices,
-        PointerDeviceKind.mouse,
-        PointerDeviceKind.trackpad,
-      };
+  Set<PointerDeviceKind> get dragDevices => {...super.dragDevices, PointerDeviceKind.mouse, PointerDeviceKind.trackpad};
 }

@@ -81,7 +81,11 @@ ThemeData buildAppTheme() {
     scaffoldBackgroundColor: Colors.white,
     splashFactory: InkSparkle.splashFactory,
     dividerTheme: const DividerThemeData(color: AppColors.line, thickness: 1, space: 1),
-    textTheme: Typography.blackMountainView.apply(fontFamily: AppType.family, bodyColor: AppColors.ink, displayColor: AppColors.ink),
+    textTheme: Typography.blackMountainView.apply(
+      fontFamily: AppType.family,
+      bodyColor: AppColors.ink,
+      displayColor: AppColors.ink,
+    ),
     textSelectionTheme: const TextSelectionThemeData(cursorColor: AppColors.ink, selectionHandleColor: AppColors.ink),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,

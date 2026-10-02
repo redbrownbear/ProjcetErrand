@@ -38,10 +38,16 @@ Future<(List<String>, List<String>)> _run(WidgetTester tester, _FakeAd ad, {bool
     ad: ad,
   );
   late BuildContext ctx;
-  await tester.pumpWidget(MaterialApp(home: Builder(builder: (c) {
-    ctx = c;
-    return const Scaffold();
-  })));
+  await tester.pumpWidget(
+    MaterialApp(
+      home: Builder(
+        builder: (c) {
+          ctx = c;
+          return const Scaffold();
+        },
+      ),
+    ),
+  );
   final done = flow.run(ctx, _state());
   await tester.pumpAndSettle();
   if (find.text('광고 보고 받기').evaluate().isNotEmpty) {

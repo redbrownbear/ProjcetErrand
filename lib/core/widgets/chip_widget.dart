@@ -30,18 +30,14 @@ class ChipWidget extends StatelessWidget {
         ),
         child: Text(
           label,
-          style: AppType.meta.copyWith(
-            fontSize: 12.5,
-            fontWeight: AppType.w600,
-            color: active ? Colors.white : AppColors.ink2,
-          ),
+          style: AppType.meta.copyWith(fontSize: 12.5, fontWeight: AppType.w600, color: active ? Colors.white : AppColors.ink2),
         ),
       ),
     );
   }
 }
 
-/// 상태 배지 (.pill). [neutral]이면 회색, 아니면 시안의 노란 배지.
+/// 상태 배지. [neutral]이면 회색, 아니면 시안의 노란 배지.
 class PillTag extends StatelessWidget {
   final String label;
   final bool neutral;
@@ -51,10 +47,7 @@ class PillTag extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-      decoration: BoxDecoration(
-        color: neutral ? AppColors.pillNeutral : AppColors.pill,
-        borderRadius: BorderRadius.circular(7),
-      ),
+      decoration: BoxDecoration(color: neutral ? AppColors.pillNeutral : AppColors.pill, borderRadius: BorderRadius.circular(7)),
       child: Text(
         label,
         style: AppType.caption.copyWith(

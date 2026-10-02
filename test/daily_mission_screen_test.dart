@@ -17,23 +17,20 @@ void main() {
   late List<String> toasts;
 
   MissionRunner runner() => MissionRunner(
-        earn: (amount, label, {required key, daily = true}) async {
-          earned.add((amount: amount, label: label, key: key));
-          claimed.add(key);
-        },
-        flash: toasts.add,
-        scope: '서울 서초구',
-        goWalk: () {},
-        goProfile: () {},
-        goPost: () {},
-        goList: () {},
-      );
+    earn: (amount, label, {required key, daily = true}) async {
+      earned.add((amount: amount, label: label, key: key));
+      claimed.add(key);
+    },
+    flash: toasts.add,
+    scope: '서울 서초구',
+    goWalk: () {},
+    goProfile: () {},
+    goPost: () {},
+    goList: () {},
+  );
 
   Widget screen({List<DailyMission>? missions}) {
-    final engine = MissionEngine(
-      (key, {daily = true}) => claimed.contains(key),
-      missions: missions ?? dailyMissions,
-    );
+    final engine = MissionEngine((key, {daily = true}) => claimed.contains(key), missions: missions ?? dailyMissions);
     return MaterialApp(
       home: DailyMissionScreen(runner: runner(), engine: engine, goEarnHub: () {}),
     );
@@ -87,14 +84,29 @@ void main() {
       // 변동 지급 미션이 지금은 전부 잠겨 있어, 자체 재원으로 같은 모양을 만들어
       // 배지 렌더링 경로를 확인한다. 연동이 끝나면 이 모습으로 보인다.
       const rateMission = DailyMission(
-        id: 'rate-sample', icon: '🛒', title: '정률 지급 미션', sub: '주문액에 비례',
-        points: 0, providerId: 'inapp', action: MissionAction.deal,
-        payout: PayoutKind.rate, rate: 0.01, instant: false, verify: '구매 확정',
+        id: 'rate-sample',
+        icon: 'cart',
+        title: '정률 지급 미션',
+        sub: '주문액에 비례',
+        points: 0,
+        providerId: 'inapp',
+        action: MissionAction.deal,
+        payout: PayoutKind.rate,
+        rate: 0.01,
+        instant: false,
+        verify: '구매 확정',
       );
       const partnerMission = DailyMission(
-        id: 'partner-sample', icon: '🎁', title: '제휴사 지급 미션', sub: '캠페인마다 단가가 다름',
-        points: 0, providerId: 'inapp', action: MissionAction.offerwall,
-        payout: PayoutKind.partner, instant: false, verify: '제휴사 콜백',
+        id: 'partner-sample',
+        icon: 'gift',
+        title: '제휴사 지급 미션',
+        sub: '캠페인마다 단가가 다름',
+        points: 0,
+        providerId: 'inapp',
+        action: MissionAction.offerwall,
+        payout: PayoutKind.partner,
+        instant: false,
+        verify: '제휴사 콜백',
       );
 
       await pump(tester, missions: [rateMission, partnerMission]);

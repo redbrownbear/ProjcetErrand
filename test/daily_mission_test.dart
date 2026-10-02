@@ -11,10 +11,8 @@ import 'package:gyeomsa/features/benefits/services/mission_engine.dart';
 
 /// 적립 원장을 흉내 낸다. [MissionEngine]은 원장을 콜백으로만 보므로
 /// 화면이나 저장소 없이 그대로 확인할 수 있다.
-MissionEngine engineWith(Set<String> claimed, {List<DailyMission>? missions}) => MissionEngine(
-      (key, {daily = true}) => claimed.contains(key),
-      missions: missions ?? dailyMissions,
-    );
+MissionEngine engineWith(Set<String> claimed, {List<DailyMission>? missions}) =>
+    MissionEngine((key, {daily = true}) => claimed.contains(key), missions: missions ?? dailyMissions);
 
 void main() {
   group('재원 있는 미션만 서비스한다', () {

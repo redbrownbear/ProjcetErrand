@@ -39,10 +39,7 @@ class MissionProgress {
     for (final e in raw.entries) {
       final v = e.value;
       if (v is! Map) continue;
-      stages[e.key] = MissionStage.values.firstWhere(
-        (s) => s.name == '${v['stage']}',
-        orElse: () => MissionStage.ready,
-      );
+      stages[e.key] = MissionStage.values.firstWhere((s) => s.name == '${v['stage']}', orElse: () => MissionStage.ready);
       proofs[e.key] = '${v['proof'] ?? ''}';
     }
     return MissionProgress(stages: stages, proofs: proofs);
@@ -54,8 +51,7 @@ class MissionProgress {
     final nextProofs = {...proofs, id: ?proof};
     final next = MissionProgress(stages: nextStages, proofs: nextProofs);
     LocalStore.write(_key, {
-      for (final key in nextStages.keys)
-        key: {'stage': nextStages[key]!.name, 'proof': nextProofs[key] ?? ''},
+      for (final key in nextStages.keys) key: {'stage': nextStages[key]!.name, 'proof': nextProofs[key] ?? ''},
     });
     return next;
   }

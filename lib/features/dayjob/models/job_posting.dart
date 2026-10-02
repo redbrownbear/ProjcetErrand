@@ -75,15 +75,31 @@ class JobPosting {
   String get contactLine => contactMethod == '이메일 지원' ? email : contactMethod;
 
   Map<String, dynamic> toJson() => {
-        'id': id, 'title': title, 'company': company, 'companyAddress': companyAddress,
-        'businessNo': businessNo, 'desc': desc, 'requirements': requirements,
-        'workType': workType, 'location': location,
-        'start': start.toIso8601String(), 'end': end.toIso8601String(),
-        'schedule': schedule, 'breakMin': breakMin, 'headcount': headcount, 'benefits': benefits,
-        'payType': payType, 'pay': pay, 'payDate': payDate.toIso8601String(), 'payNote': payNote,
-        'deadline': deadline.toIso8601String(), 'contact': contact,
-        'contactMethod': contactMethod, 'email': email, 'region': region,
-      };
+    'id': id,
+    'title': title,
+    'company': company,
+    'companyAddress': companyAddress,
+    'businessNo': businessNo,
+    'desc': desc,
+    'requirements': requirements,
+    'workType': workType,
+    'location': location,
+    'start': start.toIso8601String(),
+    'end': end.toIso8601String(),
+    'schedule': schedule,
+    'breakMin': breakMin,
+    'headcount': headcount,
+    'benefits': benefits,
+    'payType': payType,
+    'pay': pay,
+    'payDate': payDate.toIso8601String(),
+    'payNote': payNote,
+    'deadline': deadline.toIso8601String(),
+    'contact': contact,
+    'contactMethod': contactMethod,
+    'email': email,
+    'region': region,
+  };
 
   static JobPosting? fromJson(Map<String, dynamic> j) {
     DateTime? d(String k) => DateTime.tryParse('${j[k]}');
@@ -99,7 +115,8 @@ class JobPosting {
       requirements: '${j['requirements'] ?? ''}',
       workType: '${j['workType'] ?? '현장 근무'}',
       location: '${j['location'] ?? ''}',
-      start: start, end: end,
+      start: start,
+      end: end,
       schedule: '${j['schedule'] ?? ''}',
       breakMin: j['breakMin'] is int ? j['breakMin'] as int : 0,
       headcount: j['headcount'] is int ? j['headcount'] as int : 1,

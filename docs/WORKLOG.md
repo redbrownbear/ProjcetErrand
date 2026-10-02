@@ -28,7 +28,7 @@
 
 - [ ] v33 디자인 적용분 커밋 (아래 `미커밋` 항목)
 - [ ] 로그인 상태의 마이 화면을 실제 기기에서 확인 (브라우저에선 로그아웃 상태만 확인함)
-- [ ] 쓰이지 않게 된 위젯 정리 여부 결정 — `news_card.dart`, `wallet_summary.dart`, `income_summary.dart`
+- [ ] 리팩토링 이어서: 주석 정리 2차, `benefits_view`·`detail_page`·`job_post_screen` 분리, 실제 기기에서 전체 화면 확인 후 커밋
 - [ ] 포인트 적립·차감을 서버(Cloud Functions)로 옮기기 — 설계는 [백엔드_연결.md › 10. 포인트](백엔드_연결.md#10-포인트).
       광고 보상을 실제로 열기 전에 끝내야 한다
 
@@ -110,6 +110,17 @@
   바꾼 뒤엔 Android Studio를 완전히 종료 후 재시작.
 
 ## 기록
+
+### 2026-10-02 · 미커밋 · jyh (전체 리팩토링)
+- 추가: `app/app_session.dart`(자료·저장·서버 동기화) · `app/session_store.dart` · `app/widgets/`(헤더·하단 메뉴·토스트·시작 화면),
+  홈을 `errand/screens/home/`로 분리(부탁하기·돈벌기 탭, `HomeNav`, 조각 위젯), 부탁 쓰기를 `errand/screens/post/`로 분리(`RequestForm` + 단계 위젯),
+  순수 로직 `errand/services/nearby_query.dart` · `benefits/services/mission_filter.dart`, `test/refactor_logic_test.dart`
+- 변경: `home_shell.dart`는 화면 전환·로그인 확인만 담당. 미션·공구·마이·포인트샵·겸사페이·미션 실행기의 클래스를 파일별로 분리.
+  `surface.dart`·`mascot.dart`는 묶음(export) 파일로. 동네 부탁 허브가 홈과 같은 조건 계산(`NearbyQuery`)·선택 상자를 쓰게 함.
+  프로젝트 전체 `dart format`(줄 폭 130, `analysis_options.yaml`에 기록). 데이터·화면의 이모지를 선 아이콘 이름(`AppIcon`)으로 교체
+- 제거: 안 쓰던 파일 7개(`news_card`·`wallet_summary`·`income_summary`·`news_detail_screen`·`job_guide_screen`·`home_news` 2개),
+  `Country.flag`·`HomeAd.emoji/bg`(이모지 필드), 주석의 CSS 클래스·옛 시안 이름 괄호
+- 남은 것: 주석 정리 2차(옛 시안·지난 작업 이야기 언급 약 120줄), `benefits_view`·`detail_page`·`job_post_screen` 분리, 기기에서 화면 확인
 
 ### 2026-10-02 · 미커밋 · jyh
 - 추가: 포인트 관리 정리 — [백엔드_연결.md › 10. 포인트](백엔드_연결.md#10-포인트) (지금 구조·적립 키·빈틈 5가지·서버 이전 설계),

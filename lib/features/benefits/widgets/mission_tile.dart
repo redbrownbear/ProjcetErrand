@@ -18,7 +18,14 @@ class MissionTile extends StatelessWidget {
   final VoidCallback onTap;
   final bool last;
 
-  const MissionTile({super.key, required this.m, required this.done, required this.active, required this.onTap, this.last = false});
+  const MissionTile({
+    super.key,
+    required this.m,
+    required this.done,
+    required this.active,
+    required this.onTap,
+    this.last = false,
+  });
 
   static const _catLabels = {
     'survey': '설문조사',
@@ -53,53 +60,81 @@ class MissionTile extends StatelessWidget {
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 11),
-          decoration: BoxDecoration(border: last ? null : const Border(bottom: BorderSide(color: AppColors.line))),
-          child: Row(children: [
-            IconTile(icon: _catIcons[m.cat] ?? 'sparkles'),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  if (active || done)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 5),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: done ? AppColors.page : AppColors.blueSoft,
-                          borderRadius: BorderRadius.circular(4),
+          decoration: BoxDecoration(
+            border: last ? null : const Border(bottom: BorderSide(color: AppColors.line)),
+          ),
+          child: Row(
+            children: [
+              IconTile(icon: _catIcons[m.cat] ?? 'sparkles'),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        if (active || done)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 5),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: done ? AppColors.page : AppColors.blueSoft,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                done ? '적립 완료' : '참여 중',
+                                style: AppType.caption.copyWith(
+                                  fontSize: 10,
+                                  fontWeight: AppType.w700,
+                                  color: done ? AppColors.sub : AppColors.blue,
+                                ),
+                              ),
+                            ),
+                          ),
+                        Flexible(
+                          child: Text(
+                            '$cat · ${m.time}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppType.caption.copyWith(
+                              fontSize: 10,
+                              fontWeight: AppType.w600,
+                              color: const Color(0xFF92969D),
+                            ),
+                          ),
                         ),
-                        child: Text(done ? '적립 완료' : '참여 중',
-                            style: AppType.caption.copyWith(fontSize: 10, fontWeight: AppType.w700, color: done ? AppColors.sub : AppColors.blue)),
-                      ),
+                      ],
                     ),
-                  Flexible(
-                    child: Text('$cat · ${m.time}',
+                    const SizedBox(height: 4),
+                    Text(m.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.taskTitle),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        '${m.cond} · ${m.costTag}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppType.caption.copyWith(fontSize: 10, fontWeight: AppType.w600, color: const Color(0xFF92969D))),
-                  ),
-                ]),
-                const SizedBox(height: 4),
-                Text(m.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.taskTitle),
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text('${m.cond} · ${m.costTag}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppType.meta.copyWith(fontWeight: AppType.w500)),
+                        style: AppType.meta.copyWith(fontWeight: AppType.w500),
+                      ),
+                    ),
+                  ],
                 ),
-              ]),
-            ),
-            const SizedBox(width: 10),
-            Text.rich(
-              TextSpan(children: [
-                TextSpan(text: '+${nf(m.points)}'),
-                const TextSpan(text: 'P', style: TextStyle(fontSize: 13, color: AppColors.ink2, fontWeight: AppType.w600)),
-              ]),
-              style: AppType.price,
-            ),
-          ]),
+              ),
+              const SizedBox(width: 10),
+              Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(text: '+${nf(m.points)}'),
+                    const TextSpan(
+                      text: 'P',
+                      style: TextStyle(fontSize: 13, color: AppColors.ink2, fontWeight: AppType.w600),
+                    ),
+                  ],
+                ),
+                style: AppType.price,
+              ),
+            ],
+          ),
         ),
       ),
     );

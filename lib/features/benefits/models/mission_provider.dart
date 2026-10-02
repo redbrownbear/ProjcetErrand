@@ -88,31 +88,31 @@ class MissionProvider {
   bool get usable => effective == LinkStatus.live;
 
   String get statusLabel => switch (effective) {
-        LinkStatus.live => '연동 완료',
-        LinkStatus.needsKey => 'API 키 등록 필요',
-        LinkStatus.needsApply => '제휴 가입 신청 필요',
-        LinkStatus.needsBiz => '사업자 계약 필요',
-      };
+    LinkStatus.live => '연동 완료',
+    LinkStatus.needsKey => 'API 키 등록 필요',
+    LinkStatus.needsApply => '제휴 가입 신청 필요',
+    LinkStatus.needsBiz => '사업자 계약 필요',
+  };
 
   String get kindLabel => switch (kind) {
-        ProviderKind.inApp => '자체',
-        ProviderKind.rewardAd => '리워드 광고',
-        ProviderKind.offerwall => '오퍼월',
-        ProviderKind.affiliate => '제휴 마케팅',
-        ProviderKind.openData => '공공 오픈API',
-        ProviderKind.survey => '리서치 패널',
-      };
+    ProviderKind.inApp => '자체',
+    ProviderKind.rewardAd => '리워드 광고',
+    ProviderKind.offerwall => '오퍼월',
+    ProviderKind.affiliate => '제휴 마케팅',
+    ProviderKind.openData => '공공 오픈API',
+    ProviderKind.survey => '리서치 패널',
+  };
 
   /// dart-define 이름을 실제 값으로. [ApiKeys]가 컴파일 상수라 표로 잇는다.
   static String _value(String key) => switch (key) {
-        'NAVER_SEARCH_ID' => ApiKeys.naverSearchId,
-        'NAVER_SEARCH_SECRET' => ApiKeys.naverSearchSecret,
-        'KAKAO_REST_KEY' => ApiKeys.kakaoRest,
-        'COUPANG_ACCESS_KEY' => ApiKeys.coupangAccess,
-        'COUPANG_SECRET_KEY' => ApiKeys.coupangSecret,
-        'ADFIT_REWARD_ANDROID' => ApiKeys.adfitRewardAndroid,
-        'ADFIT_REWARD_IOS' => ApiKeys.adfitRewardIos,
-        'OFFERWALL_APP_KEY' => ApiKeys.offerwallAppKey,
-        _ => '',
-      };
+    'NAVER_SEARCH_ID' => ApiKeys.naverSearchId,
+    'NAVER_SEARCH_SECRET' => ApiKeys.naverSearchSecret,
+    'KAKAO_REST_KEY' => ApiKeys.kakaoRest,
+    'COUPANG_ACCESS_KEY' => ApiKeys.coupangAccess,
+    'COUPANG_SECRET_KEY' => ApiKeys.coupangSecret,
+    'ADFIT_REWARD_ANDROID' => ApiKeys.adfitRewardAndroid,
+    'ADFIT_REWARD_IOS' => ApiKeys.adfitRewardIos,
+    'OFFERWALL_APP_KEY' => ApiKeys.offerwallAppKey,
+    _ => '',
+  };
 }

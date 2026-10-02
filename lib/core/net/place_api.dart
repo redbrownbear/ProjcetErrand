@@ -104,10 +104,10 @@ class NaverLocalApi {
 
     final body = ApiKeys.hasProxy
         ? await _api.getJson(Uri.parse('${ApiKeys.proxyBase}/naver/local').replace(queryParameters: query))
-        : await _api.getJson(Uri.https(_host, _path, query), headers: {
-            'X-Naver-Client-Id': ApiKeys.naverSearchId,
-            'X-Naver-Client-Secret': ApiKeys.naverSearchSecret,
-          });
+        : await _api.getJson(
+            Uri.https(_host, _path, query),
+            headers: {'X-Naver-Client-Id': ApiKeys.naverSearchId, 'X-Naver-Client-Secret': ApiKeys.naverSearchSecret},
+          );
 
     final items = body is Map ? body['items'] : null;
     if (items is! List) throw const ApiFailure(ApiFailKind.badResponse, 'items 없음');

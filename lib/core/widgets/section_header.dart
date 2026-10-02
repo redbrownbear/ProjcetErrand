@@ -14,14 +14,7 @@ class SectionHeader extends StatelessWidget {
   final int? count;
   final VoidCallback? onAction;
   final String actionLabel;
-  const SectionHeader({
-    super.key,
-    required this.title,
-    this.sub,
-    this.count,
-    this.onAction,
-    this.actionLabel = '전체 보기',
-  });
+  const SectionHeader({super.key, required this.title, this.sub, this.count, this.onAction, this.actionLabel = '전체 보기'});
 
   @override
   Widget build(BuildContext context) {
@@ -35,14 +28,16 @@ class SectionHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text.rich(
-                  TextSpan(children: [
-                    TextSpan(text: title),
-                    if (count != null)
-                      TextSpan(
-                        text: '  $count',
-                        style: AppType.section.copyWith(fontWeight: AppType.w500, color: AppColors.sub),
-                      ),
-                  ]),
+                  TextSpan(
+                    children: [
+                      TextSpan(text: title),
+                      if (count != null)
+                        TextSpan(
+                          text: '  $count',
+                          style: AppType.section.copyWith(fontWeight: AppType.w500, color: AppColors.sub),
+                        ),
+                    ],
+                  ),
                   style: AppType.section,
                 ),
                 if (sub != null)
@@ -60,7 +55,7 @@ class SectionHeader extends StatelessWidget {
   }
 }
 
-/// '전체 보기 ›' 같은 작은 글자 버튼 (.text-button)
+/// '전체 보기 ›' 같은 작은 글자 버튼
 class TextAction extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
@@ -73,16 +68,19 @@ class TextAction extends StatelessWidget {
       borderRadius: BorderRadius.circular(8),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Text(label, style: AppType.meta.copyWith(fontSize: 13, fontWeight: AppType.w500)),
-          const Icon(Icons.chevron_right_rounded, size: 15, color: AppColors.faint),
-        ]),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(label, style: AppType.meta.copyWith(fontSize: 13, fontWeight: AppType.w500)),
+            const Icon(Icons.chevron_right_rounded, size: 15, color: AppColors.faint),
+          ],
+        ),
       ),
     );
   }
 }
 
-/// 빈 상태 (.empty-state). [compact]는 목록 안에 들어갈 때의 작은 형태.
+/// 빈 상태. [compact]는 목록 안에 들어갈 때의 작은 형태.
 class EmptyState extends StatelessWidget {
   final String msg;
   final String? title;
@@ -107,51 +105,67 @@ class EmptyState extends StatelessWidget {
     final box = compact ? 50.0 : 72.0;
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: compact ? 26 : 40, vertical: compact ? 28 : 72),
-      child: Column(children: [
-        Container(
-          width: box,
-          height: box,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: compact ? AppColors.page : AppColors.card,
-            borderRadius: BorderRadius.circular(compact ? 17 : 24),
+      child: Column(
+        children: [
+          Container(
+            width: box,
+            height: box,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: compact ? AppColors.page : AppColors.card,
+              borderRadius: BorderRadius.circular(compact ? 17 : 24),
+            ),
+            child: Icon(AppIcon.data(icon), size: compact ? 22 : 30, color: AppColors.ink2),
           ),
-          child: Icon(AppIcon.data(icon), size: compact ? 22 : 30, color: AppColors.ink2),
-        ),
-        SizedBox(height: compact ? 15 : 18),
-        if (title != null)
-          Text(title!, textAlign: TextAlign.center, style: AppType.section.copyWith(fontSize: compact ? 16 : 19)),
-        Padding(
-          padding: EdgeInsets.only(top: title == null ? 0 : 6),
-          child: Text(msg,
+          SizedBox(height: compact ? 15 : 18),
+          if (title != null)
+            Text(
+              title!,
               textAlign: TextAlign.center,
-              style: AppType.body.copyWith(fontSize: compact ? 13 : 14, fontWeight: AppType.w500, height: 1.55, color: AppColors.sub)),
-        ),
-        if (action != null && onAction != null)
+              style: AppType.section.copyWith(fontSize: compact ? 16 : 19),
+            ),
           Padding(
-            padding: const EdgeInsets.only(top: 22),
-            child: compact
-                ? OutlinedButton(
-                    onPressed: onAction,
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size(0, 43),
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                    ),
-                    child: Text(action!, style: AppType.button.copyWith(fontSize: 13, color: AppColors.btnSecondaryInk)),
-                  )
-                : FilledButton(
-                    onPressed: onAction,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.ink,
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size(0, 48),
-                      padding: const EdgeInsets.symmetric(horizontal: 22),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.tile)),
-                    ),
-                    child: Text(action!, style: AppType.button.copyWith(fontSize: 15, fontWeight: AppType.w700, color: Colors.white)),
-                  ),
+            padding: EdgeInsets.only(top: title == null ? 0 : 6),
+            child: Text(
+              msg,
+              textAlign: TextAlign.center,
+              style: AppType.body.copyWith(
+                fontSize: compact ? 13 : 14,
+                fontWeight: AppType.w500,
+                height: 1.55,
+                color: AppColors.sub,
+              ),
+            ),
           ),
-      ]),
+          if (action != null && onAction != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 22),
+              child: compact
+                  ? OutlinedButton(
+                      onPressed: onAction,
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(0, 43),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                      ),
+                      child: Text(action!, style: AppType.button.copyWith(fontSize: 13, color: AppColors.btnSecondaryInk)),
+                    )
+                  : FilledButton(
+                      onPressed: onAction,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.ink,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(0, 48),
+                        padding: const EdgeInsets.symmetric(horizontal: 22),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.tile)),
+                      ),
+                      child: Text(
+                        action!,
+                        style: AppType.button.copyWith(fontSize: 15, fontWeight: AppType.w700, color: Colors.white),
+                      ),
+                    ),
+            ),
+        ],
+      ),
     );
   }
 }

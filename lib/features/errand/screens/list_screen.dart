@@ -15,9 +15,7 @@ class ListScreen extends StatefulWidget {
   final List<TaskItem> items;
   final String scope;
   final ErrandActions actions;
-  const ListScreen({
-    super.key, required this.config, required this.items, required this.scope, required this.actions,
-  });
+  const ListScreen({super.key, required this.config, required this.items, required this.scope, required this.actions});
   @override
   State<ListScreen> createState() => _ListScreenState();
 }
@@ -77,105 +75,185 @@ class _ListScreenState extends State<ListScreen> {
     });
 
     const sorts = [
-      ['recommend', '추천순'], ['dist', '가까운 순'], ['price', '높은 사례비'], ['time', '짧은 시간순'], ['new', '최신순'],
+      ['recommend', '추천순'],
+      ['dist', '가까운 순'],
+      ['price', '높은 사례비'],
+      ['time', '짧은 시간순'],
+      ['new', '최신순'],
     ];
 
     return Material(
       color: AppColors.page,
       // edge-to-edge(targetSdk 36)에서 헤더가 상태바에, 본문 끝이 제스처바에 깔린다.
-      child: SafeArea(child: Column(children: [
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
-          decoration: const BoxDecoration(color: AppColors.card, border: Border(bottom: BorderSide(color: AppColors.line))),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(children: [
-                InkWell(
-                  onTap: () => Navigator.of(context).pop(),
-                  borderRadius: BorderRadius.circular(99),
-                  child: const Padding(padding: EdgeInsets.only(right: 2), child: Text('‹', style: TextStyle(fontSize: 24, color: AppColors.ink))),
-                ),
-                Expanded(child: Text(config.title ?? '', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.ink))),
-                if (config.mapBtn)
-                  InkWell(
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => MapScreen(items: widget.items, scope: widget.scope, actions: widget.actions))),
-                      borderRadius: BorderRadius.circular(9),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                        decoration: BoxDecoration(color: AppColors.page, borderRadius: BorderRadius.circular(9)),
-                        child: const Text('🗺️ 지도', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.ink)),
+      child: SafeArea(
+        child: Column(
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+              decoration: const BoxDecoration(
+                color: AppColors.card,
+                border: Border(bottom: BorderSide(color: AppColors.line)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      InkWell(
+                        onTap: () => Navigator.of(context).pop(),
+                        borderRadius: BorderRadius.circular(99),
+                        child: const Padding(
+                          padding: EdgeInsets.only(right: 2),
+                          child: Text('‹', style: TextStyle(fontSize: 24, color: AppColors.ink)),
+                        ),
                       ),
-                    ),
-                ]),
-                if (config.subtitle != null)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 22, top: 4),
-                    child: Text(config.subtitle!, style: const TextStyle(fontSize: 12.5, color: AppColors.sub)),
+                      Expanded(
+                        child: Text(
+                          config.title ?? '',
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.ink),
+                        ),
+                      ),
+                      if (config.mapBtn)
+                        InkWell(
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => MapScreen(items: widget.items, scope: widget.scope, actions: widget.actions),
+                            ),
+                          ),
+                          borderRadius: BorderRadius.circular(9),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                            decoration: BoxDecoration(color: AppColors.page, borderRadius: BorderRadius.circular(9)),
+                            child: const Text(
+                              '지도',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.ink),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-              ],
+                  if (config.subtitle != null)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 22, top: 4),
+                      child: Text(config.subtitle!, style: const TextStyle(fontSize: 12.5, color: AppColors.sub)),
+                    ),
+                ],
+              ),
             ),
-          ),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(18, 10, 18, 24),
-              children: [
-                if (config.sortable)
-                  SizedBox(
-                    height: 36,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: sorts.length,
-                      separatorBuilder: (_, _) => const SizedBox(width: 6),
-                      itemBuilder: (context, i) {
-                        final s = sorts[i];
-                        return ChipWidget(label: s[1], active: sort == s[0], onTap: () => setState(() => sort = s[0]));
-                      },
-                    ),
-                  ),
-                if (config.catChips)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: SizedBox(
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(18, 10, 18, 24),
+                children: [
+                  if (config.sortable)
+                    SizedBox(
                       height: 36,
-                      child: ListView(
+                      child: ListView.separated(
                         scrollDirection: Axis.horizontal,
-                        children: [
-                          Padding(padding: const EdgeInsets.only(right: 6), child: ChipWidget(label: '전체', active: cat == 'all', onTap: () => setState(() => cat = 'all'))),
-                          for (final c in cats)
-                            Padding(padding: const EdgeInsets.only(right: 6), child: ChipWidget(label: '${c.icon} ${c.label}', active: cat == c.k, onTap: () => setState(() => cat = c.k))),
-                        ],
+                        itemCount: sorts.length,
+                        separatorBuilder: (_, _) => const SizedBox(width: 6),
+                        itemBuilder: (context, i) {
+                          final s = sorts[i];
+                          return ChipWidget(label: s[1], active: sort == s[0], onTap: () => setState(() => sort = s[0]));
+                        },
                       ),
                     ),
-                  ),
-                if (config.sortable)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: SizedBox(
-                      height: 36,
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        children: [
-                          Padding(padding: const EdgeInsets.only(right: 6), child: ChipWidget(label: '1km 이내', active: fdist == '1000', onTap: () => setState(() => fdist = fdist == '1000' ? 'all' : '1000'))),
-                          Padding(padding: const EdgeInsets.only(right: 6), child: ChipWidget(label: '3km 이내', active: fdist == '3000', onTap: () => setState(() => fdist = fdist == '3000' ? 'all' : '3000'))),
-                          Padding(padding: const EdgeInsets.only(right: 6), child: ChipWidget(label: '30분 이하', active: ftime == '30', onTap: () => setState(() => ftime = ftime == '30' ? 'all' : '30'))),
-                          Padding(padding: const EdgeInsets.only(right: 6), child: ChipWidget(label: '1만원 이상', active: fprice == '10000', onTap: () => setState(() => fprice = fprice == '10000' ? 'all' : '10000'))),
-                          Padding(padding: const EdgeInsets.only(right: 6), child: ChipWidget(label: '2만원 이상', active: fprice == '20000', onTap: () => setState(() => fprice = fprice == '20000' ? 'all' : '20000'))),
-                        ],
+                  if (config.catChips)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: SizedBox(
+                        height: 36,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(right: 6),
+                              child: ChipWidget(label: '전체', active: cat == 'all', onTap: () => setState(() => cat = 'all')),
+                            ),
+                            for (final c in cats)
+                              Padding(
+                                padding: const EdgeInsets.only(right: 6),
+                                child: ChipWidget(label: c.label, active: cat == c.k, onTap: () => setState(() => cat = c.k)),
+                              ),
+                          ],
+                        ),
                       ),
                     ),
+                  if (config.sortable)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: SizedBox(
+                        height: 36,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(right: 6),
+                              child: ChipWidget(
+                                label: '1km 이내',
+                                active: fdist == '1000',
+                                onTap: () => setState(() => fdist = fdist == '1000' ? 'all' : '1000'),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.only(right: 6),
+                              child: ChipWidget(
+                                label: '3km 이내',
+                                active: fdist == '3000',
+                                onTap: () => setState(() => fdist = fdist == '3000' ? 'all' : '3000'),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.only(right: 6),
+                              child: ChipWidget(
+                                label: '30분 이하',
+                                active: ftime == '30',
+                                onTap: () => setState(() => ftime = ftime == '30' ? 'all' : '30'),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.only(right: 6),
+                              child: ChipWidget(
+                                label: '1만원 이상',
+                                active: fprice == '10000',
+                                onTap: () => setState(() => fprice = fprice == '10000' ? 'all' : '10000'),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.only(right: 6),
+                              child: ChipWidget(
+                                label: '2만원 이상',
+                                active: fprice == '20000',
+                                onTap: () => setState(() => fprice = fprice == '20000' ? 'all' : '20000'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: base.isEmpty
+                        ? const EmptyState(msg: '조건에 맞는 부탁이 없어요.')
+                        : Column(
+                            children: [
+                              for (final it in base)
+                                TaskCard(
+                                  it: it,
+                                  onOpen: () => widget.actions.open(context, it),
+                                  done: widget.actions.grabbed.contains(it.id),
+                                  rich: true,
+                                ),
+                            ],
+                          ),
                   ),
-                Padding(
-                  padding: const EdgeInsets.only(top: 10),
-                  child: base.isEmpty
-                      ? const EmptyState(msg: '조건에 맞는 부탁이 없어요.')
-                      : Column(children: [for (final it in base) TaskCard(it: it, onOpen: () => widget.actions.open(context, it), done: widget.actions.grabbed.contains(it.id), rich: true)]),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ])),
+          ],
+        ),
+      ),
     );
   }
 }

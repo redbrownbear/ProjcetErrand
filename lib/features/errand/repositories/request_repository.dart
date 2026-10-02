@@ -36,48 +36,46 @@ class RequestRepository {
   }
 
   Future<void> add(TaskItem it) => Backend.push(
-        () => Backend.requests.doc('${it.id}').set({
-          ...toMap(it),
-          'status': 'open',
-          'createdAt': FieldValue.serverTimestamp(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        }),
-      );
+    () => Backend.requests.doc('${it.id}').set({
+      ...toMap(it),
+      'status': 'open',
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }),
+  );
 
   /// 모집을 닫는다(삭제하지 않는다 — 지원자 쪽 기록이 남아야 하므로).
   Future<void> close(int id) => Backend.push(
-        () => Backend.requests.doc('$id').set(
-          {'status': 'closed', 'updatedAt': FieldValue.serverTimestamp()},
-          SetOptions(merge: true),
-        ),
-      );
+    () =>
+        Backend.requests.doc('$id').set({'status': 'closed', 'updatedAt': FieldValue.serverTimestamp()}, SetOptions(merge: true)),
+  );
 
   // ── 변환 ────────────────────────────────────────────────────────────────
 
   static Map<String, Object?> toMap(TaskItem it) => {
-        'ownerUid': it.ownerUid,
-        'who': it.who,
-        'mode': it.mode,
-        'cat': it.cat,
-        'title': it.title,
-        'desc': it.desc,
-        'region': it.region,
-        'place': it.place,
-        'deliveryPlace': it.deliveryPlace,
-        'country': it.country,
-        'cc': it.cc,
-        'city': it.city,
-        'lat': it.lat,
-        'lng': it.lng,
-        'distM': it.distM,
-        'mins': it.mins,
-        'price': it.price,
-        'budget': it.budget,
-        'payment': it.payment,
-        'completion': it.completion,
-        'hot': it.hot,
-        'deadline': it.deadline == null ? null : Timestamp.fromDate(it.deadline!),
-      };
+    'ownerUid': it.ownerUid,
+    'who': it.who,
+    'mode': it.mode,
+    'cat': it.cat,
+    'title': it.title,
+    'desc': it.desc,
+    'region': it.region,
+    'place': it.place,
+    'deliveryPlace': it.deliveryPlace,
+    'country': it.country,
+    'cc': it.cc,
+    'city': it.city,
+    'lat': it.lat,
+    'lng': it.lng,
+    'distM': it.distM,
+    'mins': it.mins,
+    'price': it.price,
+    'budget': it.budget,
+    'payment': it.payment,
+    'completion': it.completion,
+    'hot': it.hot,
+    'deadline': it.deadline == null ? null : Timestamp.fromDate(it.deadline!),
+  };
 
   static TaskItem? fromDoc(String docId, Map<String, dynamic> m) {
     final id = int.tryParse(docId);
@@ -111,7 +109,11 @@ class RequestRepository {
       completion: str('completion'),
       who: str('who') ?? '이웃',
       // 서버에서 내려온 글은 아직 후기·인증 기록이 없다. 없는 신뢰 지표를 지어내지 않는다.
-      rating: 0, reviews: 0, deals: 0, resp: 0, verified: false,
+      rating: 0,
+      reviews: 0,
+      deals: 0,
+      resp: 0,
+      verified: false,
       hot: m['hot'] == true,
       deadline: deadline is Timestamp ? deadline.toDate() : DateTime.tryParse('$deadline'),
       sample: false,

@@ -1,5 +1,5 @@
 class Country {
-  final String cc, flag, name;
+  final String cc, name;
   final List<String> cities;
-  const Country(this.cc, this.flag, this.name, this.cities);
+  const Country(this.cc, this.name, this.cities);
 }

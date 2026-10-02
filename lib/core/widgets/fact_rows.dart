@@ -13,23 +13,31 @@ class FactRows extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(children: [
-      for (final (k, v) in rows)
-        Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Expanded(flex: 10, child: Text(k, style: AppType.meta.copyWith(fontSize: 12, height: 1.6))),
-            const SizedBox(width: 16),
-            Expanded(
-              flex: 11,
-              child: Text(v,
-                  textAlign: TextAlign.right,
-                  style: AppType.meta.copyWith(
-                      fontSize: 12, height: 1.6, fontWeight: AppType.w600, color: AppColors.inkSoft)),
+    return Column(
+      children: [
+        for (final (k, v) in rows)
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            decoration: const BoxDecoration(
+              border: Border(bottom: BorderSide(color: AppColors.line)),
             ),
-          ]),
-        ),
-    ]);
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(flex: 10, child: Text(k, style: AppType.meta.copyWith(fontSize: 12, height: 1.6))),
+                const SizedBox(width: 16),
+                Expanded(
+                  flex: 11,
+                  child: Text(
+                    v,
+                    textAlign: TextAlign.right,
+                    style: AppType.meta.copyWith(fontSize: 12, height: 1.6, fontWeight: AppType.w600, color: AppColors.inkSoft),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
   }
 }

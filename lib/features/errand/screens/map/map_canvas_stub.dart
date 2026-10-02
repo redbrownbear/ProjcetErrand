@@ -39,10 +39,7 @@ class MapCanvas extends StatelessWidget {
             style: TextStyle(fontSize: 13, color: AppColors.sub),
           ),
           const SizedBox(height: 4),
-          Text(
-            '주변 부탁 ${pins.length}건',
-            style: const TextStyle(fontSize: 12, color: AppColors.faint),
-          ),
+          Text('주변 부탁 ${pins.length}건', style: const TextStyle(fontSize: 12, color: AppColors.faint)),
         ],
       ),
     );
