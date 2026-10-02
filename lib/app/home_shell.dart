@@ -11,6 +11,7 @@ import '../core/theme/app_theme.dart';
 import '../core/theme/colors.dart';
 import '../core/utils/formatters.dart';
 import '../core/widgets/app_icon.dart';
+import '../core/widgets/mascot.dart';
 import '../core/widgets/screen_frame.dart';
 import '../features/activity/screens/activity_view.dart';
 import '../features/auth/screens/login_screen.dart';
@@ -22,6 +23,7 @@ import '../features/benefits/models/attendance.dart';
 import '../features/benefits/models/reward_ledger.dart';
 import '../features/benefits/models/reward_product.dart';
 import '../features/benefits/services/mission_tracker.dart';
+import '../features/benefits/widgets/attendance_card.dart';
 import '../features/benefits/screens/side_job_view.dart';
 import '../features/chat/screens/chat_view.dart';
 import '../features/dayjob/screens/job_post_screen.dart';
@@ -34,7 +36,9 @@ import '../features/errand/repositories/request_repository.dart';
 import '../features/errand/screens/create_choice_screen.dart';
 import '../features/errand/screens/home_content.dart';
 import '../features/errand/screens/list_screen.dart';
+import '../features/errand/screens/overseas_tab.dart';
 import '../features/errand/screens/post_request.dart';
+import '../features/errand/screens/search_screen.dart';
 import '../features/errand/widgets/region_sheet.dart';
 import '../features/pay/models/pay_entry.dart';
 import '../features/pay/pay_config.dart';
@@ -69,9 +73,16 @@ class _HomeShellState extends State<HomeShell> {
   UserProfile? profile;
   bool syncing = false;
 
-  /// 하단 1차 메뉴. 기획 시안 v9의 `tabs`와 같다 — 홈 · 부업 · (부탁하기) · 채팅 · 내 정보.
+  /// 하단 1차 메뉴. 기획 시안 v33의 `#nav`와 같다 — 홈 · 미션·공구 · 해외 · 채팅 · 마이.
+  /// '부탁하기'는 가운데 버튼이 아니라 홈의 겸이 카드와 상단 연필 버튼에서 연다.
   /// '진행 중'은 탭에서 빠지고 홈 배너·채팅 빈 화면에서 전체화면으로 열린다.
-  String tab = 'home'; // home | benefits | chat | me
+  String tab = 'home'; // home | side | os | chat | me
+
+  /// 미션·공구 탭의 안쪽 탭 — 0 미션 · 1 공동구매. 홈 바로가기에서 정해 들어온다.
+  int sideSub = 0;
+
+  /// 앱을 열면 잠깐 보이는 시작 화면 (시안 v33 `#splash`). 누르면 바로 넘어간다.
+  bool splash = true;
   String? toast;
   late final List<TaskItem> _seed;
   String scope = '서울 서초구';
@@ -214,6 +225,9 @@ class _HomeShellState extends State<HomeShell> {
       if (mounted) setState(() => _server = list);
     });
     _authSub = AuthService().authStateChanges.listen(_bindUser);
+    Future.delayed(const Duration(milliseconds: 1600), () {
+      if (mounted && splash) setState(() => splash = false);
+    });
   }
 
   @override
@@ -440,8 +454,34 @@ class _HomeShellState extends State<HomeShell> {
 
   // ── 이동 ────────────────────────────────────────────────────────────────
 
-  /// 혜택·미션은 하단 '부업' 탭이 1차 메뉴다.
-  void goPointsHub() => _switchTab('benefits');
+  /// 혜택·미션은 하단 '미션·공구' 탭이 1차 메뉴다.
+  void goPointsHub() => goSideTab(0);
+
+  /// 미션·공구 탭으로 — [sub] 0 미션 · 1 공동구매
+  void goSideTab(int sub) {
+    sideSub = sub;
+    _switchTab('side');
+  }
+
+  void goOverseasTab() => _switchTab('os');
+
+  /// 출석 · 겸사페이 내역 (마이 지갑 카드의 '내역·출석')
+  void goAttendance() => _pushLive(() => ScreenFrame(
+        title: '내역 · 출석',
+        onBack: () => Navigator.of(context).pop(),
+        child: Container(
+          color: AppColors.page,
+          child: ListView(padding: const EdgeInsets.only(top: 8, bottom: 24), children: [
+            AttendanceCard(attendance: attendance, onCheckIn: checkIn),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: OutlinedButton(onPressed: goPay, child: const Text('겸사페이 내역 보기')),
+            ),
+          ]),
+        ),
+      ));
+
+  void goSearch() => Navigator.push(context, MaterialPageRoute(builder: (_) => SearchScreen(items: items, actions: actions)));
 
   /// 진행 중인 부탁. v9처럼 탭이 아니라 홈 배너·채팅에서 여는 전체화면이다.
   void goActivity() => _pushLive(() => ScreenFrame(
@@ -619,10 +659,16 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   /// 부탁 등록 폼. [kind]는 ask(일상 부탁) | sea(해외 사다주기).
-  void _openRequestForm(String kind) => Navigator.push(
+  void _openRequestForm(String kind, {String? cat}) => Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => PostRequest(scope: scope, onSubmit: addRequest, initialKind: kind)),
+        MaterialPageRoute(builder: (_) => PostRequest(scope: scope, onSubmit: addRequest, initialKind: kind, initialCat: cat)),
       );
+
+  /// 종류를 정해 둔 동네 부탁 쓰기 (홈 '자주 하는 부탁')
+  void openPostCat(String cat) => requireLogin(() => _openRequestForm('ask', cat: cat));
+
+  /// 해외 부탁 쓰기 (해외 탭의 '해외 부탁하기')
+  void openPostSea() => requireLogin(() => _openRequestForm('sea'));
 
   /// 단기알바 모집 등록. 일상 부탁과 달리 근로 조건을 받는 별도 폼이다.
   void openJobPost() => requireLogin(() {
@@ -678,22 +724,31 @@ class _HomeShellState extends State<HomeShell> {
 
   Widget _body() {
     switch (tab) {
-      case 'benefits':
+      case 'side':
         return SideJobView(
+          key: ValueKey('side-$sideSub'),
+          initialSub: sideSub,
           points: points, coupons: coupons, items: items, scope: scope, actions: actions,
           monthEarn: monthEarnedCash, freeLeft: freeLeft, doneMissions: doneMissions,
           earn: earn, isClaimed: isClaimed, redeem: redeem, useCoupon: useCoupon,
           completeMission: completeMission, goPointsHub: goPointsHub, flash: flash,
         );
+      case 'os':
+        return OverseasTab(items: items, actions: actions, onPostSea: openPostSea);
       case 'chat':
         return ChatView(onGoActivity: goActivity);
       case 'me':
         return MeView(
           profile: profile,
           stats: stats,
+          trust: trust,
+          points: points,
+          payBalance: payBalance,
           coupons: coupons,
           useCoupon: useCoupon,
           goPointsHub: goPointsHub,
+          goPay: goPay,
+          goAttendance: goAttendance,
           freeLeft: freeLeft,
           isLoggedIn: isLoggedIn,
           onLogin: () => requireLogin(() {}),
@@ -708,13 +763,13 @@ class _HomeShellState extends State<HomeShell> {
       default:
         return HomeContent(
           items: items, scope: scope, actions: actions, points: points, steps: steps,
-          payBalance: payBalance, trust: trust, goPay: goPay, goProfile: goProfile,
+          monthEarn: monthEarnedCash, goPay: goPay, goProfile: goProfile,
           coupons: coupons, doneMissions: doneMissions,
-          openRegion: openRegion,
           earn: earn, isClaimed: isClaimed, redeem: redeem, useCoupon: useCoupon, completeMission: completeMission,
           flash: flash, goPointsHub: goPointsHub, goPost: openPost,
-          activeCount: activeCount, goActivity: goActivity,
-          attendance: attendance, checkIn: checkIn, openJobPost: openJobPost,
+          goPostCat: openPostCat, goPostSea: openPostSea,
+          goOverseasTab: goOverseasTab, goSideTab: goSideTab,
+          activeCount: activeCount, goActivity: goActivity, openJobPost: openJobPost,
         );
     }
   }
@@ -731,32 +786,50 @@ class _HomeShellState extends State<HomeShell> {
         setState(() => tab = 'home');
       },
       child: Scaffold(
-        backgroundColor: AppColors.card,
-        body: SafeArea(
-          child: Stack(
-            children: [
-              Column(children: [Expanded(child: _body()), _bottomNav()]),
-              if (toast != null)
-                Positioned(
-                  left: 18, right: 18, bottom: 98,
-                  child: IgnorePointer(
-                    child: Container(
-                      padding: const EdgeInsets.all(17),
-                      decoration: BoxDecoration(
-                        color: const Color(0xF5252629),
-                        borderRadius: BorderRadius.circular(AppRadius.card),
-                        boxShadow: const [BoxShadow(color: Color(0x1A202A42), blurRadius: 25, offset: Offset(0, 7))],
-                      ),
-                      child: Row(children: [
-                        const Icon(Icons.check_rounded, size: 18, color: Color(0xFFE7D58E)),
-                        const SizedBox(width: 10),
-                        Expanded(child: Text(toast!, style: AppType.meta.copyWith(color: Colors.white, height: 1.5))),
-                      ]),
+        backgroundColor: AppColors.page,
+        body: Stack(
+          children: [
+            SafeArea(
+              bottom: false,
+              child: Column(children: [
+                _header(),
+                Expanded(child: _body()),
+                _bottomNav(),
+              ]),
+            ),
+            if (toast != null)
+              Positioned(
+                left: 18, right: 18, bottom: 98 + MediaQuery.paddingOf(context).bottom,
+                child: IgnorePointer(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xF2191F28),
+                      borderRadius: BorderRadius.circular(AppRadius.tile),
+                      boxShadow: const [BoxShadow(color: Color(0x26191F28), blurRadius: 24, offset: Offset(0, 8))],
                     ),
+                    child: Row(children: [
+                      const Icon(Icons.check_circle_rounded, size: 18, color: AppColors.yellow),
+                      const SizedBox(width: 10),
+                      Expanded(child: Text(toast!, style: AppType.meta.copyWith(fontSize: 13, color: Colors.white, height: 1.5))),
+                    ]),
                   ),
                 ),
-            ],
-          ),
+              ),
+            // 시작 화면. 누르면 바로 넘어간다.
+            IgnorePointer(
+              ignoring: !splash,
+              child: AnimatedOpacity(
+                opacity: splash ? 1 : 0,
+                duration: const Duration(milliseconds: 450),
+                curve: Curves.easeOutCubic,
+                child: GestureDetector(
+                  onTap: () => setState(() => splash = false),
+                  child: const _Splash(),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -767,42 +840,93 @@ class _HomeShellState extends State<HomeShell> {
     setState(() => tab = k);
   }
 
-  /// 하단 1차 메뉴 (.main-nav). 가운데 '부탁하기'만 노란 사각 버튼이다.
+  /// 상단 헤더 (.hdr). 홈은 동네 이름, 다른 탭은 탭 제목.
+  /// 오른쪽은 검색(홈) · 부탁하기(연필) · 알림.
+  Widget _header() {
+    const titles = {'side': '미션·공구', 'os': '해외 사다주기', 'chat': '채팅', 'me': '마이'};
+    return Container(
+      color: AppColors.page,
+      padding: const EdgeInsets.fromLTRB(12, 8, 8, 6),
+      child: Row(children: [
+        Expanded(
+          child: tab == 'home'
+              ? Align(
+                  alignment: Alignment.centerLeft,
+                  child: InkWell(
+                    onTap: openRegion,
+                    borderRadius: BorderRadius.circular(10),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.place_outlined, size: 19, color: AppColors.ink),
+                        const SizedBox(width: 4),
+                        Text(shortRegion(scope),
+                            style: AppType.body.copyWith(fontSize: 17, fontWeight: AppType.w700, letterSpacing: -0.3)),
+                        const SizedBox(width: 2),
+                        const Icon(Icons.expand_more_rounded, size: 18, color: AppColors.sub),
+                      ]),
+                    ),
+                  ),
+                )
+              : Padding(
+                  padding: const EdgeInsets.only(left: 6),
+                  child: Text(titles[tab] ?? '', style: AppType.tabTitle),
+                ),
+        ),
+        if (tab == 'home') _hbtn('search', '검색', goSearch),
+        _hbtn('pencil', '부탁하기', openPost),
+        _hbtn('bell', '알림', () => flash('새 알림이 없어요'), dot: activeCount > 0),
+      ]),
+    );
+  }
+
+  /// 40px 헤더 아이콘 버튼 (.hbtn). [dot]이면 오른쪽 위에 빨간 점.
+  Widget _hbtn(String icon, String label, VoidCallback onTap, {bool dot = false}) {
+    return Semantics(
+      button: true,
+      label: label,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: SizedBox(
+          width: 40,
+          height: 40,
+          child: Stack(alignment: Alignment.center, children: [
+            Icon(AppIcon.data(icon), size: 22, color: AppColors.ink),
+            if (dot)
+              Positioned(
+                top: 9,
+                right: 10,
+                child: Container(
+                  width: 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    color: AppColors.red,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.page, width: 1.5),
+                  ),
+                ),
+              ),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  /// 하단 1차 메뉴 (.nav) — 홈 · 미션·공구 · 해외 · 채팅 · 마이
   Widget _bottomNav() {
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.card,
-        border: Border(top: BorderSide(color: Color(0xFFF0F1F3))),
+        border: Border(top: BorderSide(color: AppColors.line)),
       ),
-      padding: const EdgeInsets.fromLTRB(8, 9, 8, 8),
+      padding: EdgeInsets.fromLTRB(4, 8, 4, 8 + MediaQuery.paddingOf(context).bottom),
       child: Row(children: [
         _navBtn('home', '홈', 'home'),
-        _navBtn('benefits', '부업', 'gift'),
-        Expanded(
-          child: InkWell(
-            onTap: openPost,
-            borderRadius: BorderRadius.circular(12),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                SizedBox(
-                  height: 26,
-                  child: Container(
-                    width: 27,
-                    height: 27,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(color: AppColors.createYellow, borderRadius: BorderRadius.circular(8)),
-                    child: const Icon(Icons.add_rounded, size: 21, color: AppColors.ink),
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text('부탁하기', style: AppType.caption.copyWith(fontSize: 12, fontWeight: AppType.w500, color: AppColors.navActive)),
-              ]),
-            ),
-          ),
-        ),
+        _navBtn('side', '미션·공구', 'gift'),
+        _navBtn('os', '해외', 'globe'),
         _navBtn('chat', '채팅', 'chat'),
-        _navBtn('me', '내 정보', 'user'),
+        _navBtn('me', '마이', 'user'),
       ]),
     );
   }
@@ -812,39 +936,64 @@ class _HomeShellState extends State<HomeShell> {
     final color = active ? AppColors.navActive : AppColors.navIdle;
     return Expanded(
       child: InkWell(
-        onTap: () => _switchTab(k),
+        onTap: () => k == 'side' ? goSideTab(sideSub) : _switchTab(k),
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                height: 26,
-                child: Stack(clipBehavior: Clip.none, alignment: Alignment.center, children: [
-                  Icon(AppIcon.data(icon), size: 23, color: color),
-                  if (active)
-                    const Positioned(
-                      bottom: -3,
-                      child: SizedBox(
-                        width: 3, height: 3,
-                        child: DecoratedBox(decoration: BoxDecoration(color: AppColors.navActive, shape: BoxShape.circle)),
-                      ),
-                    ),
-                ]),
-              ),
-              const SizedBox(height: 5),
-              Text(
-                label,
-                style: AppType.caption.copyWith(
-                  fontSize: 12,
-                  fontWeight: active ? AppType.w700 : AppType.w500,
-                  color: color,
-                ),
-              ),
-            ],
-          ),
+          padding: const EdgeInsets.symmetric(vertical: 3),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Icon(AppIcon.data(icon), size: 24, color: color),
+            const SizedBox(height: 3),
+            Text(label, style: AppType.caption.copyWith(fontSize: 10, fontWeight: AppType.w700, color: color)),
+          ]),
         ),
+      ),
+    );
+  }
+}
+
+/// 시작 화면 (시안 v33 `#splash`) — 겸이와 한 줄 소개.
+class _Splash extends StatelessWidget {
+  const _Splash();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          stops: [0, 0.55, 1],
+          colors: [Color(0xFFFFF6D3), Color(0xFFFFFDF5), Colors.white],
+        ),
+      ),
+      child: SafeArea(
+        child: Stack(children: [
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 40),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                const Gyeomi(width: 180),
+                const SizedBox(height: 14),
+                Text('겸사겸사', style: AppType.tabTitle.copyWith(fontSize: 30, letterSpacing: -1.5)),
+                const SizedBox(height: 4),
+                Text('가는 길에, 하나 더',
+                    style: AppType.body.copyWith(fontSize: 15, fontWeight: AppType.w700, color: const Color(0xFFE08A00))),
+                const SizedBox(height: 14),
+                Text('부탁하고, 도와주고, 함께 버는\n우리 동네 심부름',
+                    textAlign: TextAlign.center,
+                    style: AppType.body.copyWith(height: 1.6, color: AppColors.sub)),
+              ]),
+            ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 42,
+            child: Text('화면을 누르면 바로 시작해요', textAlign: TextAlign.center, style: AppType.caption.copyWith(color: AppColors.faint)),
+          ),
+        ]),
       ),
     );
   }

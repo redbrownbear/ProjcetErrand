@@ -3,13 +3,18 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../core/widgets/app_icon.dart';
+import '../../../core/widgets/chip_widget.dart';
 import '../../../core/widgets/screen_frame.dart';
+import '../../../core/widgets/surface.dart';
 import '../../errand/models/task_item.dart';
 import '../../errand/navigation/errand_actions.dart';
+import '../../gongu/models/gongu.dart';
+import '../../gongu/repositories/gongu_repository.dart';
+import '../../gongu/screens/gongu_detail_screen.dart';
 import '../../gongu/screens/gongu_screen.dart';
 import '../../partner/screens/brand_hub_screen.dart';
 import '../data/partner_missions.dart';
+import '../data/reward_products.dart';
 import '../models/coupon.dart';
 import '../models/mission_meta.dart';
 import '../models/partner_mission.dart';
@@ -21,12 +26,17 @@ import 'benefits_view.dart';
 import 'partner_mission_detail_screen.dart';
 import 'point_shop_screen.dart';
 
-/// 부업 탭. 시안(`gyumsa-refined`)의 `sidejobs-v8` 화면을 옮겼다.
+/// 하단 '미션·공구' 탭 (시안 v33 `#sideRoot`).
+///
+/// 안쪽 밑줄 탭으로 **미션 | 공동구매**를 나눈다.
+/// - 미션: 보유 포인트 카드 → '참여할 미션' 카드(상태 세그먼트 · 검색 · 종류/조건 칩 · 목록) → 매일의 혜택
+/// - 공동구매: 2열 상품 카드
 ///
 /// 미션이 20개를 넘으면서 "어떤 미션이 나한테 맞는지" 고르는 일이 어려워졌다.
-/// 그래서 검색·상태(전체/참여 중/적립 완료)·종류·조건(3분 이내·구매 없음)을
-/// 한 줄씩 얹고, 3분 안에 끝나는 미션 두 개를 맨 위에 따로 뽑아 둔다.
+/// 그래서 검색·상태(전체/참여 중/적립 완료)·종류·조건(3분 이내·구매 없음)을 한 카드 안에 모았다.
 class SideJobView extends StatefulWidget {
+  /// 처음 열 안쪽 탭 — 0 미션 · 1 공동구매
+  final int initialSub;
   final int points;
   final List<Coupon> coupons;
   final List<TaskItem> items;
@@ -45,6 +55,7 @@ class SideJobView extends StatefulWidget {
 
   const SideJobView({
     super.key,
+    this.initialSub = 0,
     required this.points,
     required this.coupons,
     required this.items,
@@ -93,6 +104,9 @@ class _SideJobViewState extends State<SideJobView> {
 
   MissionProgress progress = MissionProgress.load();
 
+  /// 안쪽 탭 — 0 미션 · 1 공동구매
+  late int sub = widget.initialSub;
+
   @override
   void dispose() {
     search.dispose();
@@ -134,22 +148,6 @@ class _SideJobViewState extends State<SideJobView> {
     return list;
   }
 
-  /// 맨 위 두 칸. 참여 중인 미션이 있으면 그걸 먼저 보여주고(이어서 참여해요),
-  /// 없으면 3분 안에 끝나고 돈이 들지 않는 미션을 뽑는다(가볍게 시작해요).
-  List<PartnerMission> get _starters {
-    final active = partnerMissions.where(_isActive).take(2).toList();
-    if (active.isNotEmpty) return active;
-    return partnerMissions
-        .where((m) =>
-            m.minutes <= 3 &&
-            m.isFree &&
-            !_isDone(m) &&
-            // 가입처럼 조건이 붙는 미션 말고, 정말 가볍게 해볼 수 있는 것만 뽑는다.
-            const ['survey', 'experience'].contains(m.cat))
-        .take(2)
-        .toList();
-  }
-
   Future<void> _openMission(PartnerMission m) async {
     await Navigator.push(
       context,
@@ -164,507 +162,352 @@ class _SideJobViewState extends State<SideJobView> {
 
   @override
   Widget build(BuildContext context) {
-    final list = _list;
     return ListView(
-      padding: const EdgeInsets.only(bottom: 30),
+      padding: const EdgeInsets.only(bottom: 24),
       children: [
-        _header(),
-        _earningPair(),
-        _starterSection(),
-        _listHead(),
-        _search(),
-        _statusTabs(),
-        _catChips(),
-        _filterChips(),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(22, 16, 22, 4),
-          child: Text('${list.length}개 미션 · 완료한 미션은 아래에 표시돼요', style: AppType.caption),
+        UnderlineTabs(
+          tabs: const [('미션', null), ('공동구매', null)],
+          index: sub,
+          onChanged: (i) => setState(() => sub = i),
+          margin: const EdgeInsets.symmetric(horizontal: 20),
+          fontSize: 15.5,
+          gap: 24,
         ),
-        if (list.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 32),
-            child: Text('조건에 맞는 미션이 없어요. 필터를 바꿔 보세요.',
-                textAlign: TextAlign.center, style: AppType.meta.copyWith(height: 1.7)),
-          ),
-        for (final m in list)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: MissionTile(
-              m: m,
-              done: _isDone(m),
-              active: _isActive(m),
-              onTap: () => _openMission(m),
-            ),
-          ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(22, 16, 22, 4),
-          child: Text('체험용 미션 · 실제 제휴 및 지급 연동 전입니다.', style: AppType.caption.copyWith(height: 1.7)),
-        ),
-        _dailyBenefits(),
-        _partnerFooter(),
+        ...(sub == 0 ? _missionSections() : _gonguSections()),
+        _inquiry(),
       ],
     );
   }
 
-  /// 제목 + 브랜드 협업 바로가기 (.sidejobs-v8 > header)
-  Widget _header() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(22, 20, 20, 15),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('오늘은 뭘 해볼까요?', style: AppType.tabTitle.copyWith(fontSize: 23)),
-            Padding(
-              padding: const EdgeInsets.only(top: 7),
-              child: Text('짧은 시간에도 차곡차곡 모아요', style: AppType.meta.copyWith(fontSize: 12)),
-            ),
-          ]),
-        ),
-        TextButton(
-          onPressed: _openBrandHub,
-          style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 6), minimumSize: const Size(0, 30)),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Text('브랜드 협업', style: AppType.caption.copyWith(fontSize: 10, color: AppColors.goalMintSub)),
-            const SizedBox(width: 3),
-            const AppIcon('chevron', size: 14, color: AppColors.goalMintSub),
-          ]),
-        ),
-      ]),
-    );
-  }
+  // ── 미션 ────────────────────────────────────────────────────────────────
 
-  /// 내 포인트 · 공동구매 두 칸 (.earning-pair-v8)
-  Widget _earningPair() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-      // ListView 안이라 높이가 무한대다. 두 칸의 키를 맞추려면 높이를 정해 줘야 한다.
-      child: SizedBox(
-        height: 150,
-        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Expanded(
-          child: _pairCard(
-            bg: const Color(0xFFFFF0BA),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => PointShopScreen(
-                points: widget.points, redeem: widget.redeem, coupons: widget.coupons,
-                useCoupon: widget.useCoupon, goPointsHub: widget.goPointsHub,
-              )),
-            ),
-            children: [
-              Text('내 포인트', style: AppType.caption.copyWith(fontSize: 11, color: const Color(0xFF9F8950))),
-              const Spacer(),
-              Text('${nf(widget.points)}P',
-                  style: AppType.section.copyWith(fontSize: 27, color: const Color(0xFF4C4934))),
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text('포인트 사용', style: AppType.caption.copyWith(fontSize: 11, color: const Color(0xFF9F8950))),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 11),
-        Expanded(
-          child: _pairCard(
-            bg: const Color(0xFFE8F2ED),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => GonguScreen(earn: widget.earn, isClaimed: widget.isClaimed)),
-            ),
-            children: [
-              Text('공동구매', style: AppType.caption.copyWith(fontSize: 11, color: const Color(0xFF819787))),
-              const Spacer(),
-              Text('인플루언서가 아니어도\n공구로 수익을',
-                  style: AppType.body.copyWith(fontSize: 13, height: 1.5, fontWeight: AppType.w600, color: const Color(0xFF477660))),
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text('함께 살 사람 모으기', style: AppType.caption.copyWith(fontSize: 11, color: const Color(0xFF819787))),
-              ),
-            ],
-          ),
-        ),
-        ]),
-      ),
-    );
-  }
-
-  Widget _pairCard({required Color bg, required VoidCallback onTap, required List<Widget> children}) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.surface),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(AppRadius.surface)),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children),
-      ),
-    );
-  }
-
-  /// 3분 안에 끝나는 미션 두 개 (.g4-starter)
-  Widget _starterSection() {
-    final starters = _starters;
-    if (starters.isEmpty) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(22, 12, 22, 22),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text(activeCount > 0 ? '이어서 참여해요' : '가볍게 시작해요',
-              style: AppType.sectionSmall.copyWith(fontSize: 15, color: const Color(0xFF476352))),
-          Text(activeCount > 0 ? '$activeCount개 참여 중' : '3분 이내 · 구매 없음',
-              style: AppType.caption.copyWith(fontSize: 10, color: const Color(0xFF93A28D))),
-        ]),
-        const SizedBox(height: 11),
-        IntrinsicHeight(
-          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            for (int i = 0; i < starters.length; i++) ...[
-              if (i > 0) const SizedBox(width: 10),
-              Expanded(child: _starterCard(starters[i], i)),
-            ],
-          ]),
-        ),
-      ]),
-    );
-  }
-
-  Widget _starterCard(PartnerMission m, int i) {
-    final tint = i == 0 ? const Color(0xFFF3F0DF) : const Color(0xFFEAF1FB);
-    final fg = i == 0 ? const Color(0xFFAB9A60) : const Color(0xFF81A4BC);
-    return InkWell(
-      onTap: () => _openMission(m),
-      borderRadius: BorderRadius.circular(AppRadius.card),
-      child: Container(
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          border: Border.all(color: AppColors.line),
-          borderRadius: BorderRadius.circular(AppRadius.card),
-        ),
+  List<Widget> _missionSections() {
+    final list = _list;
+    return [
+      _pointsCard(),
+      SecCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Container(
-              width: 31,
-              height: 31,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(color: tint, borderRadius: BorderRadius.circular(11)),
-              child: AppIcon(m.isVisit ? 'pin' : 'sparkles', size: 17, color: fg),
+          SecHead(
+            title: '참여할 미션',
+            trailing: DropdownButton<String>(
+              value: sort,
+              underline: const SizedBox.shrink(),
+              isDense: true,
+              icon: const Icon(Icons.expand_more_rounded, size: 16, color: AppColors.sub),
+              style: AppType.meta.copyWith(color: AppColors.sub),
+              items: [for (final (k, label) in _sorts) DropdownMenuItem(value: k, child: Text(label))],
+              onChanged: (v) => setState(() => sort = v ?? 'basic'),
             ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                switch (progress.stageOf(m.id)) {
-                  MissionStage.review => '검수 대기',
-                  MissionStage.active => '참여 중',
-                  MissionStage.ready => m.time,
-                },
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppType.caption.copyWith(fontSize: 10, color: const Color(0xFF9AA68E)),
-              ),
-            ),
-          ]),
-          Padding(
-            padding: const EdgeInsets.only(top: 10),
-            child: Text(m.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: AppType.body.copyWith(fontSize: 12, height: 1.5, fontWeight: AppType.w600, color: const Color(0xFF4B614E))),
           ),
+          MiniTabs(
+            tabs: [('전체', partnerMissions.length), ('참여 중', activeCount), ('적립 완료', doneCount)],
+            index: status.index,
+            onChanged: (i) => setState(() => status = _Status.values[i]),
+          ),
+          _search(),
+          SizedBox(
+            height: 34,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              children: [
+                for (final (k, label) in _cats) ...[
+                  ChipWidget(label: label, active: cat == k, onTap: () => setState(() => cat = k)),
+                  const SizedBox(width: 7),
+                ],
+                ChipWidget(label: '3분 이내', active: shortOnly, onTap: () => setState(() => shortOnly = !shortOnly)),
+                const SizedBox(width: 7),
+                ChipWidget(label: '구매 없음', active: freeOnly, onTap: () => setState(() => freeOnly = !freeOnly)),
+              ],
+            ),
+          ),
+          if (list.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 30),
+              child: Center(
+                child: Text(status == _Status.active ? '참여 중인 미션이 없어요.' : '조건에 맞는 미션이 없어요. 필터를 바꿔 보세요.',
+                    textAlign: TextAlign.center, style: AppType.meta.copyWith(fontSize: 13, height: 1.7)),
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 6, 20, 0),
+              child: Column(children: [
+                for (int i = 0; i < list.length; i++)
+                  MissionTile(
+                    m: list[i],
+                    done: _isDone(list[i]),
+                    active: _isActive(list[i]),
+                    last: i == list.length - 1,
+                    onTap: () => _openMission(list[i]),
+                  ),
+              ]),
+            ),
           Padding(
-            padding: const EdgeInsets.only(top: 10),
-            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              Text('+${nf(m.points)}P',
-                  style: AppType.body.copyWith(fontSize: 13, fontWeight: AppType.w700, color: const Color(0xFFC99B3A))),
-              const AppIcon('chevron', size: 16, color: Color(0xFFB4C3A9)),
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+            child: Text('체험용 미션 · 실제 제휴 및 지급 연동 전입니다. 완료한 미션은 아래에 표시돼요.',
+                style: AppType.caption.copyWith(color: AppColors.faint, height: 1.6)),
+          ),
+        ]),
+      ),
+      _dailyBenefits(),
+    ];
+  }
+
+  /// 보유 포인트 (.pts2) — 다음 교환 상품까지 남은 포인트를 막대로 보여 준다.
+  Widget _pointsCard() {
+    final goal = nextRewardGoal(widget.points);
+    final progress = goal == null ? 1.0 : widget.points / (widget.points + goal.remain);
+    return Container(
+      margin: const EdgeInsets.fromLTRB(10, 8, 10, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(16)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('보유 포인트', style: AppType.meta.copyWith(fontWeight: AppType.w500)),
+              Text.rich(
+                TextSpan(children: [
+                  TextSpan(text: nf(widget.points)),
+                  const TextSpan(text: 'P', style: TextStyle(fontSize: 13, color: AppColors.yellowInk)),
+                ]),
+                style: const TextStyle(fontSize: 18, fontWeight: AppType.w700, color: AppColors.ink, letterSpacing: -0.72),
+              ),
             ]),
           ),
-        ]),
-      ),
-    );
-  }
-
-  /// 미션 제목 + 정렬
-  Widget _listHead() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(22, 0, 20, 0),
-      child: Row(children: [
-        Expanded(child: Text('미션', style: AppType.section)),
-        DropdownButton<String>(
-          value: sort,
-          underline: const SizedBox.shrink(),
-          isDense: true,
-          style: AppType.meta.copyWith(fontSize: 12, color: AppColors.inkSoft),
-          items: [for (final (k, label) in _sorts) DropdownMenuItem(value: k, child: Text(label))],
-          onChanged: (v) => setState(() => sort = v ?? 'basic'),
-        ),
-      ]),
-    );
-  }
-
-  Widget _search() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-      child: TextField(
-        controller: search,
-        onChanged: (_) => setState(() {}),
-        style: AppType.body.copyWith(fontSize: 13),
-        decoration: InputDecoration(
-          hintText: '어떤 부업을 찾으세요?',
-          filled: true,
-          fillColor: AppColors.card,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-          prefixIcon: const Icon(Icons.search_rounded, size: 19, color: AppColors.faint),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.line)),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.line)),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.green)),
-        ),
-      ),
-    );
-  }
-
-  /// 전체 · 참여 중 · 적립 완료 (.g2-status-tabs)
-  Widget _statusTabs() {
-    final counts = {
-      _Status.all: partnerMissions.length,
-      _Status.active: activeCount,
-      _Status.done: doneCount,
-    };
-    const labels = {_Status.all: '전체', _Status.active: '참여 중', _Status.done: '적립 완료'};
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-      padding: const EdgeInsets.all(5),
-      decoration: BoxDecoration(color: const Color(0xFFEEF2EB), borderRadius: BorderRadius.circular(17)),
-      child: Row(children: [
-        for (final s in _Status.values)
-          Expanded(
+          Material(
+            color: AppColors.page,
+            borderRadius: BorderRadius.circular(9),
             child: InkWell(
-              onTap: () => setState(() => status = s),
-              borderRadius: BorderRadius.circular(13),
+              onTap: _openShop,
+              borderRadius: BorderRadius.circular(9),
               child: Container(
-                height: 42,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: status == s ? AppColors.card : Colors.transparent,
-                  borderRadius: BorderRadius.circular(13),
-                ),
-                child: Row(mainAxisAlignment: MainAxisAlignment.center, mainAxisSize: MainAxisSize.min, children: [
-                  Flexible(
-                    child: Text(labels[s]!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppType.body.copyWith(
-                          fontSize: 12.5,
-                          fontWeight: AppType.w600,
-                          color: status == s ? AppColors.green : const Color(0xFF8A8C83),
-                        )),
-                  ),
-                  const SizedBox(width: 5),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: status == s ? const Color(0xFFEDF1E1) : const Color(0xFFE7EEE4),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text('${counts[s]}',
-                        style: AppType.caption.copyWith(
-                          fontSize: 10,
-                          color: status == s ? const Color(0xFF5C713F) : const Color(0xFF87A077),
-                        )),
-                  ),
+                height: 30,
+                padding: const EdgeInsets.fromLTRB(12, 0, 8, 0),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Text('포인트샵', style: AppType.meta.copyWith(fontSize: 12.5, fontWeight: AppType.w600, color: AppColors.ink2)),
+                  const Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.ink2),
                 ]),
               ),
             ),
           ),
-      ]),
-    );
-  }
-
-  /// 종류 칩 (.mission-categories-v8)
-  Widget _catChips() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-      child: Wrap(spacing: 7, runSpacing: 7, children: [
-        for (final (k, label) in _cats)
-          _chip(
-            label: label,
-            selected: cat == k,
-            onTap: () => setState(() => cat = k),
-            selectedBg: AppColors.green,
-            selectedInk: Colors.white,
+        ]),
+        const SizedBox(height: 10),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(2),
+          child: LinearProgressIndicator(
+            value: progress.clamp(0, 1).toDouble(),
+            minHeight: 3,
+            backgroundColor: AppColors.soft2,
+            valueColor: const AlwaysStoppedAnimation(AppColors.yellow),
           ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          goal == null ? '포인트샵의 모든 상품으로 바꿀 수 있어요' : '${nf(goal.remain)}P 더 모으면 ${goal.name}(으)로 바꿀 수 있어요',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppType.caption.copyWith(fontSize: 11.5),
+        ),
       ]),
     );
   }
 
-  /// 조건 칩 (.gy-filters)
-  Widget _filterChips() {
+  void _openShop() => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => PointShopScreen(
+          points: widget.points, redeem: widget.redeem, coupons: widget.coupons,
+          useCoupon: widget.useCoupon, goPointsHub: widget.goPointsHub,
+        )),
+      );
+
+  Widget _search() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
-      child: Row(children: [
-        _chip(
-          label: '3분 이내',
-          selected: shortOnly,
-          onTap: () => setState(() => shortOnly = !shortOnly),
-          selectedBg: const Color(0xFFEDF2E5),
-          selectedInk: const Color(0xFF405529),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      child: TextField(
+        controller: search,
+        onChanged: (_) => setState(() {}),
+        style: AppType.body.copyWith(fontSize: 13),
+        decoration: const InputDecoration(
+          hintText: '어떤 미션을 찾으세요?',
+          prefixIcon: Icon(Icons.search_rounded, size: 19, color: AppColors.faint),
+          contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         ),
-        const SizedBox(width: 7),
-        _chip(
-          label: '구매 없음',
-          selected: freeOnly,
-          onTap: () => setState(() => freeOnly = !freeOnly),
-          selectedBg: const Color(0xFFEDF2E5),
-          selectedInk: const Color(0xFF405529),
-        ),
-      ]),
-    );
-  }
-
-  Widget _chip({
-    required String label,
-    required bool selected,
-    required VoidCallback onTap,
-    required Color selectedBg,
-    required Color selectedInk,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? selectedBg : AppColors.card,
-          border: Border.all(color: selected ? selectedBg : AppColors.line),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Text(label,
-            style: AppType.caption.copyWith(
-              fontSize: 12,
-              fontWeight: selected ? AppType.w600 : AppType.w400,
-              color: selected ? selectedInk : const Color(0xFF879187),
-            )),
       ),
     );
   }
 
-  /// 출석 밖의 기본 적립(광고·프로필·친구 추천 등)은 시안에 없지만 앱에는 있다.
-  /// 부업 탭을 미션 중심으로 비우는 대신, 한 줄로 남겨 들어갈 수 있게 한다.
+  /// 출석 밖의 기본 적립(광고·프로필·친구 추천 등). 미션 탭 아래 한 줄로 남긴다. (.bridge)
   Widget _dailyBenefits() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
-      child: InkWell(
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => ScreenFrame(
-            title: '매일의 혜택',
-            onBack: () => Navigator.pop(context),
-            child: BenefitsView(
-              points: widget.points, coupons: widget.coupons, items: widget.items,
-              scope: widget.scope, actions: widget.actions, monthEarn: widget.monthEarn,
-              freeLeft: widget.freeLeft, doneMissions: widget.doneMissions,
-              earn: widget.earn, isClaimed: widget.isClaimed, redeem: widget.redeem, useCoupon: widget.useCoupon,
-              completeMission: widget.completeMission, goPointsHub: widget.goPointsHub, flash: widget.flash,
-              showHeader: false,
-            ),
-          )),
-        ),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.card,
-            border: Border.all(color: AppColors.line),
-            borderRadius: BorderRadius.circular(AppRadius.card),
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
+      child: Material(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(AppRadius.surface),
+        child: InkWell(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => ScreenFrame(
+              title: '매일의 혜택',
+              onBack: () => Navigator.pop(context),
+              child: BenefitsView(
+                points: widget.points, coupons: widget.coupons, items: widget.items,
+                scope: widget.scope, actions: widget.actions, monthEarn: widget.monthEarn,
+                freeLeft: widget.freeLeft, doneMissions: widget.doneMissions,
+                earn: widget.earn, isClaimed: widget.isClaimed, redeem: widget.redeem, useCoupon: widget.useCoupon,
+                completeMission: widget.completeMission, goPointsHub: widget.goPointsHub, flash: widget.flash,
+                showHeader: false,
+              ),
+            )),
           ),
+          borderRadius: BorderRadius.circular(AppRadius.surface),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(children: [
+              const IconTile(icon: 'gift', bg: Color(0xFFFBF5E6), fg: Color(0xFFD99A00)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('매일의 혜택', style: AppType.body.copyWith(fontWeight: AppType.w700)),
+                  Text('광고 보기 · 프로필 완성 · 친구 추천 포인트',
+                      maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta.copyWith(fontWeight: AppType.w600)),
+                ]),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: AppColors.faint),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── 공동구매 ────────────────────────────────────────────────────────────
+
+  List<Widget> _gonguSections() {
+    final items = LocalGonguRepository().fetchItems();
+    return [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 14, 4),
+        child: Row(children: [
+          Expanded(child: Text('모집 인원이 늘수록 보상이 커져요', style: AppType.meta.copyWith(fontWeight: AppType.w500))),
+          TextLink(label: '이용 안내', onTap: _openGonguGuide),
+        ]),
+      ),
+      SecCard(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+        child: GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: EdgeInsets.zero,
+          itemCount: items.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2, crossAxisSpacing: 10, mainAxisSpacing: 16, mainAxisExtent: 262,
+          ),
+          itemBuilder: (_, i) => _GonguCard(
+            g: items[i],
+            tone: _gpTones[i % _gpTones.length],
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => GonguDetailScreen(g: items[i], earn: widget.earn, isClaimed: widget.isClaimed)),
+            ),
+          ),
+        ),
+      ),
+    ];
+  }
+
+  /// 공동구매 카드 바탕색 (시안 `GP[].bg/fg`)
+  static const _gpTones = [
+    (Color(0xFFEAF4F4), Color(0xFF1D7E7E)),
+    (Color(0xFFFFF1DC), Color(0xFFB26A00)),
+    (Color(0xFFF1EEFF), Color(0xFF5B4BE0)),
+    (Color(0xFFFFF0E3), Color(0xFFDA7419)),
+  ];
+
+  /// 공동구매 안내 — 기존 공동구매 화면(설명 + 목록)으로 간다.
+  void _openGonguGuide() => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => GonguScreen(earn: widget.earn, isClaimed: widget.isClaimed)),
+      );
+
+  /// 브랜드·가게 제휴 문의 (.inq)
+  Widget _inquiry() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+      child: InkWell(
+        onTap: _openBrandHub,
+        child: SizedBox(
+          height: 52,
           child: Row(children: [
-            Container(
-              width: 40,
-              height: 40,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(color: AppColors.page, borderRadius: BorderRadius.circular(12)),
-              child: const AppIcon('gift', size: 21, color: AppColors.goalMintInk),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('매일의 혜택', style: AppType.body.copyWith(fontSize: 13, fontWeight: AppType.w600)),
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text('광고 보기 · 프로필 완성 · 친구 추천처럼 오늘 받을 수 있는 포인트',
-                      style: AppType.caption.copyWith(fontSize: 10, height: 1.6)),
-                ),
-              ]),
-            ),
-            const AppIcon('chevron', size: 17, color: AppColors.faint),
+            Expanded(child: Text('브랜드·가게 제휴 문의', style: AppType.meta.copyWith(fontWeight: AppType.w700))),
+            const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.sub),
           ]),
         ),
       ),
     );
   }
+}
 
-  /// 겸사겸사 파트너 (.g4-partner-footer)
-  Widget _partnerFooter() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(20, 27, 20, 10),
-      padding: const EdgeInsets.all(21),
-      decoration: BoxDecoration(color: const Color(0xFF304F45), borderRadius: BorderRadius.circular(AppRadius.surface)),
+/// 공동구매 카드 (.gp — 위 그림 칸, 아래 할인율·가격·모집 막대)
+class _GonguCard extends StatelessWidget {
+  final Gongu g;
+  final (Color, Color) tone;
+  final VoidCallback onTap;
+  const _GonguCard({required this.g, required this.tone, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final off = g.list <= 0 ? 0 : ((1 - g.price / g.list) * 100).round();
+    final ratio = g.target <= 0 ? 0.0 : (g.joined / g.target).clamp(0, 1).toDouble();
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Container(
-            width: 44,
-            height: 44,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.07),
-              borderRadius: BorderRadius.circular(AppRadius.tile),
-            ),
-            child: const AppIcon('handshake', size: 22, color: Color(0xFFD0DCC6)),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('겸사겸사 파트너', style: AppType.caption.copyWith(fontSize: 10, color: const Color(0xFFA9C1B4))),
-              Padding(
-                padding: const EdgeInsets.only(top: 5),
-                child: Text('겸사겸사와 브랜드 협업',
-                    style: AppType.sectionSmall.copyWith(fontSize: 16, height: 1.4, color: const Color(0xFFF4F6F0))),
+        AspectRatio(
+          aspectRatio: 1,
+          child: Container(
+            decoration: BoxDecoration(color: tone.$1, borderRadius: BorderRadius.circular(16)),
+            child: Stack(children: [
+              Center(child: Text(g.icon, style: const TextStyle(fontSize: 42))),
+              Positioned(
+                left: 8,
+                bottom: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(5)),
+                  child: Text(g.brand, style: AppType.caption.copyWith(fontSize: 10, fontWeight: AppType.w600, color: AppColors.ink2)),
+                ),
               ),
             ]),
           ),
-        ]),
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 17),
-          child: Text('브랜드를 경험하는 미션부터 공동구매까지.\n목표에 맞는 협업을 함께 준비해요.',
-              style: AppType.meta.copyWith(fontSize: 12, height: 1.85, color: const Color(0xFFB9CEBF))),
         ),
-        Wrap(spacing: 6, runSpacing: 6, children: [
-          for (final t in ['체험·리뷰', '설문·리서치', '공동구매·광고'])
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-              decoration: BoxDecoration(
-                border: Border.all(color: const Color(0xFF597266)),
-                borderRadius: BorderRadius.circular(7),
-              ),
-              child: Text(t, style: AppType.caption.copyWith(fontSize: 10, color: const Color(0xFFBBD1BE))),
+        const SizedBox(height: 8),
+        Text(g.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.body.copyWith(fontSize: 13, fontWeight: AppType.w600)),
+        const SizedBox(height: 2),
+        Text.rich(
+          TextSpan(children: [
+            if (off > 0) TextSpan(text: '$off% ', style: const TextStyle(color: AppColors.red)),
+            TextSpan(text: nf(g.price)),
+            TextSpan(
+              text: ' ${nf(g.list)}',
+              style: const TextStyle(fontSize: 11, fontWeight: AppType.w400, color: AppColors.faint, decoration: TextDecoration.lineThrough),
             ),
-        ]),
-        Padding(
-          padding: const EdgeInsets.only(top: 21),
-          child: InkWell(
-            onTap: _openBrandHub,
-            borderRadius: BorderRadius.circular(13),
-            child: Container(
-              height: 45,
-              padding: const EdgeInsets.symmetric(horizontal: 15),
-              decoration: BoxDecoration(color: const Color(0xFFE9E9CD), borderRadius: BorderRadius.circular(13)),
-              child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                Text('협업 방식 알아보기',
-                    style: AppType.button.copyWith(fontSize: 12, fontWeight: AppType.w700, color: const Color(0xFF385443))),
-                const AppIcon('arrowRight', size: 17, color: Color(0xFF385443)),
-              ]),
-            ),
+          ]),
+          style: const TextStyle(fontSize: 15, fontWeight: AppType.w700, color: AppColors.ink),
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(2),
+          child: LinearProgressIndicator(
+            value: ratio,
+            minHeight: 3,
+            backgroundColor: AppColors.soft2,
+            valueColor: const AlwaysStoppedAnimation(AppColors.ink),
           ),
         ),
+        const SizedBox(height: 5),
+        Text('${g.joined}/${g.target}명 모집', style: AppType.caption.copyWith(fontSize: 11)),
       ]),
     );
   }

@@ -7,8 +7,8 @@ import 'package:gyeomsa/features/benefits/screens/side_job_view.dart';
 import 'package:gyeomsa/features/errand/navigation/errand_actions.dart';
 import 'package:gyeomsa/features/errand/repositories/errand_repository.dart';
 
-/// 부업 탭은 시안(`gyumsa-refined`)의 미션 중심 화면이다.
-/// 검색·상태·조건 줄이 기준 폰 폭에서 넘치지 않는지와, 미션 조건 문구가
+/// 미션·공구 탭은 시안 v33의 `#sideRoot`이다.
+/// 포인트 카드·상태 세그먼트·검색·칩이 기준 폰 폭에서 넘치지 않는지와, 미션 조건 문구가
 /// 목록에 그대로 나오는지를 본다.
 Widget _view({List<String> done = const []}) {
   final items = LocalErrandRepository().fetchSeedItems();
@@ -31,7 +31,7 @@ Widget _view({List<String> done = const []}) {
 }
 
 void main() {
-  testWidgets('부업 탭이 기준 폰 폭에서 넘침 없이 그려진다', (tester) async {
+  testWidgets('미션·공구 탭이 기준 폰 폭에서 넘침 없이 그려진다', (tester) async {
     tester.view.physicalSize = const Size(375, 812);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -39,16 +39,16 @@ void main() {
     await tester.pumpWidget(_view());
     await tester.pump();
 
-    expect(find.text('오늘은 뭘 해볼까요?'), findsOneWidget);
-    expect(find.text('가볍게 시작해요'), findsOneWidget);
-    expect(find.text('어떤 부업을 찾으세요?'), findsOneWidget);
+    expect(find.text('보유 포인트'), findsOneWidget);
+    expect(find.text('참여할 미션'), findsOneWidget);
+    expect(find.text('어떤 미션을 찾으세요?'), findsOneWidget);
     for (final s in ['전체', '참여 중', '적립 완료']) {
       expect(find.text(s), findsWidgets, reason: '상태 탭 $s 누락');
     }
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('끝까지 내리면 파트너 안내가 나온다', (tester) async {
+  testWidgets('끝까지 내리면 제휴 문의가 나오고, 공동구매 탭으로 바꿀 수 있다', (tester) async {
     tester.view.physicalSize = const Size(375, 812);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -57,11 +57,17 @@ void main() {
     await tester.pump();
 
     await tester.dragUntilVisible(
-      find.text('겸사겸사와 브랜드 협업'),
-      find.byType(ListView),
+      find.text('브랜드·가게 제휴 문의'),
+      find.byType(ListView).first,
       const Offset(0, -400),
     );
-    expect(find.text('겸사겸사와 브랜드 협업'), findsOneWidget);
+    expect(find.text('브랜드·가게 제휴 문의'), findsOneWidget);
+
+    await tester.drag(find.byType(ListView).first, const Offset(0, 4000));
+    await tester.pump();
+    await tester.tap(find.text('공동구매'));
+    await tester.pump();
+    expect(find.text('모집 인원이 늘수록 보상이 커져요'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

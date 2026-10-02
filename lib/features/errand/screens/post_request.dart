@@ -33,7 +33,10 @@ class PostRequest extends StatefulWidget {
   /// 앞선 갈래 화면([CreateChoiceScreen])에서 정해 온 종류 — ask | sea.
   /// 지정하면 저장된 임시글의 종류보다 이 값을 따른다.
   final String? initialKind;
-  const PostRequest({super.key, required this.scope, required this.onSubmit, this.initialKind});
+
+  /// 홈의 '자주 하는 부탁'에서 고른 종류. 지정하면 임시글의 종류보다 이 값을 따른다.
+  final String? initialCat;
+  const PostRequest({super.key, required this.scope, required this.onSubmit, this.initialKind, this.initialCat});
   @override
   State<PostRequest> createState() => _PostRequestState();
 }
@@ -72,7 +75,7 @@ class _PostRequestState extends State<PostRequest> {
     String s(String k, String f) => d[k] is String ? d[k] as String : f;
     int n(String k, int f) => d[k] is int ? d[k] as int : f;
     kind = (widget.initialKind ?? s('kind', kind)) == 'sea' ? 'sea' : 'ask';
-    cat = s('cat', cat);
+    cat = widget.initialCat ?? s('cat', cat);
     cc = s('cc', cc);
     city = s('city', city);
     mins = n('mins', mins);

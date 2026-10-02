@@ -2,16 +2,19 @@ import 'package:flutter/material.dart';
 
 import 'colors.dart';
 
-/// 기획 시안 v9의 타이포그래피·모서리 값.
+/// 기획 시안 v33의 타이포그래피·모서리 값.
 ///
-/// 시안은 Pretendard에 letter-spacing을 `-0.025em` 안팎으로 조여서 쓴다.
+/// 시안은 letter-spacing을 `-0.03em` 안팎으로 조여서 쓴다.
 /// CSS의 `em` 단위는 글자 크기에 비례하므로, Flutter에서는 각 스타일마다
 /// `fontSize * 비율`을 letterSpacing에 직접 넣는다.
+///
+/// 시안의 서체는 Noto Sans KR(800·900까지 사용)이지만, 앱은 이미 번들한
+/// Pretendard(400~700)를 그대로 쓴다. 800·900은 가장 가까운 [w700]으로 맞춘다.
 class AppType {
   static const family = 'Pretendard';
 
-  /// 시안의 font-weight 값을 Flutter가 가진 100 단위로 내림 맞춤.
-  /// (720·730·740 → w700, 650 → w600, 550 → w500)
+  /// 시안의 font-weight 값을 Flutter가 가진 100 단위로 맞춤.
+  /// (800·900 → w700 — 번들한 Pretendard가 Bold까지다)
   static const w400 = FontWeight.w400;
   static const w500 = FontWeight.w500;
   static const w600 = FontWeight.w600;
@@ -20,23 +23,23 @@ class AppType {
   static TextStyle _t(double size, FontWeight weight, Color color, {double tracking = -0.025, double? height}) =>
       TextStyle(fontSize: size, fontWeight: weight, color: color, letterSpacing: size * tracking, height: height);
 
-  /// .tab-title h1 — 탭 최상단 제목 (부업 · 채팅 · 내 정보)
-  static TextStyle get tabTitle => _t(28, w700, AppColors.ink, tracking: -0.036);
+  /// .hdr .ttl — 탭 최상단 제목 (미션·공구 · 해외 · 채팅 · 마이)
+  static TextStyle get tabTitle => _t(21, w700, AppColors.ink, tracking: -0.02);
 
-  /// .page-header h1 — 푸시된 화면의 제목
-  static TextStyle get pageTitle => _t(18, w700, AppColors.ink, tracking: -0.03);
+  /// 푸시된 화면의 제목
+  static TextStyle get pageTitle => _t(17, w700, AppColors.ink, tracking: -0.03);
 
-  /// .section-heading h2
-  static TextStyle get section => _t(19, w700, AppColors.ink, tracking: -0.033);
+  /// 큰 섹션 제목
+  static TextStyle get section => _t(18, w700, AppColors.ink, tracking: -0.03);
 
-  /// .nearby-heading h2 (홈 안쪽 소제목)
-  static TextStyle get sectionSmall => _t(15, w600, AppColors.inkSoft, tracking: -0.02);
+  /// .sh .t — 카드 안 섹션 제목
+  static TextStyle get sectionSmall => _t(15.5, w700, AppColors.ink, tracking: -0.03);
 
-  /// .task-title
-  static TextStyle get taskTitle => _t(16, w600, AppColors.inkSoft, tracking: -0.035, height: 1.45);
+  /// .row .tt
+  static TextStyle get taskTitle => _t(14, w600, AppColors.ink, tracking: -0.02, height: 1.5);
 
-  /// .task-price
-  static TextStyle get price => _t(18, w700, AppColors.inkSoft, tracking: -0.028);
+  /// .row .v
+  static TextStyle get price => _t(15, w700, AppColors.ink, tracking: -0.03);
 
   /// 본문
   static TextStyle get body => _t(14, w400, AppColors.ink);
@@ -51,17 +54,14 @@ class AppType {
   static TextStyle get button => _t(14, w600, AppColors.ink, tracking: -0.02);
 }
 
-/// 모서리 반경.
-///
-/// 최신 시안(`gyumsa-refined`)은 v9보다 한 단계씩 더 둥글다.
-/// (카드 20~23px · 버튼/입력창 15px · 아이콘 타일 18px)
+/// 모서리 반경. (v33: 섹션 카드 18 · 히어로 20 · 버튼 13~15 · 아이콘 타일 12)
 class AppRadius {
-  static const surface = 23.0; // 큰 카드 · 시트
-  static const card = 20.0; // 일반 카드 · 배너
-  static const tile = 15.0; // 버튼 · 입력창
-  static const emblem = 18.0; // 아이콘 타일
-  static const chip = 12.0; // 목록 칩
-  static const pill = 20.0; // 홈의 둥근 칩
+  static const surface = 20.0; // 히어로 · 시트 · 큰 카드
+  static const card = 18.0; // 섹션 카드 (.sec)
+  static const tile = 14.0; // 버튼 · 입력창 · 세그먼트
+  static const emblem = 12.0; // 아이콘 타일 (.tile)
+  static const chip = 20.0; // 목록 칩 (.chip)
+  static const pill = 20.0; // 둥근 칩
 }
 
 ThemeData buildAppTheme() {
