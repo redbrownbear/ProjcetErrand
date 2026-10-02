@@ -55,15 +55,20 @@ const missionProviders = <MissionProvider>[
     settle: 'CPS — 구매 확정 금액의 일정 비율, 익익월 정산',
     proxyable: true,
   ),
+  // 광고 보고 포인트 받기는 카카오 애드핏 하나만 쓴다.
+  // 애드핏 운영정책 5.3.3은 리워드 동영상을 '사용자가 직접 고른 경우(Opt-in)'에만,
+  // 보상 조건·지급 여부·지급 시점·제외 사유를 먼저 알린 뒤에 허용한다.
+  // 5.2는 배너·네이티브 광고를 보거나 누른 대가로 보상하는 것을 금지한다 —
+  // 그래서 포인트는 리워드 동영상에서만 주고, 배너 광고와는 절대 잇지 않는다.
   MissionProvider(
-    id: 'admob',
-    name: 'Google AdMob 리워드 광고',
+    id: 'adfit',
+    name: '카카오 애드핏 리워드 동영상',
     kind: ProviderKind.rewardAd,
     status: LinkStatus.needsKey,
     note: '영상 한 편을 끝까지 보면 광고 수익이 생기고 그중 일부를 포인트로 준다',
-    keys: ['ADMOB_REWARDED_ANDROID'],
-    docUrl: 'https://developers.google.com/admob/flutter/rewarded',
-    settle: 'eCPM 기준 노출·시청 수익, 월 정산',
+    keys: ['ADFIT_REWARD_ANDROID'],
+    docUrl: 'https://adfit.kakao.com/',
+    settle: '노출·시청 수익, 월 정산',
   ),
   MissionProvider(
     id: 'adpick',

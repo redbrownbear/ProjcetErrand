@@ -15,6 +15,7 @@ import '../data/daily_quiz.dart';
 import '../models/daily_mission.dart';
 import '../models/reward_ledger.dart';
 import 'mission_engine.dart';
+import 'reward_ad_flow.dart';
 
 /// 미션을 실제로 실행하는 쪽.
 ///
@@ -68,9 +69,8 @@ class MissionRunner {
         await _runDeal(context, s);
 
       case MissionAction.rewardAd:
-        // google_mobile_ads를 붙이면 여기서 RewardedAd.show를 부르고,
-        // onUserEarnedReward 콜백에서 _claim을 호출한다.
-        flash('리워드 광고는 AdMob 광고 단위 등록 후 열려요');
+        // 카카오 애드핏 리워드 동영상. 시청 전 안내(Opt-in) → 재생 → 끝까지 봤을 때만 적립.
+        await RewardAdFlow(earn: earn, flash: flash).run(context, s);
 
       case MissionAction.walk:
         goWalk();

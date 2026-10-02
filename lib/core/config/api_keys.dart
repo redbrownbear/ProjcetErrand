@@ -27,9 +27,10 @@ class ApiKeys {
   static const coupangAccess = String.fromEnvironment('COUPANG_ACCESS_KEY');
   static const coupangSecret = String.fromEnvironment('COUPANG_SECRET_KEY');
 
-  /// 구글 애드몹 리워드 광고 단위 (google_mobile_ads 추가 후 사용)
-  static const admobRewardedAndroid = String.fromEnvironment('ADMOB_REWARDED_ANDROID');
-  static const admobRewardedIos = String.fromEnvironment('ADMOB_REWARDED_IOS');
+  /// 카카오 애드핏 리워드 동영상 광고단위 ID (`DAN-…`). 플랫폼마다 따로 발급된다.
+  /// 광고 보고 포인트 받기는 카카오 광고만 쓴다.
+  static const adfitRewardAndroid = String.fromEnvironment('ADFIT_REWARD_ANDROID');
+  static const adfitRewardIos = String.fromEnvironment('ADFIT_REWARD_IOS');
 
   /// 오퍼월 (애드팝콘 / 버즈빌 / Tnk) — 사업자 등록 후 발급
   static const offerwallAppKey = String.fromEnvironment('OFFERWALL_APP_KEY');

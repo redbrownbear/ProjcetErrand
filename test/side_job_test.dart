@@ -40,6 +40,8 @@ void main() {
     await tester.pump();
 
     expect(find.text('보유 포인트'), findsOneWidget);
+    expect(find.text('광고 보고 포인트 받기'), findsOneWidget);
+    expect(find.text('준비 중'), findsOneWidget); // 광고단위 ID가 없는 빌드
     expect(find.text('참여할 미션'), findsOneWidget);
     expect(find.text('어떤 미션을 찾으세요?'), findsOneWidget);
     for (final s in ['전체', '참여 중', '적립 완료']) {

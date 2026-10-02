@@ -21,10 +21,10 @@ const dailyMissions = <DailyMission>[
     title: '광고 영상 보고 적립',
     sub: '30초 영상 한 편 · 하루 ${PointRules.adWatchCap}번까지',
     points: PointRules.adWatch,
-    providerId: 'admob',
+    providerId: 'adfit',
     action: MissionAction.rewardAd,
     cap: PointRules.adWatchCap,
-    verify: '영상 끝까지 시청(리워드 콜백)',
+    verify: '카카오 애드핏 영상 끝까지 시청(리워드 콜백)',
   ),
 
   // 정액으로 주면 1만원짜리를 산 사람에게도 8만원어치 판 만큼 줘야 해서 건당

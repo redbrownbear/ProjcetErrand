@@ -82,6 +82,7 @@ class AppIcon extends StatelessWidget {
     'comment': Icons.mode_comment_outlined,
     'plane': Icons.flight_takeoff_rounded,
     'dot': Icons.circle,
+    'play': Icons.play_circle_outline_rounded,
   };
 
   /// 부탁 종류(`CATS`의 키) → 아이콘. 데이터의 이모지는 그대로 두고, 화면에서만 선형으로 그린다.

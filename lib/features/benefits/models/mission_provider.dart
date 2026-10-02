@@ -110,8 +110,8 @@ class MissionProvider {
         'KAKAO_REST_KEY' => ApiKeys.kakaoRest,
         'COUPANG_ACCESS_KEY' => ApiKeys.coupangAccess,
         'COUPANG_SECRET_KEY' => ApiKeys.coupangSecret,
-        'ADMOB_REWARDED_ANDROID' => ApiKeys.admobRewardedAndroid,
-        'ADMOB_REWARDED_IOS' => ApiKeys.admobRewardedIos,
+        'ADFIT_REWARD_ANDROID' => ApiKeys.adfitRewardAndroid,
+        'ADFIT_REWARD_IOS' => ApiKeys.adfitRewardIos,
         'OFFERWALL_APP_KEY' => ApiKeys.offerwallAppKey,
         _ => '',
       };
