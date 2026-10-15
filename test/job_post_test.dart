@@ -3,33 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:gyeomsa/features/dayjob/models/job_posting.dart';
 import 'package:gyeomsa/features/dayjob/screens/job_post_screen.dart';
-import 'package:gyeomsa/features/errand/screens/create_choice_screen.dart';
 
 /// 단기알바는 일상 부탁과 달리 **채용**이라, 근로 조건을 빠뜨린 채 다음 단계로
 /// 넘어가지 못해야 한다. 시안(`gyumsa-refined`)의 세 단계 검증을 그대로 본다.
 void main() {
-  testWidgets('부탁하기 — 세 갈래를 먼저 고른다', (tester) async {
-    tester.view.physicalSize = const Size(375, 812);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.reset);
-
-    final picked = <String>[];
-    await tester.pumpWidget(MaterialApp(
-      home: CreateChoiceScreen(
-        onLocal: () => picked.add('ask'),
-        onOverseas: () => picked.add('sea'),
-        onJob: () => picked.add('job'),
-      ),
-    ));
-    await tester.pump();
-
-    expect(find.text('어떤 일을 맡기고 싶으세요?'), findsOneWidget);
-    for (final s in ['일상 부탁', '해외 사다주기', '단기알바 모집']) {
-      expect(find.text(s), findsOneWidget);
-    }
-    expect(tester.takeException(), isNull);
-  });
-
   testWidgets('단기알바 모집 — 회사·업무를 비우면 다음으로 못 간다', (tester) async {
     tester.view.physicalSize = const Size(375, 900);
     tester.view.devicePixelRatio = 1.0;

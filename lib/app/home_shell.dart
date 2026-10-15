@@ -22,7 +22,10 @@ import '../features/benefits/models/attendance.dart';
 import '../features/benefits/models/reward_ledger.dart';
 import '../features/benefits/models/reward_product.dart';
 import '../features/benefits/services/mission_tracker.dart';
-import '../features/benefits/screens/side_job_view.dart';
+import '../features/benefits/screens/point_shop_screen.dart';
+import '../features/benefits/screens/walk_screen.dart';
+import '../features/benefits/services/mission_engine.dart';
+import '../features/benefits/services/mission_runner.dart';
 import '../features/chat/screens/chat_view.dart';
 import '../features/dayjob/screens/job_post_screen.dart';
 import '../features/errand/models/offer.dart';
@@ -31,8 +34,10 @@ import '../features/errand/models/trade.dart';
 import '../features/errand/navigation/errand_actions.dart';
 import '../features/errand/repositories/errand_repository.dart';
 import '../features/errand/repositories/request_repository.dart';
-import '../features/errand/screens/create_choice_screen.dart';
-import '../features/errand/screens/home_content.dart';
+import '../features/community/screens/community_view.dart';
+import '../features/dayjob/models/day_job.dart';
+import '../features/dayjob/screens/day_job_screen.dart';
+import '../features/errand/data/categories.dart';
 import '../features/errand/screens/list_screen.dart';
 import '../features/errand/screens/post_request.dart';
 import '../features/errand/widgets/region_sheet.dart';
@@ -44,6 +49,16 @@ import '../features/profile/models/trust_level.dart';
 import '../features/profile/models/user_profile.dart';
 import '../features/profile/screens/me_view.dart';
 import '../features/profile/screens/saved_screen.dart';
+import '../features/profile/screens/history_screen.dart';
+import '../features/home/screens/domestic_home.dart';
+import '../features/home/screens/overseas_home.dart';
+import '../features/lucky/models/tickets.dart';
+import '../features/market/models/used_item.dart';
+import '../features/market/screens/market_view.dart';
+import '../features/trip/screens/trip_feed_screen.dart';
+import '../core/widgets/kit.dart';
+import 'app_nav.dart';
+import 'neighbor_store.dart';
 
 /// 앱의 상태를 한곳에 모아 두는 껍데기.
 ///
@@ -69,9 +84,26 @@ class _HomeShellState extends State<HomeShell> {
   UserProfile? profile;
   bool syncing = false;
 
-  /// 하단 1차 메뉴. 기획 시안 v9의 `tabs`와 같다 — 홈 · 부업 · (부탁하기) · 채팅 · 내 정보.
-  /// '진행 중'은 탭에서 빠지고 홈 배너·채팅 빈 화면에서 전체화면으로 열린다.
-  String tab = 'home'; // home | benefits | chat | me
+  /// 하단 1차 메뉴. 시안 v77 — 홈 · 마켓 · 커뮤니티 · 채팅 · 마이.
+  /// '진행 중'은 탭에서 빠지고 알림·채팅·마이에서 전체화면으로 열린다.
+  String tab = 'home'; // home | market | com | chat | me
+
+  /// 제안 · 이야기 · 가는 김에 · 중고 · 응모권 (v77에서 새로 생긴 이웃 활동)
+  final NeighborStore _store = NeighborStore();
+
+  /// 탭 어디서나 같은 화면을 여는 길목
+  late final AppNav nav = AppNav(
+    store: _store,
+    nickname: () => profile?.nickname ?? '나',
+    area: () => shortRegion(scope),
+    items: () => items,
+    actions: () => actions,
+    flash: flash,
+    openAskForm: () => _openRequestForm('ask'),
+    openSeaForm: () => _openRequestForm('sea'),
+    goCommunity: goCommunity,
+    requestDelivery: _requestDelivery,
+  );
   String? toast;
   late final List<TaskItem> _seed;
   String scope = '서울 서초구';
@@ -214,6 +246,8 @@ class _HomeShellState extends State<HomeShell> {
       if (mounted) setState(() => _server = list);
     });
     _authSub = AuthService().authStateChanges.listen(_bindUser);
+    _store.toast = flash;
+    _store.gate = requireLogin;
   }
 
   @override
@@ -221,6 +255,8 @@ class _HomeShellState extends State<HomeShell> {
     _authSub?.cancel();
     _requestSub?.cancel();
     _rev.dispose();
+    _store.dispose();
+    _homeScroll.dispose();
     super.dispose();
   }
 
@@ -380,7 +416,10 @@ class _HomeShellState extends State<HomeShell> {
       flash('오늘은 이미 받았어요');
       return Future.value();
     }
-    return earn(today.todayReward, '출석 적립', key: Attendance.keyFor(today.today), daily: false);
+    return earn(today.todayReward, '출석 적립', key: Attendance.keyFor(today.today), daily: false).then((_) {
+      // 출석 응모권 +1. 로그인을 안 해서 출석이 안 찍혔으면 주지 않는다.
+      if (attendance.attendedToday) _store.gainTicket(TicketRules.attend, quiet: true);
+    });
   }
 
   /// [key]가 같은 보상은 한 번만 지급된다. [daily]가 true면 한국 시간 기준
@@ -436,12 +475,13 @@ class _HomeShellState extends State<HomeShell> {
         setState(() => doneMissions = [...doneMissions, m.id]);
         _saveMissions();
         earn(m.points, m.title, key: '$_missionKey${m.id}', daily: false);
+        _store.gainTicket(m.cat == 'visit' ? TicketRules.visit : TicketRules.survey, n: ticketsFor(m), quiet: true);
       });
 
   // ── 이동 ────────────────────────────────────────────────────────────────
 
-  /// 혜택·미션은 하단 '부업' 탭이 1차 메뉴다.
-  void goPointsHub() => _switchTab('benefits');
+  /// 혜택·미션은 하단 '마켓' 탭의 첫 칸이다.
+  void goPointsHub() => goMarket(0);
 
   /// 진행 중인 부탁. v9처럼 탭이 아니라 홈 배너·채팅에서 여는 전체화면이다.
   void goActivity() => _pushLive(() => ScreenFrame(
@@ -516,6 +556,8 @@ class _HomeShellState extends State<HomeShell> {
       for (final it in items) {
         if (it.id != id) continue;
         if (!it.isMine && it.price > 0) _addPay(PayKind.earn, it.price, it.title, requestId: it.id);
+        // 응모권 — 도와준 쪽 +3(해외 +3), 내 부탁 완료 확인 +2
+        _store.gainTicket(it.isMine ? TicketRules.myDone : (it.mode == 'sea' ? TicketRules.seaDone : TicketRules.helpDone));
         break;
       }
     }
@@ -612,6 +654,7 @@ class _HomeShellState extends State<HomeShell> {
     });
     _saveRequests();
     MissionTracker.bump(MissionTracker.postTask, unique: it.id);
+    _store.gainTicket(TicketRules.firstPost, quiet: true);
     if (uid != null) _requests.add(it);
     flash(uid == null
         ? '부탁을 올렸어요 · 로그인하면 계정에 저장돼요'
@@ -635,17 +678,8 @@ class _HomeShellState extends State<HomeShell> {
         );
       });
 
-  /// '부탁하기' — 일상 부탁 · 해외 사다주기 · 단기알바 모집 갈래부터 고른다.
-  void openPost() => requireLogin(() {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => CreateChoiceScreen(
-            onLocal: () => _openRequestForm('ask'),
-            onOverseas: () => _openRequestForm('sea'),
-            onJob: openJobPost,
-          )),
-        );
-      });
+  /// '글쓰기' — 가는 김에 · 제안 · 부탁 · 해외 부탁 · 중고 · 커뮤니티 중에서 고른다 (시안 v42)
+  void openPost() => nav.openWrite(context);
 
   /// 닉네임 변경. 계정(표시 이름)과 프로필 문서를 같이 맞춘다.
   Future<void> renameNickname(String name) async {
@@ -674,49 +708,281 @@ class _HomeShellState extends State<HomeShell> {
     }
   }
 
+  // ── v77 이동 ────────────────────────────────────────────────────────────
+
+  final _marketKey = GlobalKey<MarketViewState>();
+  final _comKey = GlobalKey<CommunityViewState>();
+  final _overseasKey = GlobalKey<OverseasHomeState>();
+  final _homeScroll = ScrollController();
+
+  /// 홈 맨 위 국내 / 해외 스위치
+  bool homeAbroad = false;
+
+  void goMarket(int sub) {
+    _switchTab('market');
+    WidgetsBinding.instance.addPostFrameCallback((_) => _marketKey.currentState?.showTab(sub));
+  }
+
+  void goCommunity(String scope, {String? place}) {
+    _switchTab('com');
+    WidgetsBinding.instance.addPostFrameCallback((_) => _comKey.currentState?.focus(scope, place: place));
+  }
+
+  /// 홈 · 해외의 [seg]번째 칸 (0 부탁하기 · 1 돈벌기 · 2 현지 이웃)
+  void goOverseas(int seg) {
+    _switchTab('home');
+    setState(() => homeAbroad = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _overseasKey.currentState?.showSeg(seg);
+      if (_homeScroll.hasClients) _homeScroll.jumpTo(0);
+    });
+  }
+
+  void _openCat(String cat) => _openFilteredList(catOf(cat).label, (i) => i.mode == 'ask' && i.cat == cat);
+
+  void _openAllAsks() => _openFilteredList('지금 내 주변 부탁', (i) => i.mode == 'ask');
+
+  void _openTripFeed() => Navigator.push(context, MaterialPageRoute(builder: (_) => TripFeedScreen(nav: nav)));
+
+  void _openHistory() => _pushLive(() => HistoryScreen(attendance: attendance, onCheckIn: checkIn, entries: payEntries, points: points));
+
+  void _openPointShop() => _pushLive(() => PointShopScreen(
+        points: points, redeem: redeem, coupons: coupons, useCoupon: useCoupon, goPointsHub: () => goMarket(0),
+      ));
+
+  /// 매일 미션 실행기 (출석·퀴즈·걷기 등 '가볍게 모으기')
+  MissionRunner get _missionRunner => MissionRunner(
+        earn: earn,
+        flash: flash,
+        scope: scope,
+        goWalk: () => _pushLive(() => WalkScreen(
+              items: items, scope: scope, steps: steps, points: points, coupons: coupons, actions: actions,
+              earn: earn, isClaimed: isClaimed, redeem: redeem, useCoupon: useCoupon, goPointsHub: () => goMarket(0),
+            )),
+        goProfile: goProfile,
+        goPost: openPost,
+        goList: _openAllAsks,
+      );
+
+  void _applyDayJob(DayJob j) => flash('${j.org}에 지원 의사를 전달했어요 · 근로계약은 구인업체와 진행돼요');
+
+  /// 중고 물건 전달 부탁 — 전달비만 정하면 돈벌기 목록에 '중고'로 올라간다
+  void _requestDelivery(UsedItem u) {
+    var fee = 5000;
+    showSheet(
+      context,
+      (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => SheetFrame(
+          title: '전달 부탁하기',
+          sub: '${u.title}을(를) 가는 길인 이웃에게 맡겨요',
+          bottom: BigButton(
+            label: '${won(fee)}로 전달 부탁 올리기',
+            onTap: () {
+              Navigator.pop(ctx);
+              requireLogin(() {
+                final it = TaskItem(
+                  id: DateTime.now().millisecondsSinceEpoch,
+                  mode: 'ask', cat: 'move', extra: 'used',
+                  title: '${u.title} 전달해주기',
+                  desc: '중고로 거래한 물건이에요. ${u.area}에서 받아 저에게 전달해 주세요.',
+                  place: '${u.area} → ${shortRegion(scope)}',
+                  region: scope == '전국' ? '우리 동네' : scope,
+                  distM: null, mins: 30, price: fee,
+                  who: profile?.nickname ?? '나',
+                  rating: 0, reviews: 0, deals: 0, resp: 0, verified: false,
+                  helpCnt: 0, reqCnt: 0, x: 50, y: 50,
+                  sample: false, ownerUid: AuthService().currentUser?.uid, mine: true,
+                );
+                setState(() => created = [it, ...created]);
+                _saveRequests();
+                if (it.ownerUid != null) _requests.add(it);
+                flash('전달 부탁을 올렸어요 · 돈벌기 목록에 "중고"로 보여요');
+              });
+            },
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            const FieldLabel('전달비'),
+            Wrap(spacing: 8, children: [
+              for (final f in const [3000, 5000, 8000, 12000])
+                ChoiceChip(
+                  label: Text(won(f)),
+                  selected: fee == f,
+                  onSelected: (_) => setS(() => fee = f),
+                  selectedColor: AppColors.ink,
+                  labelStyle: TextStyle(color: fee == f ? Colors.white : AppColors.inkSoft, fontWeight: FontWeight.w700),
+                  showCheckmark: false,
+                ),
+            ]),
+            const SizedBox(height: 12),
+            const Text('물건값은 판매자와 따로 정산하세요. 전달비는 안전결제로 맡겨 두고, 전달이 끝나면 지급돼요.', style: TextStyle(fontSize: 12.5, color: AppColors.sub, height: 1.5)),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  /// 홈 숏컷 '전체' — 모든 서비스
+  void _openAllServices() {
+    showSheet(context, (ctx) {
+      Widget tile(String icon, String label, VoidCallback go) => Tap(
+            onTap: () {
+              Navigator.pop(ctx);
+              go();
+            },
+            radius: 14,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Column(children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(color: AppColors.page, borderRadius: BorderRadius.circular(15)),
+                  child: AppIcon(icon, size: 22, color: AppColors.inkSoft),
+                ),
+                const SizedBox(height: 6),
+                Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+              ]),
+            ),
+          );
+      return SheetFrame(
+        title: '모든 서비스',
+        child: GridView.count(
+          crossAxisCount: 4,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          childAspectRatio: 0.9,
+          children: [
+            tile('hand', '동네 부탁', _openAllAsks),
+            tile('globe', '해외 부탁', () => goOverseas(1)),
+            tile('house', '현지 이웃', () => goOverseas(2)),
+            tile('clipboard', '단기알바', () => Navigator.push(context, MaterialPageRoute(builder: (_) => DayJobScreen(onApply: _applyDayJob, onPost: openJobPost)))),
+            tile('gift', '미션', () => goMarket(0)),
+            tile('cart', '공동구매', () => goMarket(1)),
+            tile('store', '중고장터', () => goMarket(2)),
+            tile('heart', '나눔', () => goMarket(3)),
+            tile('pencil', '가는 김에', _openTripFeed),
+            tile('ticket', '럭키드로우', () => nav.openLucky(context)),
+            tile('map', '세계 제안 지도', () => nav.openWorld(context)),
+            tile('target', '여행 다트', () => nav.openDart(context)),
+          ],
+        ),
+      );
+    });
+  }
+
+  void _openNotifications() {
+    showSheet(
+      context,
+      (ctx) => SheetFrame(
+        title: '알림',
+        child: Column(children: [
+          for (final (t, s, go) in [
+            ('부탁 진행 상황', '지원·진행 중·완료 내역을 확인하세요', goActivity),
+            ('미션 참여 상황', '참여 중·검수 대기·적립 완료', () => goMarket(0)),
+            ('제안 · 구매 요청', '내가 올린 제안과 구매 요청한 제안', () => nav.openProposalList(context, abroad: false)),
+          ])
+            Tap(
+              onTap: () {
+                Navigator.pop(ctx);
+                go();
+              },
+              radius: 12,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                child: Row(children: [
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(t, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+                      const SizedBox(height: 2),
+                      Text(s, style: const TextStyle(fontSize: 12.5, color: AppColors.sub)),
+                    ]),
+                  ),
+                  const Icon(Icons.chevron_right_rounded, color: AppColors.faint),
+                ]),
+              ),
+            ),
+        ]),
+      ),
+    );
+  }
+
   // ── 화면 ────────────────────────────────────────────────────────────────
 
+  Widget _home() {
+    return ListView(
+      controller: _homeScroll,
+      padding: const EdgeInsets.only(bottom: 24),
+      children: [
+        BigTabs(
+          labels: const ['국내', '해외'],
+          index: homeAbroad ? 1 : 0,
+          accent: homeAbroad ? AppColors.blue : AppColors.yellow,
+          onChanged: (i) => setState(() => homeAbroad = i == 1),
+        ),
+        if (homeAbroad)
+          OverseasHome(key: _overseasKey, nav: nav, items: items)
+        else
+          DomesticHome(
+            nav: nav,
+            items: items,
+            scope: scope,
+            monthEarn: monthEarnedCash,
+            goWallet: goPay,
+            goMarket: goMarket,
+            openCat: _openCat,
+            openAllAsks: _openAllAsks,
+            openTripFeed: _openTripFeed,
+            openAllServices: _openAllServices,
+            goOverseasEarn: () => goOverseas(1),
+            applyDayJob: _applyDayJob,
+          ),
+      ],
+    );
+  }
+
   Widget _body() {
-    switch (tab) {
-      case 'benefits':
-        return SideJobView(
-          points: points, coupons: coupons, items: items, scope: scope, actions: actions,
-          monthEarn: monthEarnedCash, freeLeft: freeLeft, doneMissions: doneMissions,
-          earn: earn, isClaimed: isClaimed, redeem: redeem, useCoupon: useCoupon,
-          completeMission: completeMission, goPointsHub: goPointsHub, flash: flash,
-        );
-      case 'chat':
-        return ChatView(onGoActivity: goActivity);
-      case 'me':
-        return MeView(
+    const order = ['home', 'market', 'com', 'chat', 'me'];
+    return IndexedStack(
+      index: order.indexOf(tab).clamp(0, order.length - 1),
+      children: [
+        _home(),
+        MarketView(
+          key: _marketKey,
+          nav: nav,
+          points: points,
+          doneMissions: doneMissions,
+          completeMission: completeMission,
+          openPointShop: _openPointShop,
+          items: items,
+          engine: () => MissionEngine(isClaimed),
+          runner: _missionRunner,
+        ),
+        CommunityView(key: _comKey, nav: nav, goOverseasAsk: () => goOverseas(1)),
+        ChatView(onGoActivity: goActivity, onBrowse: _openAllAsks),
+        MeView(
+          nav: nav,
           profile: profile,
           stats: stats,
+          trust: trust,
+          scope: scope,
+          points: points,
           coupons: coupons,
           useCoupon: useCoupon,
-          goPointsHub: goPointsHub,
-          freeLeft: freeLeft,
+          goPointsHub: _openPointShop,
           isLoggedIn: isLoggedIn,
           onLogin: () => requireLogin(() {}),
           onOpenSaved: () => _pushLive(() => SavedScreen(items: items, bookmarks: bookmarks, actions: actions)),
           onOpenApplied: () => _openFilteredList('지원한 부탁', (i) => grabbed.contains(i.id)),
           onOpenMine: () => _openFilteredList('내가 올린 부탁', (i) => i.isMine),
           onOpenActivity: goActivity,
+          onWithdraw: goPay,
+          onHistory: _openHistory,
           onRename: renameNickname,
           serverIssue: serverIssue,
           syncing: syncing,
-        );
-      default:
-        return HomeContent(
-          items: items, scope: scope, actions: actions, points: points, steps: steps,
-          payBalance: payBalance, trust: trust, goPay: goPay, goProfile: goProfile,
-          coupons: coupons, doneMissions: doneMissions,
-          openRegion: openRegion,
-          earn: earn, isClaimed: isClaimed, redeem: redeem, useCoupon: useCoupon, completeMission: completeMission,
-          flash: flash, goPointsHub: goPointsHub, goPost: openPost,
-          activeCount: activeCount, goActivity: goActivity,
-          attendance: attendance, checkIn: checkIn, openJobPost: openJobPost,
-        );
-    }
+        ),
+      ],
+    );
   }
 
   @override
@@ -731,26 +997,26 @@ class _HomeShellState extends State<HomeShell> {
         setState(() => tab = 'home');
       },
       child: Scaffold(
-        backgroundColor: AppColors.card,
+        backgroundColor: AppColors.page,
         body: SafeArea(
           child: Stack(
             children: [
-              Column(children: [Expanded(child: _body()), _bottomNav()]),
+              Column(children: [_header(), Expanded(child: _body()), _bottomNav()]),
               if (toast != null)
                 Positioned(
-                  left: 18, right: 18, bottom: 98,
+                  left: 18, right: 18, bottom: 84,
                   child: IgnorePointer(
                     child: Container(
-                      padding: const EdgeInsets.all(17),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       decoration: BoxDecoration(
-                        color: const Color(0xF5252629),
-                        borderRadius: BorderRadius.circular(AppRadius.card),
-                        boxShadow: const [BoxShadow(color: Color(0x1A202A42), blurRadius: 25, offset: Offset(0, 7))],
+                        color: const Color(0xF2191F28),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: const [BoxShadow(color: Color(0x26000000), blurRadius: 20, offset: Offset(0, 6))],
                       ),
                       child: Row(children: [
-                        const Icon(Icons.check_rounded, size: 18, color: Color(0xFFE7D58E)),
+                        const Icon(Icons.check_circle_rounded, size: 18, color: AppColors.yellow),
                         const SizedBox(width: 10),
-                        Expanded(child: Text(toast!, style: AppType.meta.copyWith(color: Colors.white, height: 1.5))),
+                        Expanded(child: Text(toast!, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: Colors.white, height: 1.45))),
                       ]),
                     ),
                   ),
@@ -767,42 +1033,107 @@ class _HomeShellState extends State<HomeShell> {
     setState(() => tab = k);
   }
 
-  /// 하단 1차 메뉴 (.main-nav). 가운데 '부탁하기'만 노란 사각 버튼이다.
-  Widget _bottomNav() {
+  /// 머리줄 (#hdr) — 왼쪽은 동네(홈 · 마켓) 또는 탭 이름, 오른쪽은 응모권 · 글쓰기 · 알림
+  Widget _header() {
+    final title = switch (tab) {
+      'com' => '커뮤니티',
+      'chat' => '채팅',
+      'me' => '마이',
+      _ => tab == 'home' && homeAbroad ? '해외 사다주기' : null,
+    };
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.card,
-        border: Border(top: BorderSide(color: Color(0xFFF0F1F3))),
-      ),
-      padding: const EdgeInsets.fromLTRB(8, 9, 8, 8),
+      height: 56,
+      color: AppColors.page,
+      padding: const EdgeInsets.fromLTRB(18, 0, 8, 0),
       child: Row(children: [
-        _navBtn('home', '홈', 'home'),
-        _navBtn('benefits', '부업', 'gift'),
+        // 좁은 화면에서는 왼쪽 글자가 먼저 줄어든다
         Expanded(
-          child: InkWell(
-            onTap: openPost,
-            borderRadius: BorderRadius.circular(12),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                SizedBox(
-                  height: 26,
-                  child: Container(
-                    width: 27,
-                    height: 27,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(color: AppColors.createYellow, borderRadius: BorderRadius.circular(8)),
-                    child: const Icon(Icons.add_rounded, size: 21, color: AppColors.ink),
-                  ),
+          child: title != null
+              ? Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.tabTitle)
+              : GestureDetector(
+                  onTap: openRegion,
+                  child: Row(children: [
+                    const Icon(Icons.place_outlined, size: 21, color: AppColors.ink),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        shortRegion(scope),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.ink),
+                      ),
+                    ),
+                    const Icon(Icons.expand_more_rounded, size: 20, color: AppColors.sub),
+                  ]),
                 ),
-                const SizedBox(height: 5),
-                Text('부탁하기', style: AppType.caption.copyWith(fontSize: 12, fontWeight: AppType.w500, color: AppColors.navActive)),
+        ),
+        ListenableBuilder(
+          listenable: _store,
+          builder: (_, _) => GestureDetector(
+            onTap: () => nav.openLucky(context),
+            child: Container(
+              height: 30,
+              padding: const EdgeInsets.fromLTRB(8, 0, 10, 0),
+              margin: const EdgeInsets.only(right: 6),
+              decoration: BoxDecoration(
+                color: AppColors.yellowSoft,
+                borderRadius: BorderRadius.circular(15),
+                border: Border.all(color: AppColors.yellowLine),
+              ),
+              child: Row(children: [
+                const Icon(Icons.confirmation_number_outlined, size: 16, color: AppColors.yellowInk),
+                const SizedBox(width: 4),
+                Text('${_store.wallet.have}장', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.ink)),
               ]),
             ),
           ),
         ),
+        Tap(
+          onTap: () => nav.openWrite(context),
+          radius: 18,
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            child: Row(children: [
+              Icon(Icons.edit_outlined, size: 17, color: AppColors.ink),
+              SizedBox(width: 4),
+              Text('글쓰기', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.ink)),
+            ]),
+          ),
+        ),
+        IconButton(
+          onPressed: _openNotifications,
+          tooltip: '알림',
+          icon: Stack(clipBehavior: Clip.none, children: [
+            const Icon(Icons.notifications_none_rounded, size: 25, color: AppColors.ink),
+            Positioned(
+              right: 1,
+              top: 1,
+              child: Container(
+                width: 7,
+                height: 7,
+                decoration: BoxDecoration(color: AppColors.red, shape: BoxShape.circle, border: Border.all(color: AppColors.page, width: 1.5)),
+              ),
+            ),
+          ]),
+        ),
+      ]),
+    );
+  }
+
+  /// 하단 1차 메뉴 (#nav) — 홈 · 마켓 · 커뮤니티 · 채팅 · 마이
+  Widget _bottomNav() {
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.card,
+        border: Border(top: BorderSide(color: AppColors.line)),
+      ),
+      padding: const EdgeInsets.fromLTRB(6, 7, 6, 6),
+      child: Row(children: [
+        _navBtn('home', '홈', 'home'),
+        _navBtn('market', '마켓', 'gift'),
+        _navBtn('com', '커뮤니티', 'users'),
         _navBtn('chat', '채팅', 'chat'),
-        _navBtn('me', '내 정보', 'user'),
+        _navBtn('me', '마이', 'user'),
       ]),
     );
   }
@@ -812,38 +1143,20 @@ class _HomeShellState extends State<HomeShell> {
     final color = active ? AppColors.navActive : AppColors.navIdle;
     return Expanded(
       child: InkWell(
-        onTap: () => _switchTab(k),
+        onTap: () {
+          if (tab == k && k == 'home' && _homeScroll.hasClients) {
+            _homeScroll.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+          }
+          _switchTab(k);
+        },
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                height: 26,
-                child: Stack(clipBehavior: Clip.none, alignment: Alignment.center, children: [
-                  Icon(AppIcon.data(icon), size: 23, color: color),
-                  if (active)
-                    const Positioned(
-                      bottom: -3,
-                      child: SizedBox(
-                        width: 3, height: 3,
-                        child: DecoratedBox(decoration: BoxDecoration(color: AppColors.navActive, shape: BoxShape.circle)),
-                      ),
-                    ),
-                ]),
-              ),
-              const SizedBox(height: 5),
-              Text(
-                label,
-                style: AppType.caption.copyWith(
-                  fontSize: 12,
-                  fontWeight: active ? AppType.w700 : AppType.w500,
-                  color: color,
-                ),
-              ),
-            ],
-          ),
+          padding: const EdgeInsets.symmetric(vertical: 3),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Icon(AppIcon.data(icon), size: 24, color: color),
+            const SizedBox(height: 3),
+            Text(label, style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: color)),
+          ]),
         ),
       ),
     );

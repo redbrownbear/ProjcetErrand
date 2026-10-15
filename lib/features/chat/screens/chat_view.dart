@@ -1,35 +1,46 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/section_header.dart';
+import '../../../core/theme/colors.dart';
+import '../../../core/widgets/kit.dart';
 
-/// 실시간 채팅은 아직 연결 전이라, 가짜 대화 목록 대신 안내와 지원 내역 연결만 둔다.
-/// (기획 시안 v9의 `Chats` — 탭 제목 + `EmptyState`)
+/// 채팅 (시안 v77 `#t-chat .empty`).
+///
+/// 실시간 채팅은 아직 연결 전이라, 가짜 대화 목록 대신 빈 화면과 다음 행동만 둔다.
+/// 탭 제목은 셸 머리줄이 그린다.
 class ChatView extends StatelessWidget {
   final VoidCallback onGoActivity;
-  const ChatView({super.key, required this.onGoActivity});
+  final VoidCallback onBrowse;
+  const ChatView({super.key, required this.onGoActivity, required this.onBrowse});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(22, 26, 22, 8),
-          child: Text('채팅', style: AppType.tabTitle),
-        ),
-        Expanded(
-          child: SingleChildScrollView(
-            child: EmptyState(
-              icon: 'chat',
-              title: '채팅 연결 준비 중',
-              msg: '아직 실제 메시지는 주고받을 수 없어요.\n지원한 부탁은 진행 중에서 확인할 수 있어요.',
-              action: '지원 내역 확인',
-              onAction: onGoActivity,
-            ),
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 40),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(24)),
+            child: const Icon(Icons.chat_bubble_outline_rounded, size: 32, color: AppColors.faint),
           ),
-        ),
-      ],
+          const SizedBox(height: 18),
+          const Text('아직 대화가 없어요', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 6),
+          const Text(
+            '부탁에 지원하거나 가격을 제안하면\n요청자와 대화가 시작돼요.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, color: AppColors.sub, height: 1.55),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(width: 180, child: BigButton(label: '내 주변 부탁 보기', height: 46, onTap: onBrowse)),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: onGoActivity,
+            child: const Text('지원 내역 확인', style: TextStyle(fontSize: 13, color: AppColors.sub)),
+          ),
+        ]),
+      ),
     );
   }
 }

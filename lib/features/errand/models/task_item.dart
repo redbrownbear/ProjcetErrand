@@ -143,7 +143,7 @@ class TaskItem {
         'id': id, 'mode': mode, 'cat': cat, 'title': title, 'region': region, 'place': place,
         'country': country, 'cc': cc, 'city': city, 'distM': distM, 'mins': mins, 'price': price,
         'who': who, 'rating': rating, 'reviews': reviews, 'deals': deals, 'resp': resp,
-        'verified': verified, 'helpCnt': helpCnt, 'reqCnt': reqCnt, 'desc': desc, 'hot': hot,
+        'verified': verified, 'helpCnt': helpCnt, 'reqCnt': reqCnt, 'desc': desc, 'hot': hot, 'extra': extra,
         'deadline': deadline?.toIso8601String(), 'deliveryPlace': deliveryPlace, 'budget': budget,
         'payment': payment, 'completion': completion, 'sample': sample, 'ownerUid': ownerUid,
         'mine': mine,
@@ -163,7 +163,7 @@ class TaskItem {
       rating: json['rating'] is num ? (json['rating'] as num).toDouble() : 0,
       reviews: n('reviews'), deals: n('deals'), resp: n('resp'),
       verified: json['verified'] == true, helpCnt: n('helpCnt'), reqCnt: n('reqCnt'),
-      desc: desc, hot: json['hot'] == true,
+      desc: desc, hot: json['hot'] == true, extra: s('extra'),
       deadline: DateTime.tryParse(s('deadline') ?? ''), deliveryPlace: s('deliveryPlace'),
       budget: n('budget'), payment: s('payment'), completion: s('completion'),
       // 이 기기에 보관되는 건 사용자가 올린 진짜 부탁뿐이다.

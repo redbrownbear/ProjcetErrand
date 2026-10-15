@@ -102,6 +102,36 @@ const seedItems = [
     desc: '품절 전에 팝업 한정 굿즈 몇 개만 사다 주세요. 결제는 앱으로.',
   ),
 
+  // v77 — 돈벌기 '이거 하나 하고 갈래요?'와 중고 전달
+  TaskItem(
+    id: 50, mode: 'ask', cat: 'pickup', title: '편의점에서 택배 찾아주세요',
+    region: '서울 서초구', place: 'GS25 서초점', distM: 320, mins: 8, price: 4000,
+    who: '야근러', rating: 4.8, reviews: 6, deals: 9, resp: 95, verified: true,
+    helpCnt: 1, reqCnt: 4, x: 47, y: 44, lat: 37.4918, lng: 127.0262,
+    desc: 'GS25 서초점 택배 보관함에 있는 상자 하나 찾아서 문 앞에 두어 주세요.',
+  ),
+  TaskItem(
+    id: 51, mode: 'ask', cat: 'pickup', title: '케이크 픽업해서 사무실 전달',
+    region: '서울 서초구', place: '디저트 모먼트', distM: 1100, mins: 20, price: 7000,
+    who: '생일준비', rating: 4.9, reviews: 9, deals: 12, resp: 97, verified: true,
+    helpCnt: 2, reqCnt: 6, x: 53, y: 47, lat: 37.4952, lng: 127.0151,
+    desc: '예약해 둔 케이크 픽업해서 서초역 사무실로 가져다주세요. 기울지 않게 조심!',
+  ),
+  TaskItem(
+    id: 52, mode: 'ask', cat: 'move', extra: 'used', title: '당근에서 산 의자 대신 받아오기',
+    region: '서울 서초구', place: '방배동 → 서초동', distM: 350, mins: 25, price: 6000,
+    who: '의자구함', rating: 4.7, reviews: 3, deals: 4, resp: 92, verified: true,
+    helpCnt: 0, reqCnt: 2, x: 45, y: 55, lat: 37.4813, lng: 126.9973,
+    desc: '방배동에서 거래한 원목 의자 1개를 서초동 집 앞까지 옮겨 주세요. 판매자와 시간 맞춰 둘게요.',
+  ),
+  TaskItem(
+    id: 53, mode: 'ask', cat: 'move', extra: 'used', title: '합의된 중고 카메라 전달해주기',
+    region: '서울 서초구', place: '판교 → 서초역', distM: 410, mins: 35, price: 15000,
+    who: '카메라덕', rating: 4.9, reviews: 11, deals: 15, resp: 98, verified: true,
+    helpCnt: 3, reqCnt: 5, x: 49, y: 41, lat: 37.4837, lng: 127.0324,
+    desc: '판교에서 거래 확정한 카메라를 서초역에서 받아 주세요. 결제는 끝났어요.',
+  ),
+
   // 같이해요 (커뮤니티)
   TaskItem(
     id: 6, mode: 'together', tcat: 'movie', title: '오늘 9시 영화 같이 볼 사람?',
@@ -179,7 +209,7 @@ const seedItems = [
   TaskItem(
     id: 10, mode: 'sea', cat: 'buy', cc: 'jp', city: '도쿄', country: '🇯🇵 일본 도쿄',
     title: '돈키호테에서 곤약젤리·연고 사다주기',
-    place: '시부야 돈키호테', distM: 9e9, mins: 0, price: 20000,
+    place: '시부야 돈키호테', distM: 9e9, mins: 0, price: 20000, budget: 40000,
     who: '도쿄여행중', rating: 4.9, reviews: 18, deals: 27, resp: 96, verified: true,
     helpCnt: 2, reqCnt: 6,
     desc: '곤약젤리 6개, 동전파스, 사카무케아 연고 부탁해요. 물건값은 영수증 정산, 사례비 2만원. 다음 주 귀국편에 전달 가능해요.',
@@ -187,7 +217,7 @@ const seedItems = [
   TaskItem(
     id: 11, mode: 'sea', cat: 'buy', cc: 'jp', city: '오사카', country: '🇯🇵 일본 오사카',
     title: '오사카 이치란 컵라면 3개',
-    place: '돈키호테 도톤보리', distM: 9e9, mins: 0, price: 20000,
+    place: '돈키호테 도톤보리', distM: 9e9, mins: 0, price: 20000, budget: 15000,
     who: '관서출장', rating: 4.6, reviews: 4, deals: 5, resp: 90, verified: true,
     helpCnt: 0, reqCnt: 1,
     desc: '이치란 컵라면 한정판 3개만요. 캐리어 공간 있으신 분!',
@@ -195,7 +225,7 @@ const seedItems = [
   TaskItem(
     id: 12, mode: 'sea', cat: 'buy', cc: 'jp', city: '도쿄', country: '🇯🇵 일본 도쿄',
     title: '다이소 재팬 한정 문구 대행',
-    place: '신주쿠', distM: 9e9, mins: 0, price: 20000,
+    place: '신주쿠', distM: 9e9, mins: 0, price: 20000, budget: 30000,
     who: '문구덕후', rating: 4.8, reviews: 9, deals: 14, resp: 94, verified: true,
     helpCnt: 5, reqCnt: 3,
     desc: '일본 다이소 한정 스티커·펜 몇 개요. 목록 드릴게요.',
@@ -203,7 +233,7 @@ const seedItems = [
   TaskItem(
     id: 40, mode: 'sea', cat: 'buy', cc: 'jp', city: '후쿠오카', country: '🇯🇵 일본 후쿠오카',
     title: '후쿠오카 로이스 초콜릿·멘타이코 사다주기',
-    place: '하카타역', distM: 9e9, mins: 0, price: 20000,
+    place: '하카타역', distM: 9e9, mins: 0, price: 20000, budget: 50000,
     who: '규슈여행', rating: 4.7, reviews: 6, deals: 8, resp: 92, verified: true,
     helpCnt: 1, reqCnt: 2,
     desc: '로이스 생초콜릿, 멘타이코 과자 부탁해요.',
@@ -211,7 +241,7 @@ const seedItems = [
   TaskItem(
     id: 13, mode: 'sea', cat: 'buy', cc: 'us', city: 'LA', country: '🇺🇸 미국 LA',
     title: '코스트코 영양제 대행 (미국 LA)',
-    place: '코스트코', distM: 9e9, mins: 0, price: 30000,
+    place: '코스트코', distM: 9e9, mins: 0, price: 30000, budget: 90000,
     who: 'LA사는중', rating: 5.0, reviews: 22, deals: 38, resp: 98, verified: true,
     helpCnt: 14, reqCnt: 2,
     desc: '커클랜드 오메가3, 비타민D 부탁해요. 부피 있어서 사례비 넉넉히.',
@@ -219,7 +249,7 @@ const seedItems = [
   TaskItem(
     id: 43, mode: 'sea', cat: 'buy', cc: 'us', city: '뉴욕', country: '🇺🇸 미국 뉴욕',
     title: '한정판 스니커즈 250mm 구매대행',
-    place: '소호 매장', distM: 9e9, mins: 0, price: 40000,
+    place: '소호 매장', distM: 9e9, mins: 0, price: 40000, budget: 250000,
     who: '뉴욕출장', rating: 4.9, reviews: 12, deals: 16, resp: 95, verified: true,
     helpCnt: 4, reqCnt: 7, hot: true,
     desc: '한정판 스니커즈 250mm 구해주실 분. 재고 확인부터 부탁해요.',
@@ -227,7 +257,7 @@ const seedItems = [
   TaskItem(
     id: 41, mode: 'sea', cat: 'buy', cc: 'cn', city: '상하이', country: '🇨🇳 중국 상하이',
     title: '상하이 화장품 라인 대행',
-    place: '난징루', distM: 9e9, mins: 0, price: 25000,
+    place: '난징루', distM: 9e9, mins: 0, price: 25000, budget: 80000,
     who: '상하이주재', rating: 4.5, reviews: 3, deals: 4, resp: 87, verified: true,
     helpCnt: 1, reqCnt: 1,
     desc: '현지 한정 화장품 라인 대행 부탁해요.',
@@ -235,7 +265,7 @@ const seedItems = [
   TaskItem(
     id: 42, mode: 'sea', cat: 'buy', cc: 'vn', city: '다낭', country: '🇻🇳 베트남 다낭',
     title: '다낭 콘삭 커피·망고 사다주기',
-    place: '롯데마트 다낭', distM: 9e9, mins: 0, price: 20000,
+    place: '롯데마트 다낭', distM: 9e9, mins: 0, price: 20000, budget: 30000,
     who: '다낭한달살기', rating: 4.8, reviews: 8, deals: 11, resp: 93, verified: true,
     helpCnt: 3, reqCnt: 2,
     desc: '콘삭 커피, 말린 망고, 견과류 부탁해요.',
@@ -243,7 +273,7 @@ const seedItems = [
   TaskItem(
     id: 44, mode: 'sea', cat: 'buy', cc: 'tw', city: '타이베이', country: '🇹🇼 대만 타이베이',
     title: '타이베이 펑리수·누가크래커 대행',
-    place: '서문정', distM: 9e9, mins: 0, price: 20000,
+    place: '서문정', distM: 9e9, mins: 0, price: 20000, budget: 70000,
     who: '타이베이여행', rating: 4.7, reviews: 5, deals: 6, resp: 90, verified: true,
     helpCnt: 2, reqCnt: 1,
     desc: '펑리수, 누가크래커 몇 박스요.',
@@ -251,7 +281,7 @@ const seedItems = [
   TaskItem(
     id: 45, mode: 'sea', cat: 'buy', cc: 'th', city: '방콕', country: '🇹🇭 태국 방콕',
     title: '방콕 수제 비누·코코넛오일 대행',
-    place: '짐톰슨', distM: 9e9, mins: 0, price: 20000,
+    place: '짐톰슨', distM: 9e9, mins: 0, price: 20000, budget: 40000,
     who: '방콕출장', rating: 4.6, reviews: 4, deals: 5, resp: 88, verified: true,
     helpCnt: 1, reqCnt: 1,
     desc: '수제 비누, 코코넛 오일 부탁해요.',
@@ -259,7 +289,7 @@ const seedItems = [
   TaskItem(
     id: 46, mode: 'sea', cat: 'buy', cc: 'sg', city: '싱가포르', country: '🇸🇬 싱가포르',
     title: '싱가포르 TWG 홍차·부엉이커피 면세 대행',
-    place: '창이공항', distM: 9e9, mins: 0, price: 22000,
+    place: '창이공항', distM: 9e9, mins: 0, price: 22000, budget: 60000,
     who: '싱가포르경유', rating: 4.9, reviews: 10, deals: 13, resp: 96, verified: true,
     helpCnt: 3, reqCnt: 4,
     desc: 'TWG 홍차 세트, 부엉이 커피 면세 구매 부탁해요.',
@@ -267,7 +297,7 @@ const seedItems = [
   TaskItem(
     id: 47, mode: 'sea', cat: 'buy', cc: 'gb', city: '런던', country: '🇬🇧 영국 런던',
     title: '런던 버버리 머플러 대행',
-    place: '해러즈', distM: 9e9, mins: 0, price: 60000,
+    place: '해러즈', distM: 9e9, mins: 0, price: 60000, budget: 300000,
     who: '런던유학', rating: 5.0, reviews: 15, deals: 21, resp: 99, verified: true,
     helpCnt: 6, reqCnt: 3,
     desc: '버버리 머플러 대행이요. 물건값 별도, 사례비 넉넉히 드려요.',

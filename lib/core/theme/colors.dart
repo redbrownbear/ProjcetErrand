@@ -2,85 +2,115 @@ import 'package:flutter/material.dart';
 
 /// 기획 시안의 색 토큰.
 ///
-/// 기준은 최신 시안 `gyumsa-refined`이다. v9(`design.css`)의 `:root` 변수를
-/// 시안이 다시 덮어쓴 값(`--yellow:#ffd95c --ink:#26302e --muted:#8b9294`
-/// `--green:#318d74 --line:#eef0ec`, 바탕 `#f7f8f5`)으로 맞췄다.
-/// CSS 곳곳에 리터럴로 흩어져 있던 값(내비게이션·필·버튼·출석·수익 카드 등)은
-/// 이름을 붙여 아래에 모았다. 새 화면을 만들 때는 리터럴 색을 쓰지 말고 여기서 가져다 쓴다.
+/// 기준은 최신 시안 `겸사겸사_v77.html`이다. v77은 화면 바탕을 옅은 회색(#F2F4F6)으로
+/// 깔고 그 위에 흰 카드(모서리 18)를 10px 간격으로 쌓는다. 글자색은 #191F28 계열,
+/// 강조는 노랑(#FFCD1F)과 해외용 파랑(#3A7BF5) 두 가지다.
+/// 이전 시안에서 쓰던 이름은 그대로 두고 값만 v77로 옮겼다 — 예전 화면도 같은 색으로 맞춰진다.
+/// 새 화면을 만들 때는 리터럴 색을 쓰지 말고 여기서 가져다 쓴다.
 class AppColors {
-  // ── 기본 토큰 (:root) ────────────────────────────────────────────────────
-  /// --ink
-  static const ink = Color(0xFF26302E);
+  // ── 기본 토큰 ────────────────────────────────────────────────────────────
+  /// 제목·본문 먹색
+  static const ink = Color(0xFF191F28);
 
-  /// --muted
-  static const sub = Color(0xFF8B9294);
+  /// 한 단계 부드러운 먹색 (버튼 글자, 본문 인용)
+  static const inkSoft = Color(0xFF333D4B);
 
-  /// --line
-  static const line = Color(0xFFEEF0EC);
+  /// 보조 글자
+  static const sub = Color(0xFF6B7684);
 
-  /// --surface. 화면 배경이자 옅은 채움색.
-  static const page = Color(0xFFF7F8F5);
+  /// 아이콘·날짜처럼 존재감이 가장 옅은 요소
+  static const faint = Color(0xFFB0B8C1);
+
+  /// 목록 구분선
+  static const line = Color(0xFFEEF0F3);
+
+  /// 버튼·입력창 테두리 (inset 1px)
+  static const outline = Color(0xFFE8EBEE);
+
+  /// 화면 바탕이자 옅은 채움색 (#scroll · .morebtn · .pp-tool)
+  static const page = Color(0xFFF2F4F6);
   static const surface = page;
+  static const panel = page;
 
-  /// 탭 패널·화면 바탕 (.tab-panel, .screen-scroll)
-  static const panel = Color(0xFFFAFBF8);
+  /// 세그먼트 바탕 (.os-seg)
+  static const segBg = Color(0xFFE8EBEE);
 
-  /// 시안의 카드 바탕. 본문은 흰 바탕 위에 올라간다.
+  /// 카드 바탕
   static const card = Color(0xFFFFFFFF);
 
-  /// --yellow
-  static const yellow = Color(0xFFFFD95C);
+  /// 겸사겸사 시그니처 노랑. CTA 버튼 (.h2-cta)
+  static const yellow = Color(0xFFFFCD1F);
 
-  /// --green
-  static const green = Color(0xFF318D74);
+  /// 노랑 글자 (.h2-sub · .tkchip)
+  static const yellowInk = Color(0xFFA07A12);
 
-  /// 아이콘·화살표처럼 존재감이 가장 옅은 요소
-  static const faint = Color(0xFFAFB4BC);
+  /// 강조 단어 주황 (.h2-t b)
+  static const orange = Color(0xFFE08A00);
 
-  /// 본문 제목보다 한 단계 부드러운 먹색 (.task-title)
-  static const inkSoft = Color(0xFF3D4940);
+  static const green = Color(0xFF18A874);
+  static const greenDeep = Color(0xFF0B7A51);
+  static const greenSoft = Color(0xFFE7F6F0);
+
+  static const red = Color(0xFFF04452);
+  static const redSoft = Color(0xFFFDEDEE);
+
+  /// 해외 탭 파랑
+  static const blue = Color(0xFF3A7BF5);
+  static const blueSoft = Color(0xFFEEF4FF);
+
+  /// 광고·제휴 보라 (.pp-row.ad)
+  static const purple = Color(0xFF5B4BE0);
+  static const purpleSoft = Color(0xFFEFEBFF);
+  static const purpleLine = Color(0xFFD9D2FF);
 
   // ── 파생 색 ───────────────────────────────────────────────────────────────
-  static const yellowSoft = Color(0xFFFFF7D9); // .active-banner
-  static const yellowLine = Color(0xFFF0DFA4); // .active-banner border
-  static const yellowDeep = Color(0xFF6D5720); // .attendance-v8 text
-  static const greenSoft = Color(0xFFE7F1EC);
-  static const red = Color(0xFFD25C43);
-  static const redSoft = Color(0xFFFBEFEA);
-  static const blue = Color(0xFF4D6F9E); // .overseas-primary
-  static const blueSoft = Color(0xFFEFF4FC);
-  static const purple = Color(0xFF7E6A86);
-  static const purpleSoft = Color(0xFFF3EEF4);
+  /// 응모권 칩 바탕 (.ld-hbtn · .tkchip)
+  static const yellowSoft = Color(0xFFFFF8E4);
 
-  /// 수익 카드·토스트에 쓰는 짙은 바탕 (.explore .income-compact, .toast)
-  static const black = Color(0xFF252629);
+  /// 응모권 칩 테두리
+  static const yellowLine = Color(0xFFE8DFC4);
+
+  /// LIVE 제안 보드 (.pp-live)
+  static const liveBg = Color(0xFFFFF6D6);
+  static const liveLine = Color(0xFFF3E2A3);
+
+  /// 히어로 카드 그라데이션 시작색 (.h2) — 국내 노랑 · 해외 파랑
+  static const heroYellow = Color(0xFFFFFBEA);
+  static const heroBlue = Color(0xFFEEF4FF);
+
+  static const yellowDeep = Color(0xFF7A5A00);
+
+  /// 짙은 바탕 (토스트 · 제안 버튼 · 출국 보드)
+  static const black = Color(0xFF191F28);
 
   // ── 컴포넌트 토큰 ─────────────────────────────────────────────────────────
-  /// 하단 내비게이션 (.main-nav-item)
-  static const navIdle = Color(0xFF73767C);
-  static const navActive = Color(0xFF328B72);
+  /// 하단 내비게이션 (.nav)
+  static const navIdle = Color(0xFFB0B8C1);
+  static const navActive = Color(0xFF191F28);
 
-  /// 가운데 '부탁하기' 버튼 (.main-nav .create-nav>span)
-  static const createYellow = Color(0xFFFFD963);
+  /// 국내/해외 큰 탭의 꺼진 글자 (.scp3 button)
+  static const tabIdle = Color(0xFFB5B7BF);
+
+  static const createYellow = yellow;
 
   /// .button.primary / .button.secondary
-  static const btnPrimary = Color(0xFFFFE07A);
-  static const btnPrimaryInk = Color(0xFF463E2C);
-  static const btnSecondary = Color(0xFFF0F4ED);
-  static const btnSecondaryInk = Color(0xFF566D5D);
+  static const btnPrimary = yellow;
+  static const btnPrimaryInk = ink;
+  static const btnSecondary = page;
+  static const btnSecondaryInk = inkSoft;
 
   /// .pill / .pill.neutral
-  static const pill = Color(0xFFF3DC75);
-  static const pillInk = Color(0xFF554A23);
-  static const pillNeutral = Color(0xFFF3F4F6);
-  static const pillNeutralInk = Color(0xFF71757D);
+  static const pill = yellowSoft;
+  static const pillInk = yellowInk;
+  static const pillNeutral = page;
+  static const pillNeutralInk = sub;
 
-  /// 선택된 칩 (.chip.selected — 목록), (.quick-task-categories .selected — 홈)
-  static const chipSelected = Color(0xFF2A2D33);
-  static const chipSelectedWarm = Color(0xFF30342A);
+  /// 선택된 칩
+  static const chipSelected = ink;
+  static const chipSelectedWarm = ink;
 
-  /// '지금 필요해요' (.urgent)
-  static const urgent = Color(0xFF9B6A45);
+  /// '지금 필요해요'
+  static const urgent = red;
 
   /// 출석 줄 (.attendance-v8)
   static const attendSoft = Color(0xFFFCF7E5);
@@ -147,16 +177,21 @@ class AppColors {
   static const band = Color(0xFFF6F6F2);
 
   /// 부탁 종류 아이콘 타일 (.task-icon-*). 없는 종류는 [taskIconFallback].
-  static const taskIconFallback = (bg: Color(0xFFF4F5F7), fg: Color(0xFF6F7581));
+  static const taskIconFallback = (bg: Color(0xFFF2F4F6), fg: Color(0xFF6B7684));
   static const taskIcon = <String, ({Color bg, Color fg})>{
-    'buy': (bg: Color(0xFFF8F1E5), fg: Color(0xFF8D7448)),
-    'photo': (bg: Color(0xFFEDF1F7), fg: Color(0xFF667892)),
-    'pickup': (bg: Color(0xFFF2EFEB), fg: Color(0xFF817667)),
-    'line': (bg: Color(0xFFF3EEF4), fg: Color(0xFF886E8B)),
-    'pet': (bg: Color(0xFFEDF3EE), fg: Color(0xFF617D68)),
-    'ticket': (bg: Color(0xFFF6F1E8), fg: Color(0xFF8A7A4E)),
-    'move': (bg: Color(0xFFEEF1F5), fg: Color(0xFF6C7684)),
-    'clean': (bg: Color(0xFFEDF3F2), fg: Color(0xFF5F7C79)),
-    'proxy': (bg: Color(0xFFF4F1E9), fg: Color(0xFF857A5A)),
+    'buy': (bg: Color(0xFFFFF4DC), fg: Color(0xFFE08A00)),
+    'photo': (bg: Color(0xFFFDEDEE), fg: Color(0xFFF04452)),
+    'pickup': (bg: Color(0xFFEAEFFD), fg: Color(0xFF2F63E8)),
+    'line': (bg: Color(0xFFF1EEFF), fg: Color(0xFF5B4BE0)),
+    'pet': (bg: Color(0xFFFFF1E6), fg: Color(0xFFE5772E)),
+    'ticket': (bg: Color(0xFFF1EEFF), fg: Color(0xFF5B4BE0)),
+    'move': (bg: Color(0xFFEAEFFD), fg: Color(0xFF2F63E8)),
+    'clean': (bg: Color(0xFFE6F6EE), fg: Color(0xFF0FA36B)),
+    'proxy': (bg: Color(0xFFFFF4DC), fg: Color(0xFFE08A00)),
+    'used': (bg: Color(0xFFE6F6EE), fg: Color(0xFF0B7A51)),
   };
+
+  /// 자주 하는 부탁 타일 (.cats .ct) — 한 가지 살구색
+  static const catTileBg = Color(0xFFFCF2E9);
+  static const catTileFg = Color(0xFFE5772E);
 }
