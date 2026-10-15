@@ -44,8 +44,7 @@ void main() {
       // 에서도 남아야 어느 상품을 팔든 손해가 안 난다.
       for (final price in [1000, 9999, 30000, 123456, 1000000]) {
         final commission = price * 0.01; // 최저 요율로 번 돈
-        expect(coupang.pointsFor(price), lessThanOrEqualTo(commission),
-            reason: '$price원 주문에서 수수료보다 많이 준다');
+        expect(coupang.pointsFor(price), lessThanOrEqualTo(commission), reason: '$price원 주문에서 수수료보다 많이 준다');
       }
     });
 
@@ -75,8 +74,7 @@ void main() {
 
     test('제휴사 단가보다 많이 주지 않는다', () {
       for (final payout in [500, 1234, 3000, 80000]) {
-        expect(PointRules.offerwallPoints(payout), lessThan(payout),
-            reason: '$payout원 캠페인에서 받은 것보다 많이 준다');
+        expect(PointRules.offerwallPoints(payout), lessThan(payout), reason: '$payout원 캠페인에서 받은 것보다 많이 준다');
       }
     });
 

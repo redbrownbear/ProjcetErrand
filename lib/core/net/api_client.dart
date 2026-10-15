@@ -15,11 +15,11 @@ class ApiFailure implements Exception {
   String toString() => 'ApiFailure($kind): $message';
 
   String get userMessage => switch (kind) {
-        ApiFailKind.noKey => '아직 연동 준비 중인 미션이에요',
-        ApiFailKind.network => '네트워크가 불안정해요. 잠시 후 다시 시도해 주세요',
-        ApiFailKind.quota => '오늘 조회 한도를 넘었어요. 내일 다시 시도해 주세요',
-        ApiFailKind.badResponse => '제휴사 응답을 읽지 못했어요',
-      };
+    ApiFailKind.noKey => '아직 연동 준비 중인 미션이에요',
+    ApiFailKind.network => '네트워크가 불안정해요. 잠시 후 다시 시도해 주세요',
+    ApiFailKind.quota => '오늘 조회 한도를 넘었어요. 내일 다시 시도해 주세요',
+    ApiFailKind.badResponse => '제휴사 응답을 읽지 못했어요',
+  };
 }
 
 /// 제휴 API 공통 호출부.

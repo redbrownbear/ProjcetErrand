@@ -28,7 +28,7 @@ class _CountryScreenState extends State<CountryScreen> {
     if (city != 'all') list = list.where((i) => i.city == city).toList();
 
     return ScreenFrame(
-      title: '${country.flag} ${country.name}',
+      title: country.name,
       subtitle: '해외 대행 마켓',
       onBack: () => Navigator.of(context).pop(),
       accent: AppColors.purple,
@@ -40,9 +40,15 @@ class _CountryScreenState extends State<CountryScreen> {
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: [
-                Padding(padding: const EdgeInsets.only(right: 6), child: ChipWidget(label: '전체', active: city == 'all', onTap: () => setState(() => city = 'all'))),
+                Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: ChipWidget(label: '전체', active: city == 'all', onTap: () => setState(() => city = 'all')),
+                ),
                 for (final ci in country.cities)
-                  Padding(padding: const EdgeInsets.only(right: 6), child: ChipWidget(label: ci, active: city == ci, onTap: () => setState(() => city = ci))),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: ChipWidget(label: ci, active: city == ci, onTap: () => setState(() => city = ci)),
+                  ),
               ],
             ),
           ),
@@ -50,7 +56,13 @@ class _CountryScreenState extends State<CountryScreen> {
           if (list.isEmpty)
             EmptyState(msg: '${country.name}${city != 'all' ? ' $city' : ''}에 아직 올라온 부탁이 없어요.\n첫 부탁을 올려보세요!')
           else
-            for (final it in list) TaskCard(it: it, onOpen: () => widget.actions.open(context, it), done: widget.actions.grabbed.contains(it.id), rich: true),
+            for (final it in list)
+              TaskCard(
+                it: it,
+                onOpen: () => widget.actions.open(context, it),
+                done: widget.actions.grabbed.contains(it.id),
+                rich: true,
+              ),
         ],
       ),
     );

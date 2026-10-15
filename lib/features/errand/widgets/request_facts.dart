@@ -23,18 +23,39 @@ class RequestFacts extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        border: Border.all(color: AppColors.line),
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(padding: EdgeInsets.only(bottom: 8), child: Text('지원 전에 확인하세요', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.ink))),
+          const Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: Text(
+              '지원 전에 확인하세요',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.ink),
+            ),
+          ),
           for (final r in rows)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                SizedBox(width: 72, child: Text(r[0], style: const TextStyle(fontSize: 13, color: AppColors.sub, fontWeight: FontWeight.w600))),
-                Expanded(child: Text(r[1], style: const TextStyle(fontSize: 14, color: AppColors.ink, height: 1.45))),
-              ]),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 72,
+                    child: Text(
+                      r[0],
+                      style: const TextStyle(fontSize: 13, color: AppColors.sub, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(r[1], style: const TextStyle(fontSize: 14, color: AppColors.ink, height: 1.45)),
+                  ),
+                ],
+              ),
             ),
         ],
       ),

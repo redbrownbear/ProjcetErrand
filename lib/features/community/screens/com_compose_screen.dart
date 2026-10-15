@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/colors.dart';
 import '../../../core/widgets/kit.dart';
+import '../../../core/widgets/surface.dart';
 import '../../errand/data/countries.dart';
 import '../data/com_posts.dart';
 import '../models/com_post.dart';
@@ -28,16 +29,16 @@ class _ComComposeScreenState extends State<ComComposeScreen> {
   late final body = TextEditingController(text: widget.initial?.body ?? '');
 
   List<String> get _kinds => switch (scope) {
-        'travel' => travelKinds,
-        'abroad' => abroadKinds,
-        _ => localKinds,
-      };
+    'travel' => travelKinds,
+    'abroad' => abroadKinds,
+    _ => localKinds,
+  };
 
   List<(String, String)> get _places => switch (scope) {
-        'travel' => [for (final p in travelPlaces) (p.place, '${p.emoji} ${p.place}')],
-        'abroad' => [for (final c in countries) (c.cc, '${c.flag} ${c.name}')],
-        _ => const [],
-      };
+    'travel' => [for (final p in travelPlaces) (p.place, '${p.emoji} ${p.place}')],
+    'abroad' => [for (final c in countries) (c.cc, c.name)],
+    _ => const [],
+  };
 
   @override
   void dispose() {
@@ -50,17 +51,19 @@ class _ComComposeScreenState extends State<ComComposeScreen> {
 
   void _submit() {
     if (!_ok) return;
-    widget.onSubmit(ComPost(
-      id: DateTime.now().millisecondsSinceEpoch,
-      scope: scope,
-      kind: kind,
-      place: place,
-      title: title.text.trim(),
-      body: body.text.trim(),
-      author: widget.author,
-      mine: true,
-      proposalId: widget.initial?.proposalId,
-    ));
+    widget.onSubmit(
+      ComPost(
+        id: DateTime.now().millisecondsSinceEpoch,
+        scope: scope,
+        kind: kind,
+        place: place,
+        title: title.text.trim(),
+        body: body.text.trim(),
+        author: widget.author,
+        mine: true,
+        proposalId: widget.initial?.proposalId,
+      ),
+    );
     Navigator.pop(context);
   }
 
@@ -73,7 +76,7 @@ class _ComComposeScreenState extends State<ComComposeScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
         children: [
-          Seg(
+          SegToggle(
             labels: const ['우리 동네', '국내 여행', '해외'],
             index: const ['local', 'travel', 'abroad'].indexOf(scope),
             margin: EdgeInsets.zero,
@@ -84,17 +87,25 @@ class _ComComposeScreenState extends State<ComComposeScreen> {
             }),
           ),
           const FieldLabel('어떤 글인가요?'),
-          Wrap(spacing: 6, runSpacing: 6, children: [
-            for (final k in _kinds) _chip(k, kind == k, () => setState(() => kind = k)),
-          ]),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [for (final k in _kinds) _chip(k, kind == k, () => setState(() => kind = k))],
+          ),
           if (scope != 'local') ...[
             FieldLabel(scope == 'travel' ? '어느 지역이에요?' : '어느 나라예요?'),
-            Wrap(spacing: 6, runSpacing: 6, children: [
-              for (final p in _places) _chip(p.$2, place == p.$1, () => setState(() => place = p.$1)),
-            ]),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [for (final p in _places) _chip(p.$2, place == p.$1, () => setState(() => place = p.$1))],
+            ),
           ],
           const FieldLabel('제목'),
-          TextField(controller: title, onChanged: (_) => setState(() {}), decoration: const InputDecoration(hintText: '예) 서초역 근처 세탁소 추천해 주세요')),
+          TextField(
+            controller: title,
+            onChanged: (_) => setState(() {}),
+            decoration: const InputDecoration(hintText: '예) 서초역 근처 세탁소 추천해 주세요'),
+          ),
           const FieldLabel('내용'),
           TextField(
             controller: body,
@@ -111,15 +122,18 @@ class _ComComposeScreenState extends State<ComComposeScreen> {
   }
 
   Widget _chip(String label, bool on, VoidCallback onTap) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: on ? AppColors.ink : AppColors.card,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: on ? AppColors.ink : AppColors.outline),
-          ),
-          child: Text(label, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: on ? Colors.white : AppColors.inkSoft)),
-        ),
-      );
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: on ? AppColors.ink : AppColors.card,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: on ? AppColors.ink : AppColors.outline),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: on ? Colors.white : AppColors.ink2),
+      ),
+    ),
+  );
 }

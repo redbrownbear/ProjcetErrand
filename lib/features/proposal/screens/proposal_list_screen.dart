@@ -60,23 +60,34 @@ class _ProposalListScreenState extends State<ProposalListScreen> {
               if (mineJoined > 0)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                  child: Text('내가 구매 요청한 제안 $mineJoined건', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.yellowInk)),
+                  child: Text(
+                    '내가 구매 요청한 제안 $mineJoined건',
+                    style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.yellowDeep),
+                  ),
                 ),
               Container(
                 margin: const EdgeInsets.fromLTRB(10, 12, 10, 0),
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: AppColors.liveBg, borderRadius: BorderRadius.circular(20), border: Border.all(color: AppColors.liveLine)),
+                decoration: BoxDecoration(
+                  color: AppColors.liveBg,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.liveLine),
+                ),
                 child: list.isEmpty
                     ? const Padding(
                         padding: EdgeInsets.symmetric(vertical: 28),
-                        child: Center(child: Text('조건에 맞는 제안이 없어요', style: TextStyle(color: AppColors.sub))),
+                        child: Center(
+                          child: Text('조건에 맞는 제안이 없어요', style: TextStyle(color: AppColors.sub)),
+                        ),
                       )
-                    : Column(children: [
-                        for (final (i, p) in list.indexed) ...[
-                          if (i > 0) const SizedBox(height: 6),
-                          ProposalRow(p: p, meJoined: widget.store.joined.contains(p.id), onTap: () => widget.onOpen(p)),
+                    : Column(
+                        children: [
+                          for (final (i, p) in list.indexed) ...[
+                            if (i > 0) const SizedBox(height: 6),
+                            ProposalRow(p: p, meJoined: widget.store.joined.contains(p.id), onTap: () => widget.onOpen(p)),
+                          ],
                         ],
-                      ]),
+                      ),
               ),
               const Padding(
                 padding: EdgeInsets.fromLTRB(20, 14, 20, 0),

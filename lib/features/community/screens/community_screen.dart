@@ -42,9 +42,15 @@ class _CommunityScreenState extends State<CommunityScreen> {
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: [
-                Padding(padding: const EdgeInsets.only(right: 6), child: ChipWidget(label: '전체', active: tc == 'all', onTap: () => setState(() => tc = 'all'))),
+                Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: ChipWidget(label: '전체', active: tc == 'all', onTap: () => setState(() => tc = 'all')),
+                ),
                 for (final c in tcats)
-                  Padding(padding: const EdgeInsets.only(right: 6), child: ChipWidget(label: '${c.icon} ${c.label}', active: tc == c.k, onTap: () => setState(() => tc = c.k))),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: ChipWidget(label: c.label, active: tc == c.k, onTap: () => setState(() => tc = c.k)),
+                  ),
               ],
             ),
           ),
@@ -52,7 +58,10 @@ class _CommunityScreenState extends State<CommunityScreen> {
             margin: const EdgeInsets.symmetric(vertical: 10),
             padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
             decoration: BoxDecoration(color: AppColors.greenSoft, borderRadius: BorderRadius.circular(12)),
-            child: const Text('🛡 안전한 장소에서 만나요 · 공개된 장소 권장 · 개인 연락처 노출 최소화 · 앱 내 채팅 이용 · 신고/차단 제공', style: TextStyle(fontSize: 11.5, color: Color(0xFF1B8A5A), fontWeight: FontWeight.w500, height: 1.55)),
+            child: const Text(
+              '안전한 장소에서 만나요 · 공개된 장소 권장 · 개인 연락처 노출 최소화 · 앱 내 채팅 이용 · 신고/차단 제공',
+              style: TextStyle(fontSize: 11.5, color: Color(0xFF1B8A5A), fontWeight: FontWeight.w500, height: 1.55),
+            ),
           ),
           if (feed.isEmpty)
             const EmptyState(msg: '이 카테고리엔 아직 글이 없어요.')

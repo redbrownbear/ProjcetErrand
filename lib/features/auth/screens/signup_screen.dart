@@ -58,14 +58,27 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   InputDecoration _dec(String hint) => InputDecoration(
-        hintText: hint,
-        filled: true, fillColor: AppColors.card,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.line)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.line)),
-      );
+    hintText: hint,
+    filled: true,
+    fillColor: AppColors.card,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: AppColors.line),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: AppColors.line),
+    ),
+  );
 
-  Widget _label(String t) => Padding(padding: const EdgeInsets.only(bottom: 8, top: 14), child: Text(t, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.ink)));
+  Widget _label(String t) => Padding(
+    padding: const EdgeInsets.only(bottom: 8, top: 14),
+    child: Text(
+      t,
+      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.ink),
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -75,7 +88,10 @@ class _SignupScreenState extends State<SignupScreen> {
         backgroundColor: AppColors.page,
         elevation: 0,
         foregroundColor: AppColors.ink,
-        title: const Text('회원가입', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: AppColors.ink)),
+        title: const Text(
+          '회원가입',
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: AppColors.ink),
+        ),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -90,7 +106,12 @@ class _SignupScreenState extends State<SignupScreen> {
               _label('비밀번호'),
               TextField(controller: _passwordCtrl, obscureText: true, decoration: _dec('6자 이상')),
               _label('비밀번호 확인'),
-              TextField(controller: _passwordCheckCtrl, obscureText: true, onSubmitted: (_) => _submit(), decoration: _dec('비밀번호를 한번 더 입력해주세요')),
+              TextField(
+                controller: _passwordCheckCtrl,
+                obscureText: true,
+                onSubmitted: (_) => _submit(),
+                decoration: _dec('비밀번호를 한번 더 입력해주세요'),
+              ),
               if (_error != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
@@ -102,14 +123,19 @@ class _SignupScreenState extends State<SignupScreen> {
                 child: ElevatedButton(
                   onPressed: _loading ? null : _submit,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.yellow, foregroundColor: AppColors.ink,
+                    backgroundColor: AppColors.yellow,
+                    foregroundColor: AppColors.ink,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     elevation: 0,
                     disabledBackgroundColor: AppColors.yellowSoft,
                   ),
                   child: _loading
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.ink))
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.ink),
+                        )
                       : const Text('가입하고 시작하기', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                 ),
               ),

@@ -29,8 +29,7 @@ enum PayKind {
   final String icon;
   const PayKind(this.label, this.icon);
 
-  static PayKind parse(Object? raw) =>
-      PayKind.values.firstWhere((k) => k.name == raw, orElse: () => PayKind.charge);
+  static PayKind parse(Object? raw) => PayKind.values.firstWhere((k) => k.name == raw, orElse: () => PayKind.charge);
 }
 
 class PayEntry {
@@ -61,22 +60,22 @@ class PayEntry {
   bool get isIncome => amount >= 0;
 
   Map<String, Object?> toMap() => {
-        'kind': kind.name,
-        'amount': amount,
-        'label': label,
-        'at': Timestamp.fromDate(at),
-        'requestId': requestId,
-      };
+    'kind': kind.name,
+    'amount': amount,
+    'label': label,
+    'at': Timestamp.fromDate(at),
+    'requestId': requestId,
+  };
 
   /// 이 기기 사본용 (LocalStore는 JSON만 다룬다)
   Map<String, Object?> toJson() => {
-        'id': id,
-        'kind': kind.name,
-        'amount': amount,
-        'label': label,
-        'at': at.toIso8601String(),
-        'requestId': requestId,
-      };
+    'id': id,
+    'kind': kind.name,
+    'amount': amount,
+    'label': label,
+    'at': at.toIso8601String(),
+    'requestId': requestId,
+  };
 
   static PayEntry? fromMap(String docId, Map<String, dynamic> m) {
     final id = int.tryParse(docId);

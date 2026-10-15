@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../app/app_nav.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/widgets/kit.dart';
-import '../../home/widgets/home_sections.dart';
+import '../widgets/trip_widgets.dart';
 
 /// 가는 김에 — 전체보기
 class TripFeedScreen extends StatefulWidget {

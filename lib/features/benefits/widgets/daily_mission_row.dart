@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/colors.dart';
+import '../../../core/widgets/app_icon.dart';
 import '../../../core/utils/formatters.dart';
 import '../models/daily_mission.dart';
 import '../models/mission_provider.dart';
@@ -34,44 +35,60 @@ class DailyMissionRow extends StatelessWidget {
             border: Border.all(color: done ? AppColors.line : const Color(0xFFE9EBEF)),
             borderRadius: BorderRadius.circular(AppRadius.card),
           ),
-          child: Row(children: [
-            Container(
-              width: 42,
-              height: 42,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: done ? AppColors.line : AppColors.page,
-                borderRadius: BorderRadius.circular(AppRadius.emblem),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: done ? AppColors.line : AppColors.page,
+                  borderRadius: BorderRadius.circular(AppRadius.emblem),
+                ),
+                child: AppIcon(s.m.icon, size: 17, color: AppColors.ink2),
               ),
-              child: Text(s.m.icon, style: const TextStyle(fontSize: 20)),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  Flexible(
-                    child: Text(s.m.title,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            s.m.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppType.meta.copyWith(
+                              fontSize: 14.5,
+                              fontWeight: AppType.w600,
+                              color: done ? AppColors.sub : AppColors.ink,
+                            ),
+                          ),
+                        ),
+                        if (!done && !locked && s.m.cap > 1)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 6),
+                            child: Text('${s.left}회 남음', style: AppType.caption.copyWith(color: AppColors.yellowDeep)),
+                          ),
+                      ],
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        locked ? _lockedHint : s.m.sub,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppType.meta.copyWith(
-                            fontSize: 14.5, fontWeight: AppType.w600, color: done ? AppColors.sub : AppColors.ink)),
-                  ),
-                  if (!done && !locked && s.m.cap > 1)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 6),
-                      child: Text('${s.left}회 남음', style: AppType.caption.copyWith(color: AppColors.yellowDeep)),
+                        style: AppType.caption,
+                      ),
                     ),
-                ]),
-                Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: Text(locked ? _lockedHint : s.m.sub,
-                      maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.caption),
+                  ],
                 ),
-              ]),
-            ),
-            const SizedBox(width: 10),
-            _right(done: done, locked: locked),
-          ]),
+              ),
+              const SizedBox(width: 10),
+              _right(done: done, locked: locked),
+            ],
+          ),
         ),
       ),
     );
@@ -83,11 +100,17 @@ class DailyMissionRow extends StatelessWidget {
 
   Widget _right({required bool done, required bool locked}) {
     if (done) {
-      return Row(mainAxisSize: MainAxisSize.min, children: [
-        const Icon(Icons.check_circle_rounded, size: 18, color: AppColors.green),
-        const SizedBox(width: 5),
-        Text('완료', style: AppType.caption.copyWith(color: AppColors.green, fontWeight: AppType.w600)),
-      ]);
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.check_circle_rounded, size: 18, color: AppColors.green),
+          const SizedBox(width: 5),
+          Text(
+            '완료',
+            style: AppType.caption.copyWith(color: AppColors.green, fontWeight: AppType.w600),
+          ),
+        ],
+      );
     }
     if (locked) {
       return Container(
@@ -100,21 +123,27 @@ class DailyMissionRow extends StatelessWidget {
     // 들어올지 모르는 미션에 '+2,500P'를 박으면 실제 적립액과 어긋나므로,
     // 숫자 대신 기준(주문액의 1% · 캠페인마다 다름)을 그대로 보여 준다.
     final fixed = s.m.payout == PayoutKind.fixed;
-    return Column(crossAxisAlignment: CrossAxisAlignment.end, mainAxisSize: MainAxisSize.min, children: [
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-        decoration: BoxDecoration(
-          color: fixed ? AppColors.yellow : AppColors.pillNeutral,
-          borderRadius: BorderRadius.circular(AppRadius.chip),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+          decoration: BoxDecoration(
+            color: fixed ? AppColors.yellow : AppColors.pillNeutral,
+            borderRadius: BorderRadius.circular(AppRadius.chip),
+          ),
+          child: Text(
+            fixed ? '+${nf(s.m.points)}P' : s.m.payoutLabel,
+            style: AppType.button.copyWith(fontSize: 12.5, color: fixed ? AppColors.ink : AppColors.pillNeutralInk),
+          ),
         ),
-        child: Text(fixed ? '+${nf(s.m.points)}P' : s.m.payoutLabel,
-            style: AppType.button.copyWith(fontSize: 12.5, color: fixed ? AppColors.ink : AppColors.pillNeutralInk)),
-      ),
-      if (s.statusLabel.isNotEmpty)
-        Padding(
-          padding: const EdgeInsets.only(top: 3),
-          child: Text(s.statusLabel, style: AppType.caption.copyWith(fontSize: 10.5)),
-        ),
-    ]);
+        if (s.statusLabel.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 3),
+            child: Text(s.statusLabel, style: AppType.caption.copyWith(fontSize: 10.5)),
+          ),
+      ],
+    );
   }
 }

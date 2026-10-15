@@ -21,10 +21,10 @@ class EarnTrack {
   static const title = '오늘 벌기';
   static const sub = '지금 할 수 있는 일과 참여';
 
-  static const errand = TrackMenu('errand', '심부름', '🤝', '지역 픽업 · 개인/기업 심부름');
-  static const reward = TrackMenu('reward', '참여·리워드', '📝', '설문 · 현장 서비스 점검 · 모델하우스 · 임상/연구');
-  static const dayjob = TrackMenu('dayjob', '단기알바', '🎪', '공연/행사 · 전시 · 단기 · 프로젝트');
-  static const mission = TrackMenu('mission', '간단 미션', '✨', '오퍼월 · 브랜드 미션');
+  static const errand = TrackMenu('errand', '심부름', 'handshake', '지역 픽업 · 개인/기업 심부름');
+  static const reward = TrackMenu('reward', '참여·리워드', 'pencil', '설문 · 현장 서비스 점검 · 모델하우스 · 임상/연구');
+  static const dayjob = TrackMenu('dayjob', '단기알바', 'ticket', '공연/행사 · 전시 · 단기 · 프로젝트');
+  static const mission = TrackMenu('mission', '간단 미션', 'sparkles', '오퍼월 · 브랜드 미션');
 
   static const menus = [errand, reward, dayjob, mission];
 }
@@ -34,9 +34,9 @@ class SaveTrack {
   static const title = '생활비 아끼기';
   static const sub = '회원 전용가로 고정비 줄이기';
 
-  static const deal = TrackMenu('deal', '겸사특가', '🏷️', '지역업체 · 프랜차이즈 · 공동구매');
-  static const service = TrackMenu('service', '생활서비스', '🧺', '세탁 · 인쇄 · 렌탈 등 지역 생활서비스');
-  static const finance = TrackMenu('finance', '금융 혜택', '💳', '카드 · 증권 등 규제 검토 후 제공');
+  static const deal = TrackMenu('deal', '겸사특가', 'ticket', '지역업체 · 프랜차이즈 · 공동구매');
+  static const service = TrackMenu('service', '생활서비스', 'laundry', '세탁 · 인쇄 · 렌탈 등 지역 생활서비스');
+  static const finance = TrackMenu('finance', '금융 혜택', 'card', '카드 · 증권 등 규제 검토 후 제공');
 
   static const menus = [deal, service, finance];
 }

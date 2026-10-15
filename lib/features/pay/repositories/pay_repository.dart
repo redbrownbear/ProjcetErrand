@@ -19,14 +19,14 @@ class PayRepository {
   CollectionReference<Map<String, dynamic>> get _col => Backend.users.doc(uid).collection('payEntries');
 
   Future<List<PayEntry>> load({int limit = 100}) => Backend.guard<List<PayEntry>>(() async {
-        final snap = await _col.orderBy('at', descending: true).limit(limit).get();
-        final out = <PayEntry>[];
-        for (final d in snap.docs) {
-          final e = PayEntry.fromMap(d.id, d.data());
-          if (e != null) out.add(e);
-        }
-        return out;
-      }, const []);
+    final snap = await _col.orderBy('at', descending: true).limit(limit).get();
+    final out = <PayEntry>[];
+    for (final d in snap.docs) {
+      final e = PayEntry.fromMap(d.id, d.data());
+      if (e != null) out.add(e);
+    }
+    return out;
+  }, const []);
 
   Future<void> add(PayEntry e) => Backend.push(() => _col.doc('${e.id}').set(e.toMap()));
 }

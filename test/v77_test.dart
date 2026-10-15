@@ -3,41 +3,22 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:gyeomsa/app/app_nav.dart';
 import 'package:gyeomsa/app/neighbor_store.dart';
-import 'package:gyeomsa/features/benefits/services/mission_engine.dart';
-import 'package:gyeomsa/features/benefits/services/mission_runner.dart';
+import 'package:gyeomsa/features/benefits/screens/side_job_view.dart';
+import 'package:gyeomsa/features/chat/screens/chat_view.dart';
 import 'package:gyeomsa/features/community/screens/community_view.dart';
-import 'package:gyeomsa/features/errand/navigation/errand_actions.dart';
 import 'package:gyeomsa/features/errand/repositories/errand_repository.dart';
-import 'package:gyeomsa/features/home/screens/domestic_home.dart';
-import 'package:gyeomsa/features/home/screens/overseas_home.dart';
+import 'package:gyeomsa/features/errand/screens/home/home_content.dart';
+import 'package:gyeomsa/features/errand/screens/overseas_tab.dart';
 import 'package:gyeomsa/features/lucky/models/tickets.dart';
 import 'package:gyeomsa/features/lucky/screens/lucky_draw_screen.dart';
-import 'package:gyeomsa/features/market/screens/market_view.dart';
-import 'package:gyeomsa/features/chat/screens/chat_view.dart';
-import 'package:gyeomsa/features/profile/models/trust_level.dart';
-import 'package:gyeomsa/features/profile/models/user_profile.dart';
-import 'package:gyeomsa/features/profile/screens/me_view.dart';
+import 'package:gyeomsa/features/lucky/widgets/lucky_card.dart';
 import 'package:gyeomsa/features/proposal/models/proposal.dart';
 import 'package:gyeomsa/features/proposal/widgets/live_board.dart';
 
-/// 시안 v77 리메이크 — 응모권 · 제안 규칙과, 새 탭이 기준 폰 폭에서 넘치지 않는지 본다.
-final _items = LocalErrandRepository().fetchSeedItems();
+import 'support/social.dart';
 
-AppNav _nav(NeighborStore store, {List<String>? toasts}) => AppNav(
-      store: store,
-      nickname: () => '테스트',
-      area: () => '서초구',
-      items: () => _items,
-      actions: () => ErrandActions(
-        grabbed: const [], onGrab: (_) {}, onOffer: (_, _, _) {}, offers: const {},
-        isSaved: (_) => false, toggleSave: (_) {},
-      ),
-      flash: (m) => toasts?.add(m),
-      openAskForm: () {},
-      openSeaForm: () {},
-      goCommunity: (_, {place}) {},
-      requestDelivery: (_) {},
-    );
+/// 시안 v77 — 응모권 · 제안 규칙과, v77에서 붙은 부분이 기준 폰 폭에서 넘치지 않는지 본다.
+final _items = LocalErrandRepository().fetchSeedItems();
 
 Future<void> _phone(WidgetTester tester, Widget child, {double height = 812}) async {
   tester.view.physicalSize = Size(375, height);
@@ -47,7 +28,7 @@ Future<void> _phone(WidgetTester tester, Widget child, {double height = 812}) as
   await tester.pump();
 }
 
-/// 히어로·배너가 Timer.periodic으로 돈다. 테스트가 끝나기 전에 트리를 내려 타이머를 끊는다.
+/// 히어로·배너가 Timer로 돈다. 테스트가 끝나기 전에 트리를 내려 타이머를 끊는다.
 Future<void> _unmount(WidgetTester tester) => tester.pumpWidget(const SizedBox());
 
 void main() {
@@ -96,9 +77,16 @@ void main() {
   group('제안', () {
     final today = DateTime.now();
     Proposal p({int max = 5, int joined = 0, int plus = 0}) => Proposal(
-          id: 1, abroad: false, from: '여수', item: '갓김치', price: 12000,
-          day: DateTime(today.year, today.month, today.day + plus), max: max, joined: joined, who: '다온 스토어',
-        );
+      id: 1,
+      abroad: false,
+      from: '여수',
+      item: '갓김치',
+      price: 12000,
+      day: DateTime(today.year, today.month, today.day + plus),
+      max: max,
+      joined: joined,
+      who: '다온 스토어',
+    );
 
     test('보드 상태 — 남은 자리 · 1자리 · 마감 · 제한 없음', () {
       expect(p(joined: 3).status(false), '3/5');
@@ -139,35 +127,53 @@ void main() {
   });
 
   group('화면', () {
-    testWidgets('홈 · 국내 부탁하기 · 돈벌기가 넘침 없이 그려진다', (tester) async {
-      final nav = _nav(NeighborStore());
-      await _phone(
-        tester,
-        SingleChildScrollView(
-          child: DomesticHome(
-            nav: nav, items: _items, scope: '서울 서초구', monthEarn: 0,
-            goWallet: () {}, goMarket: (_) {}, openCat: (_) {}, openAllAsks: () {},
-            openTripFeed: () {}, openAllServices: () {}, goOverseasEarn: () {}, applyDayJob: (_) {},
-          ),
-        ),
-        height: 5200,
-      );
-      expect(find.text('무엇이든 부탁해요\n가까운 이웃이 도와드려요'), findsOneWidget);
+    HomeContent home(AppNav social) => HomeContent(
+      social: social,
+      items: _items,
+      scope: '서울 서초구',
+      actions: social.actions(),
+      points: 3200,
+      steps: 0,
+      monthEarn: 0,
+      coupons: const [],
+      doneMissions: const [],
+      isClaimed: (k, {daily = true}) => false,
+      earn: (a, l, {required key, daily = true}) async {},
+      redeem: (_) {},
+      useCoupon: (_) {},
+      completeMission: (_) {},
+      flash: (_) {},
+      goPay: () {},
+      goProfile: () {},
+      goPost: () {},
+      goPostCat: (_) {},
+      goPostSea: () {},
+      goOverseasTab: () {},
+      goSideTab: (_) {},
+      goPointsHub: () {},
+      activeCount: 0,
+      goActivity: () {},
+      openJobPost: () {},
+    );
+
+    testWidgets('홈 · 국내 — 럭키드로우 말풍선 · LIVE 보드 · 가는 김에가 붙는다', (tester) async {
+      await _phone(tester, home(testSocial()), height: 5200);
       expect(find.text('이동하는 길에, 필요한 분?'), findsOneWidget);
-      expect(find.text('자주 하는 부탁'), findsOneWidget);
+      expect(find.textContaining('LUCKY DRAW'), findsOneWidget);
+      expect(find.text('여행 어디 갈까?'), findsOneWidget);
+      expect(find.text('내일 오사카 가요'), findsOneWidget, reason: '가는 김에 글');
       expect(tester.takeException(), isNull);
 
       await tester.tap(find.text('돈벌기'));
       await tester.pump(const Duration(milliseconds: 300));
-      expect(find.text('이번 달 내가 번 금액'), findsOneWidget);
-      expect(find.text('지금 내 주변 부탁'), findsOneWidget);
+      expect(find.text('이동하는 길에, 필요한 분?'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await _unmount(tester);
     });
 
-    testWidgets('홈 · 해외 세 칸이 넘침 없이 그려진다', (tester) async {
-      final nav = _nav(NeighborStore());
-      await _phone(tester, SingleChildScrollView(child: OverseasHome(nav: nav, items: _items)), height: 4000);
+    testWidgets('홈 · 해외 — 부탁하기 · 돈벌기 · 현지 이웃', (tester) async {
+      final social = testSocial();
+      await _phone(tester, OverseasTab(items: _items, actions: social.actions(), onPostSea: () {}, social: social), height: 4000);
       expect(find.text('가는 김에 사다 드려요'), findsOneWidget);
       for (final seg in ['돈벌기', '현지 이웃']) {
         await tester.tap(find.text(seg).first);
@@ -178,21 +184,31 @@ void main() {
       await _unmount(tester);
     });
 
-    testWidgets('마켓 네 칸', (tester) async {
-      final nav = _nav(NeighborStore());
+    testWidgets('마켓 — 미션 · 공동구매 · 중고장터 · 나눔', (tester) async {
+      final social = testSocial();
       await _phone(
         tester,
-        MarketView(
-          nav: nav, points: 3200, doneMissions: const [], completeMission: (_) {}, openPointShop: () {}, items: _items,
-          engine: () => MissionEngine((k, {daily = true}) => false),
-          runner: MissionRunner(
-            earn: (a, l, {required key, daily = true}) async {}, flash: (_) {}, scope: '서울 서초구',
-            goWalk: () {}, goProfile: () {}, goPost: () {}, goList: () {},
-          ),
+        SideJobView(
+          social: social,
+          points: 3200,
+          coupons: const [],
+          items: _items,
+          scope: '서울 서초구',
+          actions: social.actions(),
+          monthEarn: 0,
+          freeLeft: 3,
+          doneMissions: const [],
+          earn: (a, l, {required key, daily = true}) async {},
+          isClaimed: (k, {daily = true}) => false,
+          redeem: (_) {},
+          useCoupon: (_) {},
+          completeMission: (_) {},
+          goPointsHub: () {},
+          flash: (_) {},
         ),
         height: 2400,
       );
-      expect(find.text('1,800P 더 모으면 원으로 출금할 수 있어요'), findsOneWidget);
+      expect(find.textContaining('LUCKY DRAW'), findsOneWidget);
       for (final t in ['공동구매', '중고장터', '나눔']) {
         await tester.tap(find.text(t).first);
         await tester.pump();
@@ -202,10 +218,10 @@ void main() {
       await _unmount(tester);
     });
 
-    testWidgets('커뮤니티 — 여행 피드에 제안이 글처럼 섞인다', (tester) async {
-      final nav = _nav(NeighborStore());
-      await _phone(tester, CommunityView(nav: nav, goOverseasAsk: () {}), height: 3000);
+    testWidgets('커뮤니티 — 여행 피드에 제안이 글처럼 섞이고, 지어낸 이웃 수가 없다', (tester) async {
+      await _phone(tester, CommunityView(nav: testSocial(), goOverseasAsk: () {}), height: 3000);
       expect(find.text('우리 동네에서 제일 좋아하는 가게는?'), findsOneWidget);
+      expect(find.textContaining('312명'), findsNothing);
       await tester.tap(find.text('여행'));
       await tester.pump();
       expect(find.text('저 구매할래요!'), findsWidgets);
@@ -216,48 +232,34 @@ void main() {
       await _unmount(tester);
     });
 
-    testWidgets('마이 — 지갑 · 응모권 · 메뉴가 넘침 없이 그려진다', (tester) async {
-      final nav = _nav(NeighborStore());
-      await _phone(
-        tester,
-        MeView(
-          nav: nav, profile: null, stats: const ProfileStats(), trust: const TrustLevel(0), scope: '서울 서초구',
-          points: 3200, coupons: const [], useCoupon: (_) {}, goPointsHub: () {}, isLoggedIn: true, onLogin: () {},
-          onOpenSaved: () {}, onOpenApplied: () {}, onOpenMine: () {}, onOpenActivity: () {},
-          onWithdraw: () {}, onHistory: () {}, onRename: (_) async {},
-        ),
-        height: 2400,
-      );
-      expect(find.text('지금까지 모은 돈'), findsOneWidget);
-      expect(find.textContaining('내 응모권'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    });
-
     testWidgets('LIVE 보드 줄을 누르면 제안 상세가 열리고 구매 요청이 된다', (tester) async {
       final store = NeighborStore();
-      final nav = _nav(store);
+      final nav = testSocial(store: store);
       await _phone(
         tester,
         ListenableBuilder(
           listenable: store,
-          builder: (context, _) => LiveBoard(
-            store: store, abroad: false,
-            onOpen: (p) => nav.openProposal(context, p),
-            onAll: () {}, onPropose: () {},
-          ),
+          builder: (context, _) =>
+              LiveBoard(store: store, abroad: false, onOpen: (p) => nav.openProposal(context, p), onAll: () {}, onPropose: () {}),
         ),
       );
+      expect(find.textContaining('체험용 예시'), findsOneWidget);
       await tester.tap(find.text('갓김치'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 600));
       expect(find.text('저 구매할래요!'), findsOneWidget);
-      expect(find.textContaining('이웃 이야기'), findsOneWidget);
       await tester.tap(find.text('저 구매할래요!'));
       await tester.pump();
       expect(store.joined.contains(9001), isTrue);
       expect(find.text('구매 요청 취소'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await _unmount(tester);
+    });
+
+    testWidgets('마이 — 응모권 카드', (tester) async {
+      await _phone(tester, LuckyCard(nav: testSocial()));
+      expect(find.textContaining('내 응모권'), findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('채팅 빈 화면', (tester) async {

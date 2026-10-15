@@ -14,10 +14,7 @@ class Disclosure {
 
 class Disclosures {
   /// 모든 제휴 캠페인 공통 — 광고임을 명확히 표시 (§4 파일럿 원칙)
-  static const partner = Disclosure(
-    '광고·제휴',
-    '제휴사가 비용을 부담하는 광고·제휴 캠페인이에요. 지급 조건과 시점은 제휴사 정책에 따라 달라질 수 있어요.',
-  );
+  static const partner = Disclosure('광고·제휴', '제휴사가 비용을 부담하는 광고·제휴 캠페인이에요. 지급 조건과 시점은 제휴사 정책에 따라 달라질 수 있어요.');
 
   /// 보험 (§4) — 겸사겸사가 모집 주체로 보이지 않게 한다
   static const insurance = Disclosure(
@@ -56,10 +53,7 @@ class Disclosures {
   );
 
   /// 회원 전용가 (§10) — '최저가'를 약속하지 않는다
-  static const pricing = Disclosure(
-    '회원 전용가',
-    '최저가를 보장하는 가격이 아니라 제휴로 만든 겸사겸사 회원 전용가예요. 비교 기준가는 판매처 정상가를 그대로 표시해요.',
-  );
+  static const pricing = Disclosure('회원 전용가', '최저가를 보장하는 가격이 아니라 제휴로 만든 겸사겸사 회원 전용가예요. 비교 기준가는 판매처 정상가를 그대로 표시해요.');
 
   /// 기업 심부름 (§7) — 검증 수행자 B2B
   static const b2b = Disclosure(

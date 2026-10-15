@@ -16,12 +16,7 @@ class MissionState {
   /// 카운터형 미션의 진행도. 아닌 미션은 0.
   final int progress;
 
-  const MissionState({
-    required this.m,
-    required this.provider,
-    required this.claimed,
-    required this.progress,
-  });
+  const MissionState({required this.m, required this.provider, required this.claimed, required this.progress});
 
   /// 받을 수 있는 만큼 다 받았다
   bool get done => claimed >= m.cap;
@@ -76,12 +71,7 @@ class MissionEngine {
       claimed = 1;
     }
 
-    return MissionState(
-      m: m,
-      provider: providerOf(m.providerId),
-      claimed: claimed,
-      progress: _progress(m),
-    );
+    return MissionState(m: m, provider: providerOf(m.providerId), claimed: claimed, progress: _progress(m));
   }
 
   List<MissionState> all() => [for (final m in missions) stateOf(m)];
@@ -128,9 +118,9 @@ class MissionEngine {
 
   /// 앱 여기저기에서 세고 있는 행동을 미션 진행도로 바꾼다.
   static int _progress(DailyMission m) => switch (m.action) {
-        MissionAction.browse => MissionTracker.count(MissionTracker.openDetail),
-        MissionAction.bookmark => MissionTracker.count(MissionTracker.saveTask),
-        MissionAction.post => MissionTracker.count(MissionTracker.postTask),
-        _ => 0,
-      };
+    MissionAction.browse => MissionTracker.count(MissionTracker.openDetail),
+    MissionAction.bookmark => MissionTracker.count(MissionTracker.saveTask),
+    MissionAction.post => MissionTracker.count(MissionTracker.postTask),
+    _ => 0,
+  };
 }

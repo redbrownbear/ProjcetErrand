@@ -135,20 +135,20 @@ class DailyMission {
   /// **올림하지 않는다.** 재원보다 더 주는 방향으로 반올림되면 건마다 조금씩
   /// 손해가 나고, 거래가 쌓이면 그 차이가 그대로 적자가 된다.
   int pointsFor(int amount) => switch (payout) {
-        // 금액과 무관하게 정해진 값 (광고 시청)
-        PayoutKind.fixed => points,
-        // 주문액 비례 (쿠팡 구매 확정)
-        PayoutKind.rate => amount <= 0 ? 0 : (amount * rate).floor(),
-        // 제휴사가 캠페인마다 단가를 정한다. 앱은 알 수 없고 콜백으로 들어온다.
-        PayoutKind.partner => 0,
-      };
+    // 금액과 무관하게 정해진 값 (광고 시청)
+    PayoutKind.fixed => points,
+    // 주문액 비례 (쿠팡 구매 확정)
+    PayoutKind.rate => amount <= 0 ? 0 : (amount * rate).floor(),
+    // 제휴사가 캠페인마다 단가를 정한다. 앱은 알 수 없고 콜백으로 들어온다.
+    PayoutKind.partner => 0,
+  };
 
   /// 목록에서 포인트 자리에 넣을 말. 정해진 값이 없으면 숫자 대신 기준을 보여 준다.
   String get payoutLabel => switch (payout) {
-        PayoutKind.fixed => '+$points P',
-        PayoutKind.rate => '주문액의 ${_percent(rate)}',
-        PayoutKind.partner => '캠페인마다 다름',
-      };
+    PayoutKind.fixed => '+$points P',
+    PayoutKind.rate => '주문액의 ${_percent(rate)}',
+    PayoutKind.partner => '캠페인마다 다름',
+  };
 
   static String _percent(double v) {
     final p = v * 100;
@@ -164,12 +164,12 @@ class DailyMission {
 
   /// 걸린 시간을 사용자에게 보여줄 때 쓰는 대략값
   String get takes => switch (action) {
-        MissionAction.rewardAd => '30초',
-        MissionAction.quiz => '1분',
-        MissionAction.checkIn => '방문',
-        MissionAction.walk => '하루',
-        MissionAction.browse || MissionAction.bookmark => '2분',
-        MissionAction.post => '5분',
-        _ => '10초',
-      };
+    MissionAction.rewardAd => '30초',
+    MissionAction.quiz => '1분',
+    MissionAction.checkIn => '방문',
+    MissionAction.walk => '하루',
+    MissionAction.browse || MissionAction.bookmark => '2분',
+    MissionAction.post => '5분',
+    _ => '10초',
+  };
 }

@@ -33,40 +33,43 @@ class AppField extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        _Label(label: label, required: required),
-        const SizedBox(height: 9),
-        TextField(
-          controller: controller,
-          maxLines: maxLines,
-          keyboardType: keyboardType,
-          onChanged: onChanged,
-          style: AppType.body.copyWith(fontSize: 14, height: 1.5),
-          decoration: fieldDecoration(placeholder),
-        ),
-        if (hint != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 7),
-            child: Text(hint!, style: AppType.caption.copyWith(fontSize: 11, height: 1.6)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _Label(label: label, required: required),
+          const SizedBox(height: 9),
+          TextField(
+            controller: controller,
+            maxLines: maxLines,
+            keyboardType: keyboardType,
+            onChanged: onChanged,
+            style: AppType.body.copyWith(fontSize: 14, height: 1.5),
+            decoration: fieldDecoration(placeholder),
           ),
-      ]),
+          if (hint != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 7),
+              child: Text(hint!, style: AppType.caption.copyWith(fontSize: 11, height: 1.6)),
+            ),
+        ],
+      ),
     );
   }
 
   static InputDecoration fieldDecoration(String? placeholder) => InputDecoration(
-        hintText: placeholder,
-        filled: true,
-        fillColor: AppColors.card,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
-        border: _border(AppColors.line),
-        enabledBorder: _border(AppColors.line),
-        focusedBorder: _border(AppColors.green),
-      );
+    hintText: placeholder,
+    filled: true,
+    fillColor: AppColors.card,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+    border: _border(AppColors.line),
+    enabledBorder: _border(AppColors.line),
+    focusedBorder: _border(AppColors.green),
+  );
 
   static OutlineInputBorder _border(Color color) => OutlineInputBorder(
-        borderRadius: BorderRadius.circular(11),
-        borderSide: BorderSide(color: color),
-      );
+    borderRadius: BorderRadius.circular(11),
+    borderSide: BorderSide(color: color),
+  );
 }
 
 /// 고르는 칸. `.g2-field`의 `<select>` 자리다.
@@ -90,18 +93,21 @@ class AppSelectField extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        _Label(label: label, required: required),
-        const SizedBox(height: 9),
-        DropdownButtonFormField<String>(
-          initialValue: options.contains(value) ? value : options.first,
-          isExpanded: true,
-          style: AppType.body.copyWith(fontSize: 14),
-          decoration: AppField.fieldDecoration(null),
-          items: [for (final o in options) DropdownMenuItem(value: o, child: Text(o))],
-          onChanged: (v) => onChanged(v ?? options.first),
-        ),
-      ]),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _Label(label: label, required: required),
+          const SizedBox(height: 9),
+          DropdownButtonFormField<String>(
+            initialValue: options.contains(value) ? value : options.first,
+            isExpanded: true,
+            style: AppType.body.copyWith(fontSize: 14),
+            decoration: AppField.fieldDecoration(null),
+            items: [for (final o in options) DropdownMenuItem(value: o, child: Text(o))],
+            onChanged: (v) => onChanged(v ?? options.first),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -113,13 +119,19 @@ class _Label extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text.rich(TextSpan(
-      style: AppType.body.copyWith(fontSize: 13, fontWeight: AppType.w600, color: AppColors.inkSoft),
-      children: [
-        TextSpan(text: label),
-        if (required) TextSpan(text: ' *', style: TextStyle(color: AppColors.green)),
-      ],
-    ));
+    return Text.rich(
+      TextSpan(
+        style: AppType.body.copyWith(fontSize: 13, fontWeight: AppType.w600, color: AppColors.inkSoft),
+        children: [
+          TextSpan(text: label),
+          if (required)
+            TextSpan(
+              text: ' *',
+              style: TextStyle(color: AppColors.green),
+            ),
+        ],
+      ),
+    );
   }
 }
 
@@ -179,41 +191,48 @@ class AppDateField extends StatelessWidget {
     final empty = value == null;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        _Label(label: label, required: required),
-        const SizedBox(height: 9),
-        InkWell(
-          onTap: () => _pick(context),
-          borderRadius: BorderRadius.circular(11),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
-            decoration: BoxDecoration(
-              color: AppColors.card,
-              border: Border.all(color: AppColors.line),
-              borderRadius: BorderRadius.circular(11),
-            ),
-            child: Row(children: [
-              const Icon(Icons.calendar_today_outlined, size: 16, color: AppColors.faint),
-              const SizedBox(width: 9),
-              Expanded(
-                child: Text(_text,
-                    style: AppType.body.copyWith(fontSize: 14, color: empty ? AppColors.faint : AppColors.ink)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _Label(label: label, required: required),
+          const SizedBox(height: 9),
+          InkWell(
+            onTap: () => _pick(context),
+            borderRadius: BorderRadius.circular(11),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
+              decoration: BoxDecoration(
+                color: AppColors.card,
+                border: Border.all(color: AppColors.line),
+                borderRadius: BorderRadius.circular(11),
               ),
-            ]),
+              child: Row(
+                children: [
+                  const Icon(Icons.calendar_today_outlined, size: 16, color: AppColors.faint),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Text(
+                      _text,
+                      style: AppType.body.copyWith(fontSize: 14, color: empty ? AppColors.faint : AppColors.ink),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
-        if (hint != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 7),
-            child: Text(hint!, style: AppType.caption.copyWith(fontSize: 11, height: 1.6)),
-          ),
-      ]),
+          if (hint != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 7),
+              child: Text(hint!, style: AppType.caption.copyWith(fontSize: 11, height: 1.6)),
+            ),
+        ],
+      ),
     );
   }
 }
 
-/// 확인 체크 한 줄 (.g2-check)
+/// 확인 체크 한 줄
 class AppCheckRow extends StatelessWidget {
   final bool value;
   final ValueChanged<bool> onChanged;
@@ -227,23 +246,26 @@ class AppCheckRow extends StatelessWidget {
       borderRadius: BorderRadius.circular(AppRadius.chip),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          SizedBox(
-            width: 24,
-            height: 24,
-            child: Checkbox(
-              value: value,
-              onChanged: (v) => onChanged(v ?? false),
-              activeColor: AppColors.green,
-              visualDensity: VisualDensity.compact,
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: Checkbox(
+                value: value,
+                onChanged: (v) => onChanged(v ?? false),
+                activeColor: AppColors.green,
+                visualDensity: VisualDensity.compact,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
             ),
-          ),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Text(label, style: AppType.meta.copyWith(fontSize: 12, height: 1.7, color: AppColors.inkSoft)),
-          ),
-        ]),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Text(label, style: AppType.meta.copyWith(fontSize: 12, height: 1.7, color: AppColors.inkSoft)),
+            ),
+          ],
+        ),
       ),
     );
   }

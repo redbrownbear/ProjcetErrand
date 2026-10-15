@@ -28,8 +28,7 @@ class RewardGoal {
 }
 
 RewardGoal? nextRewardGoal(int pts) {
-  final ups = rewardProducts.where((p) => p.points > pts).toList()
-    ..sort((a, b) => a.points.compareTo(b.points));
+  final ups = rewardProducts.where((p) => p.points > pts).toList()..sort((a, b) => a.points.compareTo(b.points));
   if (ups.isEmpty) return null;
   final up = ups.first;
   return RewardGoal('${brandOf(up.brand).name} ${up.name}', up.points - pts);

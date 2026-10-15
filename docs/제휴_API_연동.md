@@ -71,7 +71,7 @@ flutter run --dart-define-from-file=secrets.json
 | # | 받을 곳 | 넣을 키 | 성격 |
 |---|---------|---------|------|
 | 5 | [쿠팡 파트너스](https://partners.coupang.com/) | `COUPANG_ACCESS_KEY`, `COUPANG_SECRET_KEY` | CPS — 구매 확정 금액의 일정 비율 |
-| 6 | [Google AdMob](https://admob.google.com/) | `ADMOB_REWARDED_ANDROID`, `ADMOB_REWARDED_IOS` | 리워드 영상 시청 수익 |
+| 6 | [카카오 애드핏](https://adfit.kakao.com/) | `ADFIT_REWARD_ANDROID`, `ADFIT_REWARD_IOS` | 리워드 동영상 시청 수익 (광고 보고 포인트 받기는 카카오만) |
 | 7 | [애드픽](https://adpick.co.kr/) | (링크만 사용) | CPA — 설치·가입 건당. 개인도 가입 가능 |
 | 8 | [링크프라이스](https://www.linkprice.com/) | (링크만 사용) | CPS — 국내 쇼핑몰 묶음 |
 
@@ -79,9 +79,16 @@ flutter run --dart-define-from-file=secrets.json
 Access/Secret이 나온다. 호출은 HMAC-SHA256 서명 방식이고, 서명 코드는
 `lib/core/net/coupang_partners_api.dart`에 이미 있다.
 
-**AdMob** — 앱을 등록하고 **리워드형** 광고 단위를 만들면
-`ca-app-pub-…/…` 형태의 단위 ID가 나온다. 이건 키만으로는 안 되고
-아래 '내가 더 필요한 것'의 패키지 추가가 함께 필요하다.
+**카카오 애드핏** — 광고 보고 포인트 받기는 카카오 광고만 쓴다 (AdMob 연결은 뺐다).
+앱(매체)을 등록하고 **리워드 동영상** 광고단위를 만들면 `DAN-…` 형태의 ID가 나온다.
+Android·iOS를 따로 받는다.
+
+- 애드핏 정책 5.3.3: 리워드 동영상은 사용자가 직접 고른 경우(Opt-in)에만, 보상 조건·지급 여부·
+  지급 시점·지급 제외 사유를 **먼저** 알린 뒤 띄운다 → `RewardAdFlow`의 시청 전 안내 시트.
+- 애드핏 정책 5.2: 배너·네이티브를 보거나 누른 대가로 보상하면 안 된다. 포인트는 리워드 동영상에서만 준다.
+- 2026-10 기준 공개 Android SDK(v3.23.1)에는 리워드 동영상 API가 없다. 애드핏에서 리워드 동영상
+  상품·SDK를 받은 뒤 네이티브 쪽(`gyeomsa/adfit_reward` 채널의 `show`)을 붙인다.
+  그 전에는 화면이 '준비 중'으로 남고 포인트는 나가지 않는다 (`lib/core/ads/kakao_reward_ad.dart`).
 
 ## 3. 사업자등록이 있어야 열리는 것
 
@@ -150,18 +157,11 @@ Firebase 프로젝트는 이미 있으므로 Cloud Functions에 얹는 게 가�
 
 키 말고, 결정이나 추가 작업이 필요한 것들이다.
 
-1. **리워드 광고를 실제로 붙일지** — 붙이려면 `google_mobile_ads` 패키지를 추가하고
-   Android `AndroidManifest.xml`·iOS `Info.plist`에 AdMob 앱 ID를 넣어야 한다.
-   앱 ID가 없으면 **앱이 시작하자마자 죽으므로**, AdMob 계정을 만든 뒤에 붙인다.
-   지금은 미션 자리와 적립 처리(`MissionAction.rewardAd`)까지만 만들어 뒀다.
-
-   ⚠️ **먼저 확인할 것**: [AdMob 리워드 광고 정책](https://support.google.com/admob/answer/7313578?hl=ko)은
-   현금·암호화폐·**기프트카드 보상을 금지**하고, 보상이 앱 안에서만 쓰이고 양도·현금
-   전환이 안 될 것을 요구한다. `광고 시청 → 포인트 → 스타벅스 기프티콘`은 이 문구에
-   걸릴 소지가 있다. 셋 중 하나를 골라야 한다.
-   1. 광고로 받은 포인트는 **앱 내 소비(수수료 할인)로만** 쓰게 분리
-   2. 리워드 광고 대신 **오퍼월**을 쓴다 (기프티콘 교환을 전제로 설계된 쪽이다)
-   3. 광고 재원은 배너·전면으로 받고, 포인트는 광고 시청과 끊어서 지급
+1. **카카오 리워드 동영상 네이티브 연결** — 화면·안내 시트·적립(`RewardAdFlow`)은 붙었다.
+   애드핏에서 리워드 동영상 SDK를 받으면 Android(`MainActivity`)·iOS(`AppDelegate`)에
+   `gyeomsa/adfit_reward` 채널의 `show(unitId)`를 구현해 `'earned'·'skipped'·'noFill'` 중 하나를 돌려준다.
+   SDK 저장소: `https://devrepo.kakao.com/nexus/content/groups/public/`, 의존성 `com.kakao.adfit:ads-base`.
+   광고 포인트를 기프티콘으로 바꿔도 되는지는 애드핏 문의 때 같이 확인한다.
 2. **걷기를 되살릴지** — 걷기 적립은 재원이 없어 **화면에서만 내렸다.**
    `WalkScreen`·`walkClaimable`·`parkedMissions`의 걷기 미션·`parkedAds`의 배너가
    그대로 남아 있어서, 재원이 생기면 홈의 진입점 하나만 되살리면 된다.

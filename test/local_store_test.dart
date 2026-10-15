@@ -28,10 +28,7 @@ void main() {
   });
 
   test('새 접두사 값이 이미 있으면 옛 값이 덮어쓰지 않는다', () async {
-    SharedPreferences.setMockInitialValues({
-      'gyumsa:v3:bookmarks': '[1]',
-      'gyeomsa:v3:bookmarks': '[9,9]',
-    });
+    SharedPreferences.setMockInitialValues({'gyumsa:v3:bookmarks': '[1]', 'gyeomsa:v3:bookmarks': '[9,9]'});
 
     await LocalStore.init();
 

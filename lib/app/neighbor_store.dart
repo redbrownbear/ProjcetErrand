@@ -49,7 +49,10 @@ class NeighborStore extends ChangeNotifier {
     myComments = {
       for (final e in LocalStore.read<Map<String, dynamic>>('comComments', const {}).entries)
         if (int.tryParse(e.key) != null && e.value is List)
-          int.parse(e.key): [for (final c in e.value as List) if (c is Map) Comment('${c['who']}', '${c['text']}')],
+          int.parse(e.key): [
+            for (final c in e.value as List)
+              if (c is Map) Comment('${c['who']}', '${c['text']}'),
+          ],
     };
     likedPosts = LocalStore.read<List<dynamic>>('likedPosts', const []).whereType<int>().toSet();
     myTrips = [for (final j in LocalStore.read<List<dynamic>>('tripPosts', const [])) ?TripPost.fromJson(j)];
@@ -118,43 +121,43 @@ class NeighborStore extends ChangeNotifier {
   }
 
   void addProposal(Proposal p) => _run(() {
-        myProposals = [p, ...myProposals];
-        LocalStore.write('proposals', [for (final x in myProposals) x.toJson()]);
-        notifyListeners();
-        toast?.call('제안을 올렸어요 · 원하는 이웃이 구매를 누르면 알려드려요');
-      });
+    myProposals = [p, ...myProposals];
+    LocalStore.write('proposals', [for (final x in myProposals) x.toJson()]);
+    notifyListeners();
+    toast?.call('제안을 올렸어요 · 원하는 이웃이 구매를 누르면 알려드려요');
+  });
 
   /// '저 구매할래요!' 누르기 / 취소하기
   void toggleJoin(Proposal p) => _run(() {
-        final on = joined.contains(p.id);
-        if (!on && (p.expired || p.isFull(false))) {
-          toast?.call('정원이 찼어요 · 다른 제안을 둘러보세요');
-          return;
-        }
-        if (p.mine) {
-          toast?.call('내가 올린 제안이에요');
-          return;
-        }
-        joined = on ? ({...joined}..remove(p.id)) : {...joined, p.id};
-        LocalStore.write('joinedProposals', joined.toList());
-        notifyListeners();
-        toast?.call(on ? '구매 요청을 취소했어요' : '구매 요청을 보냈어요 · 제안자가 확인하면 채팅이 열려요');
-      });
+    final on = joined.contains(p.id);
+    if (!on && (p.expired || p.isFull(false))) {
+      toast?.call('정원이 찼어요 · 다른 제안을 둘러보세요');
+      return;
+    }
+    if (p.mine) {
+      toast?.call('내가 올린 제안이에요');
+      return;
+    }
+    joined = on ? ({...joined}..remove(p.id)) : {...joined, p.id};
+    LocalStore.write('joinedProposals', joined.toList());
+    notifyListeners();
+    toast?.call(on ? '구매 요청을 취소했어요' : '구매 요청을 보냈어요 · 제안자가 확인하면 채팅이 열려요');
+  });
 
   // ── 커뮤니티 ────────────────────────────────────────────────────────────
 
   List<ComPost> get posts => [
-        for (final p in [...myPosts, ...seedComPosts])
-          myComments[p.id] == null ? p : p.copyWith(comments: [...p.comments, ...myComments[p.id]!]),
-      ];
+    for (final p in [...myPosts, ...seedComPosts])
+      myComments[p.id] == null ? p : p.copyWith(comments: [...p.comments, ...myComments[p.id]!]),
+  ];
 
   List<ComPost> postsOf(String scope) => posts.where((p) => p.scope == scope).toList();
 
   /// 제안과 같은 지역·나라의 이야기 (제안 상세 · 나라 시트에 붙는다)
   List<ComPost> related(Proposal p) => posts.where((c) {
-        if (p.abroad) return c.scope == 'abroad' && c.place == p.cc;
-        return c.scope == 'travel' && (c.place == p.from || c.place == p.to);
-      }).toList();
+    if (p.abroad) return c.scope == 'abroad' && c.place == p.cc;
+    return c.scope == 'travel' && (c.place == p.from || c.place == p.to);
+  }).toList();
 
   ComPost? postById(int id) {
     for (final p in posts) {
@@ -164,23 +167,26 @@ class NeighborStore extends ChangeNotifier {
   }
 
   void addPost(ComPost p) => _run(() {
-        myPosts = [p, ...myPosts];
-        LocalStore.write('comPosts', [for (final x in myPosts) x.toJson()]);
-        notifyListeners();
-        gainTicket(TicketRules.community, quiet: true);
-        toast?.call(p.kind == '후기' ? '후기를 올렸어요 · 응모권 +1장' : '글을 올렸어요 · 응모권 +1장');
-      });
+    myPosts = [p, ...myPosts];
+    LocalStore.write('comPosts', [for (final x in myPosts) x.toJson()]);
+    notifyListeners();
+    gainTicket(TicketRules.community, quiet: true);
+    toast?.call(p.kind == '후기' ? '후기를 올렸어요 · 응모권 +1장' : '글을 올렸어요 · 응모권 +1장');
+  });
 
   void addComment(int postId, String text, {String who = '나'}) => _run(() {
-        final list = [...?myComments[postId], Comment(who, text)];
-        myComments = {...myComments, postId: list};
-        LocalStore.write('comComments', {
-          for (final e in myComments.entries) '${e.key}': [for (final c in e.value) {'who': c.who, 'text': c.text}],
-        });
-        notifyListeners();
-        gainTicket(TicketRules.community, quiet: true);
-        toast?.call('답글을 달았어요 · 응모권 +1장');
-      });
+    final list = [...?myComments[postId], Comment(who, text)];
+    myComments = {...myComments, postId: list};
+    LocalStore.write('comComments', {
+      for (final e in myComments.entries)
+        '${e.key}': [
+          for (final c in e.value) {'who': c.who, 'text': c.text},
+        ],
+    });
+    notifyListeners();
+    gainTicket(TicketRules.community, quiet: true);
+    toast?.call('답글을 달았어요 · 응모권 +1장');
+  });
 
   void toggleLike(int postId) {
     likedPosts = likedPosts.contains(postId) ? ({...likedPosts}..remove(postId)) : {...likedPosts, postId};
@@ -193,22 +199,22 @@ class NeighborStore extends ChangeNotifier {
   List<TripPost> get trips => [...myTrips, ...seedTripPosts];
 
   void addTrip(TripPost t) => _run(() {
-        myTrips = [t, ...myTrips];
-        LocalStore.write('tripPosts', [for (final x in myTrips) x.toJson()]);
-        notifyListeners();
-        toast?.call('가는 김에 글을 올렸어요');
-      });
+    myTrips = [t, ...myTrips];
+    LocalStore.write('tripPosts', [for (final x in myTrips) x.toJson()]);
+    notifyListeners();
+    toast?.call('가는 김에 글을 올렸어요');
+  });
 
   // ── 중고 · 나눔 ─────────────────────────────────────────────────────────
 
   List<UsedItem> get used => [...myUsed, ...seedUsedItems];
 
   void addUsed(UsedItem u) => _run(() {
-        myUsed = [u, ...myUsed];
-        LocalStore.write('usedItems', [for (final x in myUsed) x.toJson()]);
-        notifyListeners();
-        toast?.call(u.share ? '나눔을 올렸어요' : '판매글을 올렸어요');
-      });
+    myUsed = [u, ...myUsed];
+    LocalStore.write('usedItems', [for (final x in myUsed) x.toJson()]);
+    notifyListeners();
+    toast?.call(u.share ? '나눔을 올렸어요' : '판매글을 올렸어요');
+  });
 
   void toggleUsedLike(int id) {
     likedUsed = likedUsed.contains(id) ? ({...likedUsed}..remove(id)) : {...likedUsed, id};
@@ -219,14 +225,14 @@ class NeighborStore extends ChangeNotifier {
   // ── 현지 이웃 ───────────────────────────────────────────────────────────
 
   void applyLocal(int id) => _run(() {
-        if (appliedLocal.contains(id)) {
-          appliedLocal = {...appliedLocal}..remove(id);
-          toast?.call('신청을 취소했어요');
-        } else {
-          appliedLocal = {...appliedLocal, id};
-          toast?.call('신청했어요 · 현지 이웃이 확인하면 채팅이 열려요');
-        }
-        LocalStore.write('appliedLocal', appliedLocal.toList());
-        notifyListeners();
-      });
+    if (appliedLocal.contains(id)) {
+      appliedLocal = {...appliedLocal}..remove(id);
+      toast?.call('신청을 취소했어요');
+    } else {
+      appliedLocal = {...appliedLocal, id};
+      toast?.call('신청했어요 · 현지 이웃이 확인하면 채팅이 열려요');
+    }
+    LocalStore.write('appliedLocal', appliedLocal.toList());
+    notifyListeners();
+  });
 }

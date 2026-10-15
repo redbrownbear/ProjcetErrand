@@ -9,7 +9,6 @@ import '../navigation/errand_actions.dart';
 import 'map/map_canvas.dart';
 import 'map/map_centers.dart';
 
-
 class MapView extends StatefulWidget {
   final List<TaskItem> items;
   final String scope;
@@ -31,9 +30,8 @@ class _MapViewState extends State<MapView> {
       .toList();
 
   List<MapPin> get _pins => [
-        for (final it in _pinItems)
-          MapPin(item: it, lat: it.lat!, lng: it.lng!, label: _markerLabel(it), color: _markerColor(it)),
-      ];
+    for (final it in _pinItems) MapPin(item: it, lat: it.lat!, lng: it.lng!, label: _markerLabel(it), color: _markerColor(it)),
+  ];
 
   Color _markerColor(TaskItem it) {
     final done = widget.actions.grabbed.contains(it.id);
@@ -46,7 +44,7 @@ class _MapViewState extends State<MapView> {
   String _markerLabel(TaskItem it) {
     if (it.mode != 'ask') return '같이해요';
     final done = widget.actions.grabbed.contains(it.id);
-    return done ? '지원함' : (it.hot ? '🔥' : '') + kwon(it.price);
+    return done ? '지원함' : (it.hot ? 'ê¸ ' : '') + kwon(it.price);
   }
 
   void _select(TaskItem? it) {
@@ -63,94 +61,136 @@ class _MapViewState extends State<MapView> {
 
     const mapMargin = 14.0;
 
-    return Stack(children: [
-      Positioned(
-        top: safeTop + mapMargin,
-        left: 0, right: 0,
-        bottom: safeBottom + mapMargin,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(22),
-          child: MapCanvas(
-            pins: _pins,
-            selectedId: preview?.id,
-            centerLat: center.$1,
-            centerLng: center.$2,
-            zoom: zoom,
-            onPinTap: _select,
+    return Stack(
+      children: [
+        Positioned(
+          top: safeTop + mapMargin,
+          left: 0,
+          right: 0,
+          bottom: safeBottom + mapMargin,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(22),
+            child: MapCanvas(
+              pins: _pins,
+              selectedId: preview?.id,
+              centerLat: center.$1,
+              centerLng: center.$2,
+              zoom: zoom,
+              onPinTap: _select,
+            ),
           ),
         ),
-      ),
-      Positioned(
-        top: safeTop + mapMargin + 10, left: 16, right: 16,
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: const [BoxShadow(color: Color(0x1F000000), blurRadius: 10)],
-            ),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              InkWell(
-                onTap: () => Navigator.of(context).pop(),
-                borderRadius: BorderRadius.circular(99),
-                child: const Padding(padding: EdgeInsets.only(right: 4), child: Icon(Icons.chevron_left_rounded, size: 24, color: AppColors.ink)),
-              ),
-              Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                const Text('지도', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.ink)),
-                Text('${shortRegion(widget.scope)} 주변 부탁', style: const TextStyle(fontSize: 11, color: AppColors.sub)),
-              ]),
-            ]),
-          ),
-          const SizedBox(height: 10),
-          Row(
+        Positioned(
+          top: safeTop + mapMargin + 10,
+          left: 16,
+          right: 16,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              for (final e in [['all', '전체'], ['ask', '부탁해요'], ['together', '같이해요']])
-                Padding(
-                  padding: const EdgeInsets.only(right: 7),
-                  child: InkWell(
-                    onTap: () => setState(() {
-                      filter = e[0];
-                      preview = null;
-                    }),
-                    borderRadius: BorderRadius.circular(99),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
-                      decoration: BoxDecoration(
-                        color: filter == e[0] ? AppColors.black : Colors.white,
-                        borderRadius: BorderRadius.circular(99),
-                        boxShadow: const [BoxShadow(color: Color(0x1F000000), blurRadius: 8)],
-                      ),
-                      child: Text(e[1], style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: filter == e[0] ? Colors.white : AppColors.ink)),
-                    ),
-                  ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: const [BoxShadow(color: Color(0x1F000000), blurRadius: 10)],
                 ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    InkWell(
+                      onTap: () => Navigator.of(context).pop(),
+                      borderRadius: BorderRadius.circular(99),
+                      child: const Padding(
+                        padding: EdgeInsets.only(right: 4),
+                        child: Icon(Icons.chevron_left_rounded, size: 24, color: AppColors.ink),
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          '지도',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.ink),
+                        ),
+                        Text('${shortRegion(widget.scope)} 주변 부탁', style: const TextStyle(fontSize: 11, color: AppColors.sub)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  for (final e in [
+                    ['all', '전체'],
+                    ['ask', '부탁해요'],
+                    ['together', '같이해요'],
+                  ])
+                    Padding(
+                      padding: const EdgeInsets.only(right: 7),
+                      child: InkWell(
+                        onTap: () => setState(() {
+                          filter = e[0];
+                          preview = null;
+                        }),
+                        borderRadius: BorderRadius.circular(99),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+                          decoration: BoxDecoration(
+                            color: filter == e[0] ? AppColors.black : Colors.white,
+                            borderRadius: BorderRadius.circular(99),
+                            boxShadow: const [BoxShadow(color: Color(0x1F000000), blurRadius: 8)],
+                          ),
+                          child: Text(
+                            e[1],
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                              color: filter == e[0] ? Colors.white : AppColors.ink,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ],
           ),
-        ]),
-      ),
-      if (preview != null)
-        _MapPreview(
-          it: preview!,
-          done: widget.actions.grabbed.contains(preview!.id),
-          safeBottom: safeBottom + mapMargin,
-          onClose: () => _select(null),
-          onOpen: () {
-            final p = preview!;
-            _select(null);
-            widget.actions.open(context, p);
-          },
-        )
-      else
-        Positioned(
-          bottom: 16 + safeBottom + mapMargin, left: 16, right: 16,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), boxShadow: const [BoxShadow(color: Color(0x24000000), blurRadius: 16)]),
-            child: const Text('핀을 눌러 부탁을 훑어보세요 · 해외 대행은 홈에서 볼 수 있어요', textAlign: TextAlign.center, style: TextStyle(fontSize: 12.5, color: AppColors.sub)),
-          ),
         ),
-    ]);
+        if (preview != null)
+          _MapPreview(
+            it: preview!,
+            done: widget.actions.grabbed.contains(preview!.id),
+            safeBottom: safeBottom + mapMargin,
+            onClose: () => _select(null),
+            onOpen: () {
+              final p = preview!;
+              _select(null);
+              widget.actions.open(context, p);
+            },
+          )
+        else
+          Positioned(
+            bottom: 16 + safeBottom + mapMargin,
+            left: 16,
+            right: 16,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: const [BoxShadow(color: Color(0x24000000), blurRadius: 16)],
+              ),
+              child: const Text(
+                '핀을 눌러 부탁을 훑어보세요 · 해외 대행은 홈에서 볼 수 있어요',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12.5, color: AppColors.sub),
+              ),
+            ),
+          ),
+      ],
+    );
   }
 }
 
@@ -159,41 +199,65 @@ class _MapPreview extends StatelessWidget {
   final bool done;
   final double safeBottom;
   final VoidCallback onClose, onOpen;
-  const _MapPreview({required this.it, required this.done, required this.safeBottom, required this.onClose, required this.onOpen});
+  const _MapPreview({
+    required this.it,
+    required this.done,
+    required this.safeBottom,
+    required this.onClose,
+    required this.onOpen,
+  });
   @override
   Widget build(BuildContext context) {
     final paid = it.mode == 'ask';
     return Positioned(
-      bottom: 16 + safeBottom, left: 16, right: 16,
+      bottom: 16 + safeBottom,
+      left: 16,
+      right: 16,
       child: Container(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), boxShadow: const [BoxShadow(color: Color(0x38000000), blurRadius: 28)]),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: const [BoxShadow(color: Color(0x38000000), blurRadius: 28)],
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(children: [
-              if (it.hot) ...[const Tag(label: '🔥 급해요', c: AppColors.red, bg: AppColors.redSoft), const SizedBox(width: 6)],
-              Tag(label: paid ? catOf(it.cat).label : '같이해요', c: AppColors.sub, bg: AppColors.page),
-              const Spacer(),
-              InkWell(
-                onTap: onClose,
-                borderRadius: BorderRadius.circular(99),
-                child: const Padding(padding: EdgeInsets.all(3), child: Icon(Icons.close_rounded, size: 18, color: AppColors.faint)),
-              ),
-            ]),
+            Row(
+              children: [
+                if (it.hot) ...[const Tag(label: '급해요', c: AppColors.red, bg: AppColors.redSoft), const SizedBox(width: 6)],
+                Tag(label: paid ? catOf(it.cat).label : '같이해요', c: AppColors.sub, bg: AppColors.page),
+                const Spacer(),
+                InkWell(
+                  onTap: onClose,
+                  borderRadius: BorderRadius.circular(99),
+                  child: const Padding(
+                    padding: EdgeInsets.all(3),
+                    child: Icon(Icons.close_rounded, size: 18, color: AppColors.faint),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 8),
-            Text(it.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink)),
+            Text(
+              it.title,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink),
+            ),
             const SizedBox(height: 5),
             Text(metaOf(it), style: const TextStyle(fontSize: 12.5, color: AppColors.sub)),
             const SizedBox(height: 14),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(paid ? won(it.price) : '무료', style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: AppColors.ink)),
+                Text(
+                  paid ? won(it.price) : '무료',
+                  style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: AppColors.ink),
+                ),
                 ElevatedButton(
                   onPressed: onOpen,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.black, foregroundColor: Colors.white,
+                    backgroundColor: AppColors.black,
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     elevation: 0,

@@ -100,9 +100,20 @@ class Proposal {
   String get route => abroad ? from : '$from → $to';
 
   Map<String, dynamic> toJson() => {
-        'id': id, 'abroad': abroad, 'from': from, 'to': to, 'cc': cc, 'item': item, 'spec': spec,
-        'price': price, 'day': day.toIso8601String(), 'max': max, 'who': who, 'area': area, 'note': note,
-      };
+    'id': id,
+    'abroad': abroad,
+    'from': from,
+    'to': to,
+    'cc': cc,
+    'item': item,
+    'spec': spec,
+    'price': price,
+    'day': day.toIso8601String(),
+    'max': max,
+    'who': who,
+    'area': area,
+    'note': note,
+  };
 
   static Proposal? fromJson(dynamic j) {
     if (j is! Map) return null;

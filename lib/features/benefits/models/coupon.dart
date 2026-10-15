@@ -13,8 +13,6 @@ class Coupon {
     this.used = false,
   });
 
-  Coupon copyWith({bool? used}) => Coupon(
-        id: id, brandK: brandK, name: name, points: points, exp: exp, code: code,
-        used: used ?? this.used,
-      );
+  Coupon copyWith({bool? used}) =>
+      Coupon(id: id, brandK: brandK, name: name, points: points, exp: exp, code: code, used: used ?? this.used);
 }

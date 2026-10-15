@@ -47,24 +47,34 @@ class PartnerProposal {
   String get day => at.length >= 10 ? at.substring(0, 10) : at;
 
   Map<String, dynamic> toJson() => {
-        'id': id, 'kind': kind, 'type': type, 'company': company, 'contact': contact,
-        'email': email, 'title': title, 'url': url, 'budget': budget, 'period': period,
-        'details': details, 'at': at, 'status': status,
-      };
+    'id': id,
+    'kind': kind,
+    'type': type,
+    'company': company,
+    'contact': contact,
+    'email': email,
+    'title': title,
+    'url': url,
+    'budget': budget,
+    'period': period,
+    'details': details,
+    'at': at,
+    'status': status,
+  };
 
   factory PartnerProposal.fromJson(Map<String, dynamic> j) => PartnerProposal(
-        id: '${j['id'] ?? ''}',
-        kind: '${j['kind'] ?? kindBrand}',
-        type: '${j['type'] ?? ''}',
-        company: '${j['company'] ?? ''}',
-        contact: '${j['contact'] ?? ''}',
-        email: '${j['email'] ?? ''}',
-        title: '${j['title'] ?? ''}',
-        url: '${j['url'] ?? ''}',
-        budget: '${j['budget'] ?? ''}',
-        period: '${j['period'] ?? ''}',
-        details: '${j['details'] ?? ''}',
-        at: '${j['at'] ?? ''}',
-        status: '${j['status'] ?? '제안서 저장'}',
-      );
+    id: '${j['id'] ?? ''}',
+    kind: '${j['kind'] ?? kindBrand}',
+    type: '${j['type'] ?? ''}',
+    company: '${j['company'] ?? ''}',
+    contact: '${j['contact'] ?? ''}',
+    email: '${j['email'] ?? ''}',
+    title: '${j['title'] ?? ''}',
+    url: '${j['url'] ?? ''}',
+    budget: '${j['budget'] ?? ''}',
+    period: '${j['period'] ?? ''}',
+    details: '${j['details'] ?? ''}',
+    at: '${j['at'] ?? ''}',
+    status: '${j['status'] ?? '제안서 저장'}',
+  );
 }

@@ -4,6 +4,7 @@ import '../../../app/neighbor_store.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/kit.dart';
+import '../../../core/widgets/surface.dart';
 import '../../community/models/com_post.dart';
 import '../../errand/data/countries.dart';
 import '../../errand/models/task_item.dart';
@@ -37,10 +38,26 @@ class WorldMapScreen extends StatefulWidget {
 
 /// 나라 대표 좌표 (경도, 위도)
 const _pins = <String, (double, double)>{
-  'jp': (138, 36), 'us': (-110, 38), 'gb': (-2, 53), 'vn': (106, 15), 'tw': (121, 24), 'cn': (110, 35),
-  'th': (101, 15), 'fr': (2, 46), 'sg': (104, 1), 'au': (134, -25), 'ca': (-100, 56), 'de': (10, 51),
-  'it': (12, 43), 'es': (-4, 40), 'ph': (122, 12), 'id': (115, -3), 'my': (102, 4), 'hk': (114, 22),
-  'ch': (8, 47), 'ae': (54, 24),
+  'jp': (138, 36),
+  'us': (-110, 38),
+  'gb': (-2, 53),
+  'vn': (106, 15),
+  'tw': (121, 24),
+  'cn': (110, 35),
+  'th': (101, 15),
+  'fr': (2, 46),
+  'sg': (104, 1),
+  'au': (134, -25),
+  'ca': (-100, 56),
+  'de': (10, 51),
+  'it': (12, 43),
+  'es': (-4, 40),
+  'ph': (122, 12),
+  'id': (115, -3),
+  'my': (102, 4),
+  'hk': (114, 22),
+  'ch': (8, 47),
+  'ae': (54, 24),
 };
 
 class _WorldMapScreenState extends State<WorldMapScreen> {
@@ -58,7 +75,8 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
           final a = widget.seaItems.where((x) => x.cc == c).length;
           if (p + a > 0) stats[c] = (props: p, asks: a);
         }
-        final order = stats.keys.toList()..sort((a, b) => (stats[b]!.props + stats[b]!.asks) - (stats[a]!.props + stats[a]!.asks));
+        final order = stats.keys.toList()
+          ..sort((a, b) => (stats[b]!.props + stats[b]!.asks) - (stats[a]!.props + stats[a]!.asks));
         final totalP = props.length;
         final totalA = widget.seaItems.length;
 
@@ -76,13 +94,16 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                   aspectRatio: 1.7,
                   child: InteractiveViewer(
                     maxScale: 4,
-                    child: LayoutBuilder(builder: (context, box) {
-                      return Stack(children: [
-                        Positioned.fill(child: CustomPaint(painter: _DotWorld())),
-                        for (final c in order)
-                          _pin(box.biggest, c, stats[c]!.props + stats[c]!.asks),
-                      ]);
-                    }),
+                    child: LayoutBuilder(
+                      builder: (context, box) {
+                        return Stack(
+                          children: [
+                            Positioned.fill(child: CustomPaint(painter: _DotWorld())),
+                            for (final c in order) _pin(box.biggest, c, stats[c]!.props + stats[c]!.asks),
+                          ],
+                        );
+                      },
+                    ),
                   ),
                 ),
               ),
@@ -93,25 +114,34 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                   style: const TextStyle(fontSize: 12.5, color: AppColors.sub, height: 1.5),
                 ),
               ),
-              Sec(
+              SecCard(
                 padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Column(children: [
-                  for (final c in order)
-                    Tap(
-                      onTap: () => _openCountry(c),
-                      radius: 0,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        child: Row(children: [
-                          CodeBox(c.toUpperCase(), bg: AppColors.redSoft, fg: AppColors.red),
-                          const SizedBox(width: 12),
-                          Expanded(child: Text(countryOf(c).name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700))),
-                          Text('제안 ${stats[c]!.props} · 요청 ${stats[c]!.asks}', style: const TextStyle(fontSize: 13, color: AppColors.sub)),
-                          const Icon(Icons.chevron_right_rounded, color: AppColors.faint),
-                        ]),
+                child: Column(
+                  children: [
+                    for (final c in order)
+                      Tap(
+                        onTap: () => _openCountry(c),
+                        radius: 0,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          child: Row(
+                            children: [
+                              CodeBox(c.toUpperCase(), bg: AppColors.redSoft, fg: AppColors.red),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(countryOf(c).name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                              ),
+                              Text(
+                                '제안 ${stats[c]!.props} · 요청 ${stats[c]!.asks}',
+                                style: const TextStyle(fontSize: 13, color: AppColors.sub),
+                              ),
+                              const Icon(Icons.chevron_right_rounded, color: AppColors.faint),
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
-                ]),
+                  ],
+                ),
               ),
             ],
           ),
@@ -142,7 +172,10 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
             shape: BoxShape.circle,
             boxShadow: const [BoxShadow(color: Color(0x66FFCD1F), blurRadius: 10)],
           ),
-          child: Text('$n', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppColors.ink)),
+          child: Text(
+            '$n',
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppColors.ink),
+          ),
         ),
       ),
     );
@@ -159,61 +192,101 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
           final asks = widget.seaItems.where((t) => t.cc == cc).toList();
           final stories = widget.store.postsOf('abroad').where((p) => p.place == cc).take(3).toList();
           return SheetFrame(
-            title: '${country.flag} ${country.name}',
+            title: country.name,
             sub: '제안 ${props.length}건 · 요청 ${asks.length}건',
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              if (props.isNotEmpty) ...[
-                const Text('가는 김에 사다 드려요', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.sub)),
-                const SizedBox(height: 8),
-                for (final p in props) ...[
-                  ProposalRow(p: p, meJoined: widget.store.joined.contains(p.id), bg: AppColors.page, onTap: () {
-                    Navigator.pop(ctx);
-                    widget.onOpenProposal(p);
-                  }),
-                  const SizedBox(height: 6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (props.isNotEmpty) ...[
+                  const Text(
+                    '가는 김에 사다 드려요',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.sub),
+                  ),
+                  const SizedBox(height: 8),
+                  for (final p in props) ...[
+                    ProposalRow(
+                      p: p,
+                      meJoined: widget.store.joined.contains(p.id),
+                      bg: AppColors.page,
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        widget.onOpenProposal(p);
+                      },
+                    ),
+                    const SizedBox(height: 6),
+                  ],
+                  const SizedBox(height: 10),
                 ],
-                const SizedBox(height: 10),
-              ],
-              if (asks.isNotEmpty) ...[
-                const Text('이 나라 부탁', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.sub)),
-                for (final t in asks)
+                if (asks.isNotEmpty) ...[
+                  const Text(
+                    '이 나라 부탁',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.sub),
+                  ),
+                  for (final t in asks)
+                    Tap(
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        widget.onOpenTask(t);
+                      },
+                      radius: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: const BoxDecoration(
+                          border: Border(bottom: BorderSide(color: AppColors.line)),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                t.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                            Text(won(t.price), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 14),
+                ],
+                Text(
+                  '${country.name} 이웃 이야기',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.sub),
+                ),
+                if (stories.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 10),
+                    child: Text('아직 이야기가 없어요', style: TextStyle(color: AppColors.faint)),
+                  ),
+                for (final s in stories)
                   Tap(
                     onTap: () {
                       Navigator.pop(ctx);
-                      widget.onOpenTask(t);
+                      widget.onOpenPost(s);
                     },
                     radius: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))),
-                      child: Row(children: [
-                        Expanded(child: Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700))),
-                        Text(won(t.price), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
-                      ]),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: Row(
+                        children: [
+                          StatusBadge(s.kind, bg: kindTone(s.kind).bg, fg: kindTone(s.kind).fg),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              s.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                const SizedBox(height: 14),
               ],
-              Text('${country.name} 이웃 이야기', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.sub)),
-              if (stories.isEmpty)
-                const Padding(padding: EdgeInsets.symmetric(vertical: 10), child: Text('아직 이야기가 없어요', style: TextStyle(color: AppColors.faint))),
-              for (final s in stories)
-                Tap(
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    widget.onOpenPost(s);
-                  },
-                  radius: 8,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    child: Row(children: [
-                      Pill(s.kind, bg: kindTone(s.kind).bg, fg: kindTone(s.kind).fg),
-                      const SizedBox(width: 8),
-                      Expanded(child: Text(s.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600))),
-                    ]),
-                  ),
-                ),
-            ]),
+            ),
           );
         },
       );

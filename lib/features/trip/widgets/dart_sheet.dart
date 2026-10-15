@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/colors.dart';
 import '../../../core/widgets/kit.dart';
+import '../../../core/widgets/surface.dart';
 
 /// 여행 어디 갈까? — 움직이는 과녁에 다트를 던져 여행지를 정한다 (시안 v43 `openRoulette`).
 class DartSheet extends StatefulWidget {
@@ -17,7 +18,32 @@ class DartSheet extends StatefulWidget {
   State<DartSheet> createState() => _DartSheetState();
 }
 
-const _domestic = ['제주', '부산', '강릉', '전주', '여수', '경주', '속초', '대전', '담양', '보성', '태안', '영덕', '단양', '양양', '남해', '하동', '곡성', '순창', '안동', '통영', '평창', '영월', '서산', '고창'];
+const _domestic = [
+  '제주',
+  '부산',
+  '강릉',
+  '전주',
+  '여수',
+  '경주',
+  '속초',
+  '대전',
+  '담양',
+  '보성',
+  '태안',
+  '영덕',
+  '단양',
+  '양양',
+  '남해',
+  '하동',
+  '곡성',
+  '순창',
+  '안동',
+  '통영',
+  '평창',
+  '영월',
+  '서산',
+  '고창',
+];
 const _abroad = ['도쿄', '오사카', '후쿠오카', '타이베이', '다낭', '방콕', '싱가포르', '홍콩', '파리', '런던', 'LA', '뉴욕'];
 
 /// 당첨 카드에 붙는 한 줄 추천. 없는 곳은 일반 문구로 둔다.
@@ -66,75 +92,100 @@ class _DartSheetState extends State<DartSheet> with TickerProviderStateMixin {
       sub: '움직이는 과녁을 보고 던지기를 눌러요. 다트가 꽂힌 곳에서 가장 가까운 여행지가 당첨돼요',
       bottom: result == null
           ? BigButton(label: '던지기!', icon: 'target', onTap: throwC.isAnimating ? null : _throw)
-          : Row(children: [
-              Expanded(child: BigButton(label: '다시 던지기', bg: AppColors.page, fg: AppColors.inkSoft, onTap: _throw)),
-              const SizedBox(width: 8),
-              Expanded(
-                child: BigButton(
-                  label: '$result 이야기',
-                  bg: AppColors.ink,
-                  fg: Colors.white,
-                  onTap: () {
-                    Navigator.pop(context);
-                    widget.onStories(result!, abroad);
-                  },
+          : Row(
+              children: [
+                Expanded(
+                  child: BigButton(label: '다시 던지기', bg: AppColors.page, fg: AppColors.ink2, onTap: _throw),
                 ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: BigButton(
+                    label: '$result 이야기',
+                    bg: AppColors.ink,
+                    fg: Colors.white,
+                    onTap: () {
+                      Navigator.pop(context);
+                      widget.onStories(result!, abroad);
+                    },
+                  ),
+                ),
+              ],
+            ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SegToggle(
+            labels: const ['국내', '해외'],
+            index: abroad ? 1 : 0,
+            margin: EdgeInsets.zero,
+            onChanged: (i) => setState(() {
+              abroad = i == 1;
+              result = null;
+            }),
+          ),
+          const SizedBox(height: 16),
+          Center(
+            child: SizedBox(
+              width: 240,
+              height: 240,
+              child: AnimatedBuilder(
+                animation: Listenable.merge([spin, throwC]),
+                builder: (_, _) => CustomPaint(painter: _Board(places, spin.value, throwC.value, result != null)),
               ),
-            ]),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Seg(
-          labels: const ['국내', '해외'],
-          index: abroad ? 1 : 0,
-          margin: EdgeInsets.zero,
-          onChanged: (i) => setState(() {
-            abroad = i == 1;
-            result = null;
-          }),
-        ),
-        const SizedBox(height: 16),
-        Center(
-          child: SizedBox(
-            width: 240,
-            height: 240,
-            child: AnimatedBuilder(
-              animation: Listenable.merge([spin, throwC]),
-              builder: (_, _) => CustomPaint(painter: _Board(places, spin.value, throwC.value, result != null)),
             ),
           ),
-        ),
-        const SizedBox(height: 14),
-        if (result != null)
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(color: AppColors.yellowSoft, borderRadius: BorderRadius.circular(16)),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('🎯 $result 당첨!', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 10),
-              _tipRow('명소', tip?.$1 ?? '$result 대표 명소를 이웃 이야기에서 찾아봐요'),
-              _tipRow('맛집', tip?.$2 ?? '현지인 추천 맛집'),
-              _tipRow('숙소', tip?.$3 ?? '제휴 숙소 혜택 확인'),
-            ]),
-          )
-        else
-          Wrap(spacing: 6, runSpacing: 6, alignment: WrapAlignment.center, children: [
-            for (final p in places)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(color: AppColors.page, borderRadius: BorderRadius.circular(12)),
-                child: Text(p, style: const TextStyle(fontSize: 12, color: AppColors.inkSoft)),
+          const SizedBox(height: 14),
+          if (result != null)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(color: AppColors.yellowSoft, borderRadius: BorderRadius.circular(16)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('🎯 $result 당첨!', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 10),
+                  _tipRow('명소', tip?.$1 ?? '$result 대표 명소를 이웃 이야기에서 찾아봐요'),
+                  _tipRow('맛집', tip?.$2 ?? '현지인 추천 맛집'),
+                  _tipRow('숙소', tip?.$3 ?? '제휴 숙소 혜택 확인'),
+                ],
               ),
-          ]),
-      ]),
+            )
+          else
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              alignment: WrapAlignment.center,
+              children: [
+                for (final p in places)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(color: AppColors.page, borderRadius: BorderRadius.circular(12)),
+                    child: Text(p, style: const TextStyle(fontSize: 12, color: AppColors.ink2)),
+                  ),
+              ],
+            ),
+        ],
+      ),
     );
   }
 
   Widget _tipRow(String k, String v) => Padding(
-        padding: const EdgeInsets.only(top: 4),
-        child: Row(children: [
-          SizedBox(width: 40, child: Text(k, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.yellowInk))),
-          Expanded(child: Text(v, style: const TextStyle(fontSize: 13.5, color: AppColors.ink))),
-        ]),
-      );
+    padding: const EdgeInsets.only(top: 4),
+    child: Row(
+      children: [
+        SizedBox(
+          width: 40,
+          child: Text(
+            k,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.yellowDeep),
+          ),
+        ),
+        Expanded(
+          child: Text(v, style: const TextStyle(fontSize: 13.5, color: AppColors.ink)),
+        ),
+      ],
+    ),
+  );
 }
 
 class _Board extends CustomPainter {
@@ -152,10 +203,14 @@ class _Board extends CustomPainter {
     for (var i = 0; i < rings.length; i++) {
       canvas.drawCircle(c, r * (1 - i * 0.18), Paint()..color = rings[i]);
     }
-    canvas.drawCircle(c, r, Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2
-      ..color = AppColors.ink);
+    canvas.drawCircle(
+      c,
+      r,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..color = AppColors.ink,
+    );
 
     // 움직이는 이름들
     final n = places.length;
@@ -163,7 +218,10 @@ class _Board extends CustomPainter {
       final a = 2 * pi * (i / n + turn);
       final pos = c + Offset(cos(a), sin(a)) * r * 0.78;
       final tp = TextPainter(
-        text: TextSpan(text: places[i], style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.ink)),
+        text: TextSpan(
+          text: places[i],
+          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.ink),
+        ),
         textDirection: TextDirection.ltr,
       )..layout();
       tp.paint(canvas, pos - Offset(tp.width / 2, tp.height / 2));
@@ -181,12 +239,20 @@ class _Board extends CustomPainter {
         ..strokeCap = StrokeCap.round;
       canvas.drawLine(p, p + const Offset(26, -26), dart);
       canvas.drawCircle(p, 3, Paint()..color = AppColors.ink);
-      canvas.drawLine(p + const Offset(22, -22), p + const Offset(34, -24), Paint()
-        ..color = AppColors.blue
-        ..strokeWidth = 4);
-      canvas.drawLine(p + const Offset(22, -22), p + const Offset(24, -34), Paint()
-        ..color = AppColors.blue
-        ..strokeWidth = 4);
+      canvas.drawLine(
+        p + const Offset(22, -22),
+        p + const Offset(34, -24),
+        Paint()
+          ..color = AppColors.blue
+          ..strokeWidth = 4,
+      );
+      canvas.drawLine(
+        p + const Offset(22, -22),
+        p + const Offset(24, -34),
+        Paint()
+          ..color = AppColors.blue
+          ..strokeWidth = 4,
+      );
     }
   }
 

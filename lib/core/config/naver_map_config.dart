@@ -13,5 +13,5 @@ const naverMapClientId = 'y4pzwzjsed';
 
 /// flutter_naver_map은 Android/iOS 네이티브 SDK만 지원한다.
 /// 웹·데스크톱에서는 초기화도, NaverMap 위젯도 사용할 수 없다.
-final bool naverMapSupported = !kIsWeb &&
-    (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS);
+final bool naverMapSupported =
+    !kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS);

@@ -17,13 +17,26 @@ class RegionSheet extends StatelessWidget {
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 26),
-        decoration: const BoxDecoration(color: AppColors.page, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        decoration: const BoxDecoration(
+          color: AppColors.page,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(child: Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 18), decoration: BoxDecoration(color: AppColors.line, borderRadius: BorderRadius.circular(99)))),
-            const Text('어디를 볼까요?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.ink)),
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 18),
+                decoration: BoxDecoration(color: AppColors.line, borderRadius: BorderRadius.circular(99)),
+              ),
+            ),
+            const Text(
+              '어디를 볼까요?',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.ink),
+            ),
             const SizedBox(height: 4),
             const Text('같은 동네가 아니어도 전국 어디든 볼 수 있어요', style: TextStyle(fontSize: 12.5, color: AppColors.sub)),
             const SizedBox(height: 16),
@@ -43,7 +56,11 @@ class RegionSheet extends StatelessWidget {
                     ),
                     child: Text(
                       r == '전국' ? '전국 전체 보기' : r,
-                      style: TextStyle(fontSize: 14, color: scope == r ? Colors.white : AppColors.ink, fontWeight: scope == r ? FontWeight.w700 : FontWeight.w500),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: scope == r ? Colors.white : AppColors.ink,
+                        fontWeight: scope == r ? FontWeight.w700 : FontWeight.w500,
+                      ),
                     ),
                   ),
                 ),

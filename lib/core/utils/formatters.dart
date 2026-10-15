@@ -37,21 +37,13 @@ String dateTimeLabel(DateTime d) {
   return '${d.month}월 ${d.day}일 ${two(d.hour)}:${two(d.minute)}';
 }
 
-const paymentLabels = {
-  'none': '구매비 없음',
-  'prepaid': '요청자가 매장에 결제 완료',
-  'reimburse': '도우미 선결제 후 영수증 정산',
-};
+const paymentLabels = {'none': '구매비 없음', 'prepaid': '요청자가 매장에 결제 완료', 'reimburse': '도우미 선결제 후 영수증 정산'};
 
 String metaOf(TaskItem it) {
   if (it.mode == 'sea') {
     return [it.country, it.place].where((s) => s != null && s.isNotEmpty).join(' · ');
   }
-  final parts = [
-    distLabel(it),
-    it.mins > 0 ? '약 ${it.mins}분' : '',
-    it.region ?? '',
-  ].where((s) => s.isNotEmpty);
+  final parts = [distLabel(it), it.mins > 0 ? '약 ${it.mins}분' : '', it.region ?? ''].where((s) => s.isNotEmpty);
   return parts.join(' · ');
 }
 

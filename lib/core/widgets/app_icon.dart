@@ -59,35 +59,48 @@ class AppIcon extends StatelessWidget {
     'star': Icons.star_rounded,
     'filter': Icons.tune_rounded,
     'logout': Icons.logout_rounded,
-    // v77에서 새로 쓰는 것
-    'pencil': Icons.edit_outlined,
-    'store': Icons.storefront_outlined,
-    'heart': Icons.favorite_border_rounded,
-    'heartFilled': Icons.favorite_rounded,
-    'plane': Icons.flight_rounded,
-    'target': Icons.track_changes_rounded,
-    'hand': Icons.back_hand_outlined,
+    // v33 시안에서 늘어난 아이콘
     'wallet': Icons.account_balance_wallet_outlined,
+    'trend': Icons.trending_up_rounded,
+    'heart': Icons.favorite_border_rounded,
+    'hand': Icons.back_hand_outlined,
+    'pencil': Icons.edit_outlined,
+    'brief': Icons.work_outline_rounded,
+    'store': Icons.storefront_outlined,
+    'phone': Icons.smartphone_rounded,
+    'laptop': Icons.laptop_mac_rounded,
+    'wrench': Icons.build_outlined,
+    'bug': Icons.pest_control_outlined,
+    'bread': Icons.bakery_dining_outlined,
+    'flower': Icons.local_florist_outlined,
+    'cake': Icons.cake_outlined,
+    'food': Icons.restaurant_outlined,
+    'laundry': Icons.local_laundry_service_outlined,
+    'print': Icons.print_outlined,
+    'card': Icons.credit_card_rounded,
+    'grid': Icons.grid_view_rounded,
+    'comment': Icons.mode_comment_outlined,
+    'plane': Icons.flight_takeoff_rounded,
+    'dot': Icons.circle,
+    'play': Icons.play_circle_outline_rounded,
+    'link': Icons.link_rounded,
+    // v77 시안에서 늘어난 아이콘
+    'target': Icons.track_changes_rounded,
     'image': Icons.image_outlined,
     'more': Icons.more_vert_rounded,
     'minus': Icons.remove_rounded,
     'house': Icons.cottage_outlined,
     'translate': Icons.translate_rounded,
-    'flower': Icons.local_florist_outlined,
-    'bread': Icons.bakery_dining_outlined,
-    'laundry': Icons.local_laundry_service_outlined,
-    'cake': Icons.cake_outlined,
     'noodle': Icons.ramen_dining_outlined,
-    'laptop': Icons.laptop_outlined,
     'question': Icons.help_outline_rounded,
     'megaphone': Icons.campaign_outlined,
-    'card': Icons.credit_card_rounded,
     'sim': Icons.sim_card_outlined,
     'luggage': Icons.luggage_outlined,
     'trophy': Icons.emoji_events_outlined,
     'checkCircle': Icons.check_circle_rounded,
     'receipt': Icons.receipt_long_outlined,
     'apps': Icons.apps_rounded,
+    'heartFilled': Icons.favorite_rounded,
   };
 
   /// 부탁 종류(`CATS`의 키) → 아이콘. 데이터의 이모지는 그대로 두고, 화면에서만 선형으로 그린다.
@@ -117,7 +130,7 @@ class CatEmblem extends StatelessWidget {
   final double size;
   final double radius;
   final double iconSize;
-  const CatEmblem({super.key, required this.cat, this.size = 49, this.radius = 15, this.iconSize = 23});
+  const CatEmblem({super.key, required this.cat, this.size = 40, this.radius = 12, this.iconSize = 22});
 
   @override
   Widget build(BuildContext context) {

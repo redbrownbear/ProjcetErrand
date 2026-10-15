@@ -16,6 +16,7 @@ import '../features/proposal/screens/propose_form.dart';
 import '../features/proposal/screens/proposal_list_screen.dart';
 import '../features/proposal/screens/world_map_screen.dart';
 import '../features/proposal/widgets/proposal_sheet.dart';
+import '../features/trip/screens/trip_feed_screen.dart';
 import '../features/trip/screens/trip_form.dart';
 import '../features/trip/widgets/dart_sheet.dart';
 import 'neighbor_store.dart';
@@ -63,49 +64,73 @@ class AppNav {
   void openWrite(BuildContext context) {
     showSheet(context, (ctx) {
       Widget item(String icon, Color bg, Color fg, String title, String sub, VoidCallback go) => Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: Container(
-              decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.outline)),
-              child: Tap(
-                radius: 16,
-                onTap: () {
-                  Navigator.pop(ctx);
-                  go();
-                },
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
-                      child: Icon(_icons[icon], size: 21, color: fg),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.outline),
+          ),
+          child: Tap(
+            radius: 16,
+            onTap: () {
+              Navigator.pop(ctx);
+              go();
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
+                    child: Icon(_icons[icon], size: 21, color: fg),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text(title, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800)),
                         const SizedBox(height: 2),
                         Text(sub, style: const TextStyle(fontSize: 12.5, color: AppColors.sub, height: 1.4)),
-                      ]),
+                      ],
                     ),
-                    const Icon(Icons.chevron_right_rounded, color: AppColors.faint),
-                  ]),
-                ),
+                  ),
+                  const Icon(Icons.chevron_right_rounded, color: AppColors.faint),
+                ],
               ),
             ),
-          );
+          ),
+        ),
+      );
       return SheetFrame(
         title: '어떤 글을 쓸까요?',
         sub: '쓰고 싶은 글을 골라요',
-        child: Column(children: [
-          item('pencil', AppColors.blueSoft, AppColors.blue, '가는 김에 글쓰기', '어디 가는 길인지, 같이 할 일을 올려요', () => openTripForm(context)),
-          item('gift', const Color(0xFFFFF1E6), const Color(0xFFE5772E), '제안하기', '다녀오는 길에 사 올 수 있는 걸 올려요 · 인원 제한 없이도 OK', () => openPropose(context)),
-          item('hand', const Color(0xFFF7F1E0), AppColors.yellowDeep, '부탁하기', '동네 이웃에게 일을 부탁해요', openAskForm),
-          item('globe', AppColors.blueSoft, AppColors.blue, '해외 부탁하기', '여행 가는 이웃에게 사다주기를 부탁해요', openSeaForm),
-          item('store', AppColors.greenSoft, AppColors.greenDeep, '중고 판매·나눔', '물건을 팔거나 나눠요', () => openUsedForm(context)),
-          item('users', AppColors.purpleSoft, AppColors.purple, '커뮤니티 글쓰기', '질문, 후기, 동행, 동네 소식을 나눠요', () => compose(context)),
-        ]),
+        child: Column(
+          children: [
+            item(
+              'pencil',
+              AppColors.blueSoft,
+              AppColors.blue,
+              '가는 김에 글쓰기',
+              '어디 가는 길인지, 같이 할 일을 올려요',
+              () => openTripForm(context),
+            ),
+            item(
+              'gift',
+              const Color(0xFFFFF1E6),
+              const Color(0xFFE5772E),
+              '제안하기',
+              '다녀오는 길에 사 올 수 있는 걸 올려요 · 인원 제한 없이도 OK',
+              () => openPropose(context),
+            ),
+            item('hand', const Color(0xFFF7F1E0), AppColors.yellowInk, '부탁하기', '동네 이웃에게 일을 부탁해요', openAskForm),
+            item('globe', AppColors.blueSoft, AppColors.blue, '해외 부탁하기', '여행 가는 이웃에게 사다주기를 부탁해요', openSeaForm),
+            item('store', AppColors.greenSoft, AppColors.greenDeep, '중고 판매·나눔', '물건을 팔거나 나눠요', () => openUsedForm(context)),
+            item('users', AppColors.purpleSoft, AppColors.purple, '커뮤니티 글쓰기', '질문, 후기, 동행, 동네 소식을 나눠요', () => compose(context)),
+          ],
+        ),
       );
     });
   }
@@ -118,6 +143,9 @@ class AppNav {
     'store': Icons.storefront_outlined,
     'users': Icons.groups_outlined,
   };
+
+  /// 가는 김에 — 전체보기
+  void openTripFeed(BuildContext context) => _push(context, TripFeedScreen(nav: this));
 
   void openTripForm(BuildContext context) =>
       showSheet(context, (_) => TripForm(author: nickname(), area: area(), onSubmit: store.addTrip));
@@ -134,92 +162,90 @@ class AppNav {
       showSheet(context, (_) => ProposeForm(abroad: abroad, who: nickname(), area: area(), onSubmit: store.addProposal));
 
   void openProposal(BuildContext context, Proposal p) => ProposalSheet.show(
-        context,
-        store: store,
-        p: p,
-        onOpenPost: (c) => openPost(context, c.id),
-        onMoreStories: () => goCommunity(p.abroad ? 'abroad' : 'travel', place: p.abroad ? p.cc : p.from),
-        onReview: (x) => review(context, x),
-        onOtherAsk: openAskForm,
-      );
+    context,
+    store: store,
+    p: p,
+    onOpenPost: (c) => openPost(context, c.id),
+    onMoreStories: () => goCommunity(p.abroad ? 'abroad' : 'travel', place: p.abroad ? p.cc : p.from),
+    onReview: (x) => review(context, x),
+    onOtherAsk: openAskForm,
+  );
 
   void openProposalList(BuildContext context, {required bool abroad}) => _push(
-        context,
-        ProposalListScreen(
-          store: store,
-          abroad: abroad,
-          onOpen: (p) => openProposal(context, p),
-          onPropose: () => openPropose(context, abroad: abroad),
-        ),
-      );
+    context,
+    ProposalListScreen(
+      store: store,
+      abroad: abroad,
+      onOpen: (p) => openProposal(context, p),
+      onPropose: () => openPropose(context, abroad: abroad),
+    ),
+  );
 
   /// 제안을 받았거나 전달한 뒤의 '후기 남기기'. 제목·지역이 채워져 열린다. (응모권 +1)
   void review(BuildContext context, Proposal p) => compose(
-        context,
-        initial: ComPost(
-          id: 0,
-          scope: p.abroad ? 'abroad' : 'travel',
-          kind: '후기',
-          place: p.abroad ? (p.cc ?? '') : p.from,
-          title: '${p.from} ${p.item} 받았어요',
-          body: '',
-          author: nickname(),
-          proposalId: p.id,
-        ),
-      );
+    context,
+    initial: ComPost(
+      id: 0,
+      scope: p.abroad ? 'abroad' : 'travel',
+      kind: '후기',
+      place: p.abroad ? (p.cc ?? '') : p.from,
+      title: '${p.from} ${p.item} 받았어요',
+      body: '',
+      author: nickname(),
+      proposalId: p.id,
+    ),
+  );
 
   void openWorld(BuildContext context) => _push(
-        context,
-        WorldMapScreen(
-          store: store,
-          seaItems: items().where((i) => i.mode == 'sea').toList(),
-          onOpenProposal: (p) => openProposal(context, p),
-          onOpenTask: (t) => openTask(context, t),
-          onOpenPost: (c) => openPost(context, c.id),
-          onPropose: () => openPropose(context, abroad: true),
-        ),
-      );
+    context,
+    WorldMapScreen(
+      store: store,
+      seaItems: items().where((i) => i.mode == 'sea').toList(),
+      onOpenProposal: (p) => openProposal(context, p),
+      onOpenTask: (t) => openTask(context, t),
+      onOpenPost: (c) => openPost(context, c.id),
+      onPropose: () => openPropose(context, abroad: true),
+    ),
+  );
 
   // ── 이야기 · 기타 ───────────────────────────────────────────────────────
 
   void openPost(BuildContext context, int id) => _push(
-        context,
-        ComPostScreen(
-          store: store,
-          postId: id,
-          onOpenProposal: (pid) {
-            final p = store.proposalById(pid);
-            if (p != null) openProposal(context, p);
-          },
-        ),
-      );
+    context,
+    ComPostScreen(
+      store: store,
+      postId: id,
+      onOpenProposal: (pid) {
+        final p = store.proposalById(pid);
+        if (p != null) openProposal(context, p);
+      },
+    ),
+  );
 
   void openLucky(BuildContext context) => _push(
-        context,
-        ListenableBuilder(
-          listenable: store,
-          builder: (_, _) => LuckyDrawScreen(wallet: () => store.wallet, onEnter: store.enterDraw),
-        ),
-      );
+    context,
+    ListenableBuilder(
+      listenable: store,
+      builder: (_, _) => LuckyDrawScreen(wallet: () => store.wallet, onEnter: store.enterDraw),
+    ),
+  );
 
   void openDart(BuildContext context, {bool abroad = false}) => showSheet(
-        context,
-        (_) => DartSheet(
-          abroad: abroad,
-          onStories: (place, ab) {
-            if (ab) {
-              goCommunity('abroad');
-            } else {
-              goCommunity('travel', place: place);
-            }
-          },
-        ),
-      );
+    context,
+    (_) => DartSheet(
+      abroad: abroad,
+      onStories: (place, ab) {
+        if (ab) {
+          goCommunity('abroad');
+        } else {
+          goCommunity('travel', place: place);
+        }
+      },
+    ),
+  );
 
-  void openUsed(BuildContext context, UsedItem item) => _push(
-        context,
-        UsedDetailScreen(store: store, item: item, onDeliver: requestDelivery, flash: flash),
-      );
+  void openUsed(BuildContext context, UsedItem item) =>
+      _push(context, UsedDetailScreen(store: store, item: item, onDeliver: requestDelivery, flash: flash));
 
   void openTask(BuildContext context, TaskItem it) => actions().open(context, it);
 }

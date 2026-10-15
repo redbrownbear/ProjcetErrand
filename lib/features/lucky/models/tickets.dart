@@ -29,6 +29,14 @@ class TicketRules {
   static const all = [attend, helpDone, myDone, seaDone, visit, survey, review, community, push, photo, firstPost];
 }
 
+/// 미션 종류별 응모권 — 방문 인증 +2, 연구·상담 +3, 나머지(설문·앱 체험 등) +1
+TicketRule missionTicketRule(String cat) => cat == 'visit' ? TicketRules.visit : TicketRules.survey;
+int missionTickets(String cat) => switch (cat) {
+  'visit' => TicketRules.visit.n,
+  'research' || 'consult' => 3,
+  _ => TicketRules.survey.n,
+};
+
 /// 이달의 럭키드로우. 상품과 마감일은 매달 바뀐다.
 class LuckyDraw {
   final DateTime now;
@@ -84,18 +92,21 @@ class TicketWallet {
       entered: j['entered'] is int ? j['entered'] as int : 0,
       earnedThisMonth: j['earned'] is int ? j['earned'] as int : 0,
       month: j['month'] is String ? j['month'] as String : '',
-      claimed: {for (final k in (j['claimed'] is List ? j['claimed'] as List : const [])) if (k is String) k},
+      claimed: {
+        for (final k in (j['claimed'] is List ? j['claimed'] as List : const []))
+          if (k is String) k,
+      },
     );
     return w._rollMonth(now);
   }
 
   void save() => LocalStore.write(_key, {
-        'have': have,
-        'entered': entered,
-        'earned': earnedThisMonth,
-        'month': month,
-        'claimed': claimed.toList(),
-      });
+    'have': have,
+    'entered': entered,
+    'earned': earnedThisMonth,
+    'month': month,
+    'claimed': claimed.toList(),
+  });
 
   /// 달이 바뀌면 이번 달 응모·모은 장수를 0으로. 가진 장수는 남는다.
   TicketWallet _rollMonth(DateTime now) {
@@ -122,11 +133,7 @@ class TicketWallet {
       entered: rolled.entered,
       earnedThisMonth: rolled.earnedThisMonth + add,
       month: rolled.month,
-      claimed: {
-        ...rolled.claimed,
-        if (r.once) r.key,
-        if (r.daily) '${r.key}:${_day(now)}',
-      },
+      claimed: {...rolled.claimed, if (r.once) r.key, if (r.daily) '${r.key}:${_day(now)}'},
     );
   }
 

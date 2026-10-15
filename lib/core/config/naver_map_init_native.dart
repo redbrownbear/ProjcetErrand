@@ -8,8 +8,5 @@ import 'naver_map_config.dart';
 /// 아니므로 naverMapSupported로 한 번 더 거른다.
 Future<void> initNaverMap() async {
   if (!naverMapSupported) return;
-  await FlutterNaverMap().init(
-    clientId: naverMapClientId,
-    onAuthFailed: (ex) => debugPrint('네이버 지도 인증 실패: $ex'),
-  );
+  await FlutterNaverMap().init(clientId: naverMapClientId, onAuthFailed: (ex) => debugPrint('네이버 지도 인증 실패: $ex'));
 }

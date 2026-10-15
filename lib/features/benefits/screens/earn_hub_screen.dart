@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/compliance/disclosures.dart';
 import '../../../core/theme/colors.dart';
+import '../../../core/widgets/app_icon.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/chip_widget.dart';
 import '../../../core/widgets/screen_frame.dart';
@@ -62,17 +63,29 @@ class _EarnHubScreenState extends State<EarnHubScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
             decoration: BoxDecoration(color: AppColors.ink, borderRadius: BorderRadius.circular(16)),
-            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('지금 참여하면 받을 수 있는 포인트', style: TextStyle(fontSize: 12.5, color: Colors.white60)),
-                  Padding(padding: const EdgeInsets.only(top: 4), child: Text('+${nf(potential)}P', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: AppColors.yellow))),
-                  Padding(padding: const EdgeInsets.only(top: 4), child: Text('단기알바은 최대 ${won(topPay)}', style: const TextStyle(fontSize: 11.5, color: Colors.white54))),
-                ],
-              ),
-              const Text('💰', style: TextStyle(fontSize: 34)),
-            ]),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('지금 참여하면 받을 수 있는 포인트', style: TextStyle(fontSize: 12.5, color: Colors.white60)),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        '+${nf(potential)}P',
+                        style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: AppColors.yellow),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text('단기알바은 최대 ${won(topPay)}', style: const TextStyle(fontSize: 11.5, color: Colors.white54)),
+                    ),
+                  ],
+                ),
+                const AppIcon('wallet', size: 29, color: AppColors.ink2),
+              ],
+            ),
           ),
 
           // 2차 메뉴 — 여기 네 개가 '오늘 벌기'의 전부다
@@ -87,7 +100,7 @@ class _EarnHubScreenState extends State<EarnHubScreen> {
                     Padding(
                       padding: const EdgeInsets.only(right: 7),
                       child: ChipWidget(
-                        label: '${m.icon} ${m.label}',
+                        label: m.label,
                         active: menu == m.key,
                         onTap: () => setState(() {
                           menu = m.key;
@@ -125,42 +138,60 @@ class _EarnHubScreenState extends State<EarnHubScreen> {
 
   /// 심부름 — 지역 픽업과 기업 심부름. 목록 화면이 이미 있어 그쪽으로 넘긴다.
   List<Widget> _errandSection() => [
-        InkWell(
-          onTap: widget.onOpenErrand,
-          borderRadius: BorderRadius.circular(14),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-            decoration: BoxDecoration(color: AppColors.yellowSoft, borderRadius: BorderRadius.circular(14)),
-            child: Row(children: [
-              const Text('🤝', style: TextStyle(fontSize: 24)),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('근처 심부름 보러 가기', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.ink)),
-                    Padding(padding: EdgeInsets.only(top: 2), child: Text('제휴 매장 예약 픽업 · 개인 부탁 · 기업 심부름', style: TextStyle(fontSize: 11.5, color: AppColors.yellowDeep))),
-                  ],
-                ),
+    InkWell(
+      onTap: widget.onOpenErrand,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+        decoration: BoxDecoration(color: AppColors.yellowSoft, borderRadius: BorderRadius.circular(14)),
+        child: Row(
+          children: [
+            const AppIcon('handshake', size: 20, color: AppColors.ink2),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '근처 심부름 보러 가기',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.ink),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.only(top: 2),
+                    child: Text('제휴 매장 예약 픽업 · 개인 부탁 · 기업 심부름', style: TextStyle(fontSize: 11.5, color: AppColors.yellowDeep)),
+                  ),
+                ],
               ),
-              const Text('›', style: TextStyle(fontSize: 20, color: AppColors.yellowDeep)),
-            ]),
-          ),
+            ),
+            const Text('›', style: TextStyle(fontSize: 20, color: AppColors.yellowDeep)),
+          ],
         ),
-        // 기업 심부름은 개인 심부름과 같은 줄에 열지 않는다 (§7)
-        Container(
-          margin: const EdgeInsets.only(top: 12),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-          decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(14)),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('🏢 기업 심부름 (준비 중)', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.ink)),
-              Padding(padding: const EdgeInsets.only(top: 6), child: Text(Disclosures.b2b.body, style: const TextStyle(fontSize: 12, color: AppColors.sub, height: 1.6))),
-            ],
+      ),
+    ),
+    // 기업 심부름은 개인 심부름과 같은 줄에 열지 않는다 (§7)
+    Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        border: Border.all(color: AppColors.line),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '기업 심부름 (준비 중)',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.ink),
           ),
-        ),
-      ];
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(Disclosures.b2b.body, style: const TextStyle(fontSize: 12, color: AppColors.sub, height: 1.6)),
+          ),
+        ],
+      ),
+    ),
+  ];
 
   /// 단기알바 — 공연·행사·전시·단기알바를 한 카테고리로 묶었다 (§6)
   List<Widget> _dayJobSection() {
@@ -173,28 +204,58 @@ class _EarnHubScreenState extends State<EarnHubScreen> {
           child: Container(
             margin: const EdgeInsets.only(bottom: 10),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-            decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(14)),
-            child: Row(children: [
-              Container(width: 48, height: 48, alignment: Alignment.center, decoration: BoxDecoration(color: AppColors.blueSoft, borderRadius: BorderRadius.circular(13)), child: Text(j.icon, style: const TextStyle(fontSize: 24))),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              border: Border.all(color: AppColors.line),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(color: AppColors.blueSoft, borderRadius: BorderRadius.circular(13)),
+                  child: AppIcon(j.icon, size: 20, color: AppColors.ink2),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${j.cat} · ${j.org}',
+                        style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: AppColors.blue),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 1),
+                        child: Text(
+                          j.title,
+                          style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppColors.ink),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text('${j.hours} · ${j.payDate}', style: const TextStyle(fontSize: 11.5, color: AppColors.sub)),
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text('${j.cat} · ${j.org}', style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: AppColors.blue)),
-                    Padding(padding: const EdgeInsets.only(top: 1), child: Text(j.title, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppColors.ink))),
-                    Padding(padding: const EdgeInsets.only(top: 2), child: Text('${j.hours} · ${j.payDate}', style: const TextStyle(fontSize: 11.5, color: AppColors.sub))),
+                    Text(
+                      won(j.pay),
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.ink),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(j.payKind, style: const TextStyle(fontSize: 11, color: AppColors.sub)),
+                    ),
                   ],
                 ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(won(j.pay), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.ink)),
-                  Padding(padding: const EdgeInsets.only(top: 2), child: Text(j.payKind, style: const TextStyle(fontSize: 11, color: AppColors.sub))),
-                ],
-              ),
-            ]),
+              ],
+            ),
           ),
         ),
       SizedBox(
@@ -202,7 +263,8 @@ class _EarnHubScreenState extends State<EarnHubScreen> {
         child: OutlinedButton(
           onPressed: _openDayJobs,
           style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.ink, side: const BorderSide(color: AppColors.line),
+            foregroundColor: AppColors.ink,
+            side: const BorderSide(color: AppColors.line),
             padding: const EdgeInsets.symmetric(vertical: 12),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
@@ -236,25 +298,42 @@ class _EarnHubScreenState extends State<EarnHubScreen> {
               scrollDirection: Axis.horizontal,
               children: [
                 for (final c in cats)
-                  Padding(padding: const EdgeInsets.only(right: 7), child: ChipWidget(label: c[1], active: cat == c[0], onTap: () => setState(() => cat = c[0]))),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 7),
+                    child: ChipWidget(label: c[1], active: cat == c[0], onTap: () => setState(() => cat = c[0])),
+                  ),
               ],
             ),
           ),
         ),
       Padding(
         padding: const EdgeInsets.only(bottom: 6),
-        child: Text.rich(TextSpan(children: [
-          const TextSpan(text: '포인트 높은 순 ', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.ink)),
-          TextSpan(text: '· ${list.length}건', style: const TextStyle(fontSize: 11.5, color: AppColors.sub, fontWeight: FontWeight.w600)),
-        ])),
+        child: Text.rich(
+          TextSpan(
+            children: [
+              const TextSpan(
+                text: '포인트 높은 순 ',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.ink),
+              ),
+              TextSpan(
+                text: '· ${list.length}건',
+                style: const TextStyle(fontSize: 11.5, color: AppColors.sub, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+        ),
       ),
       for (final m in list)
         EarnRowFull(
           m: m,
           done: widget.doneMissions.contains(m.id),
-          onOpen: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PartnerMissionDetailScreen(
-            m: m, done: widget.doneMissions.contains(m.id), onComplete: widget.completeMission,
-          ))),
+          onOpen: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) =>
+                  PartnerMissionDetailScreen(m: m, done: widget.doneMissions.contains(m.id), onComplete: widget.completeMission),
+            ),
+          ),
         ),
       Container(
         margin: const EdgeInsets.only(top: 4),
@@ -265,8 +344,5 @@ class _EarnHubScreenState extends State<EarnHubScreen> {
     ];
   }
 
-  void _openDayJobs() => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => DayJobScreen(onApply: widget.onApplyDayJob)),
-      );
+  void _openDayJobs() => Navigator.push(context, MaterialPageRoute(builder: (_) => DayJobScreen(onApply: widget.onApplyDayJob)));
 }

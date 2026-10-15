@@ -41,16 +41,33 @@ class ComPost {
   });
 
   ComPost copyWith({List<Comment>? comments, int? likes}) => ComPost(
-        id: id, scope: scope, kind: kind, place: place, title: title, body: body,
-        likes: likes ?? this.likes, comments: comments ?? this.comments, author: author, ago: ago, mine: mine,
-        proposalId: proposalId,
-      );
+    id: id,
+    scope: scope,
+    kind: kind,
+    place: place,
+    title: title,
+    body: body,
+    likes: likes ?? this.likes,
+    comments: comments ?? this.comments,
+    author: author,
+    ago: ago,
+    mine: mine,
+    proposalId: proposalId,
+  );
 
   Map<String, dynamic> toJson() => {
-        'id': id, 'scope': scope, 'kind': kind, 'place': place, 'title': title, 'body': body,
-        'author': author, 'proposalId': proposalId,
-        'comments': [for (final c in comments) {'who': c.who, 'text': c.text}],
-      };
+    'id': id,
+    'scope': scope,
+    'kind': kind,
+    'place': place,
+    'title': title,
+    'body': body,
+    'author': author,
+    'proposalId': proposalId,
+    'comments': [
+      for (final c in comments) {'who': c.who, 'text': c.text},
+    ],
+  };
 
   static ComPost? fromJson(dynamic j) {
     if (j is! Map || j['id'] is! int || j['title'] is! String) return null;
@@ -74,14 +91,14 @@ class ComPost {
 
 /// 글 종류별 배지 색
 ({Color bg, Color fg}) kindTone(String kind) => switch (kind) {
-      '질문' => (bg: const Color(0xFFEAF0FE), fg: const Color(0xFF2F63E8)),
-      '모임' || '동행' => (bg: AppColors.purpleSoft, fg: AppColors.purple),
-      '소식' || '맛집' => (bg: const Color(0xFFFFF1DC), fg: const Color(0xFFD27700)),
-      '후기' => (bg: AppColors.greenSoft, fg: AppColors.greenDeep),
-      '정보' => (bg: const Color(0xFFE8F4FB), fg: const Color(0xFF1C7FB5)),
-      '제안' => (bg: AppColors.yellowSoft, fg: AppColors.yellowInk),
-      _ => (bg: AppColors.page, fg: AppColors.sub),
-    };
+  '질문' => (bg: const Color(0xFFEAF0FE), fg: const Color(0xFF2F63E8)),
+  '모임' || '동행' => (bg: AppColors.purpleSoft, fg: AppColors.purple),
+  '소식' || '맛집' => (bg: const Color(0xFFFFF1DC), fg: const Color(0xFFD27700)),
+  '후기' => (bg: AppColors.greenSoft, fg: AppColors.greenDeep),
+  '정보' => (bg: const Color(0xFFE8F4FB), fg: const Color(0xFF1C7FB5)),
+  '제안' => (bg: AppColors.yellowSoft, fg: AppColors.yellowDeep),
+  _ => (bg: AppColors.page, fg: AppColors.sub),
+};
 
 const localKinds = ['질문', '모임', '소식'];
 const travelKinds = ['후기', '동행', '정보', '맛집'];

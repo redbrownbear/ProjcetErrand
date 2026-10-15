@@ -50,8 +50,10 @@ class JobPostingDetailScreen extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 18, 20, 40),
         children: [
-          Text('${job.company} · ${job.headcount}명 모집',
-              style: AppType.caption.copyWith(fontSize: 11, color: AppColors.greetingPoint)),
+          Text(
+            '${job.company} · ${job.headcount}명 모집',
+            style: AppType.caption.copyWith(fontSize: 11, color: AppColors.greetingPoint),
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 10),
             child: Text(job.title, style: AppType.section.copyWith(fontSize: 22, height: 1.4, color: AppColors.attendTitle)),
@@ -59,11 +61,13 @@ class JobPostingDetailScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(color: AppColors.page, borderRadius: BorderRadius.circular(14)),
-            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              Text(job.payType, style: AppType.meta.copyWith(fontSize: 13)),
-              Text('${nf(job.pay)}원',
-                  style: AppType.section.copyWith(fontSize: 20, color: AppColors.green)),
-            ]),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(job.payType, style: AppType.meta.copyWith(fontSize: 13)),
+                Text('${nf(job.pay)}원', style: AppType.section.copyWith(fontSize: 20, color: AppColors.green)),
+              ],
+            ),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 10),
@@ -80,8 +84,10 @@ class JobPostingDetailScreen extends StatelessWidget {
             margin: const EdgeInsets.only(top: 20),
             padding: const EdgeInsets.all(15),
             decoration: BoxDecoration(color: AppColors.page, borderRadius: BorderRadius.circular(12)),
-            child: Text('내가 등록한 모집글입니다. 실제 지원 접수는 연동 전이에요.',
-                style: AppType.meta.copyWith(fontSize: 12, height: 1.8, color: AppColors.goalMintInk)),
+            child: Text(
+              '내가 등록한 모집글입니다. 실제 지원 접수는 연동 전이에요.',
+              style: AppType.meta.copyWith(fontSize: 12, height: 1.8, color: AppColors.goalMintInk),
+            ),
           ),
         ],
       ),

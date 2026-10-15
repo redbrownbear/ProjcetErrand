@@ -35,8 +35,15 @@ class TripPost {
   bool get going => type == 'going';
 
   Map<String, dynamic> toJson() => {
-        'id': id, 'type': type, 'author': author, 'area': area, 'cc': cc, 'title': title, 'when': when, 'quote': quote,
-      };
+    'id': id,
+    'type': type,
+    'author': author,
+    'area': area,
+    'cc': cc,
+    'title': title,
+    'when': when,
+    'quote': quote,
+  };
 
   static TripPost? fromJson(dynamic j) {
     if (j is! Map || j['id'] is! int || j['title'] is! String) return null;
@@ -55,8 +62,49 @@ class TripPost {
 }
 
 const seedTripPosts = [
-  TripPost(id: 8001, type: 'going', author: '민지', area: '반포동', ago: '12분 전', cc: 'jp', title: '내일 오사카 가요', when: '출국 · 3박', quote: '돈키호테 들를 예정인데 필요한 거 있으면 부탁 주세요.', comments: 2),
-  TripPost(id: 8002, type: 'asking', author: '준호', area: '서초동', ago: '방금', title: '오늘 성수 가시는 분 있나요?', when: '오늘 오후 · 성수동', quote: '팝업 굿즈 하나만 부탁드리고 싶어요.', comments: 1),
-  TripPost(id: 8003, type: 'going', author: '수아', area: '잠원동', ago: '1시간 전', title: '토요일에 코스트코 양재점 가요', when: '토요일 오전 · 양재동', quote: '대용량 나눠 사실 분이나 필요한 거 있으면 말씀 주세요.', comments: 3),
-  TripPost(id: 8004, type: 'asking', author: '하람', area: '방배동', ago: '2시간 전', title: '이번 주 대전 가시는 분?', when: '이번 주 · 대전', quote: '성심당 튀김소보로 부탁하고 싶어요.', comments: 0),
+  TripPost(
+    id: 8001,
+    type: 'going',
+    author: '민지',
+    area: '반포동',
+    ago: '12분 전',
+    cc: 'jp',
+    title: '내일 오사카 가요',
+    when: '출국 · 3박',
+    quote: '돈키호테 들를 예정인데 필요한 거 있으면 부탁 주세요.',
+    comments: 2,
+  ),
+  TripPost(
+    id: 8002,
+    type: 'asking',
+    author: '준호',
+    area: '서초동',
+    ago: '방금',
+    title: '오늘 성수 가시는 분 있나요?',
+    when: '오늘 오후 · 성수동',
+    quote: '팝업 굿즈 하나만 부탁드리고 싶어요.',
+    comments: 1,
+  ),
+  TripPost(
+    id: 8003,
+    type: 'going',
+    author: '수아',
+    area: '잠원동',
+    ago: '1시간 전',
+    title: '토요일에 코스트코 양재점 가요',
+    when: '토요일 오전 · 양재동',
+    quote: '대용량 나눠 사실 분이나 필요한 거 있으면 말씀 주세요.',
+    comments: 3,
+  ),
+  TripPost(
+    id: 8004,
+    type: 'asking',
+    author: '하람',
+    area: '방배동',
+    ago: '2시간 전',
+    title: '이번 주 대전 가시는 분?',
+    when: '이번 주 · 대전',
+    quote: '성심당 튀김소보로 부탁하고 싶어요.',
+    comments: 0,
+  ),
 ];
