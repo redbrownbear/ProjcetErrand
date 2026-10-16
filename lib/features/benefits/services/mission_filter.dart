@@ -1,5 +1,6 @@
 import '../models/mission_meta.dart';
 import '../models/partner_mission.dart';
+import '../../../core/utils/stable_sort.dart';
 
 /// 미션 목록의 상태 탭
 enum MissionStatus { all, active, done }
@@ -72,7 +73,7 @@ class MissionFilter {
       return q.isEmpty || '${m.title} ${m.brand} ${m.desc}'.contains(q);
     }).toList();
 
-    list.sort((a, b) {
+    list.sortStable((a, b) {
       final doneOrder = (isDone(a) ? 1 : 0) - (isDone(b) ? 1 : 0);
       if (doneOrder != 0) return doneOrder;
       return switch (sort) {

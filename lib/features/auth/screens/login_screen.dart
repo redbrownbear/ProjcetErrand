@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/colors.dart';
 import '../services/auth_service.dart';
+import '../widgets/auth_widgets.dart';
 import 'signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -40,9 +41,11 @@ class _LoginScreenState extends State<LoginScreen> {
       await _auth.signIn(email: email, password: password);
       if (mounted) Navigator.of(context).pop();
     } on FirebaseAuthException catch (e) {
-      setState(() => _error = AuthService.messageFor(e));
+      if (mounted) setState(() => _error = AuthService.messageFor(e));
+    } on ServerUnavailable catch (e) {
+      if (mounted) setState(() => _error = '$e');
     } catch (_) {
-      setState(() => _error = '문제가 발생했어요. 잠시 후 다시 시도해주세요.');
+      if (mounted) setState(() => _error = '문제가 발생했어요. 잠시 후 다시 시도해주세요.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -55,21 +58,6 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted || _auth.currentUser == null) return;
     Navigator.of(context).pop();
   }
-
-  InputDecoration _dec(String hint) => InputDecoration(
-    hintText: hint,
-    filled: true,
-    fillColor: AppColors.card,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: AppColors.line),
-    ),
-    enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: AppColors.line),
-    ),
-  );
 
   @override
   Widget build(BuildContext context) {
@@ -103,41 +91,21 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Text('동네에서 겸사겸사 벌어요', style: TextStyle(fontSize: 13, color: AppColors.sub)),
                     ),
                     const SizedBox(height: 32),
-                    TextField(controller: _emailCtrl, keyboardType: TextInputType.emailAddress, decoration: _dec('이메일')),
+                    TextField(
+                      controller: _emailCtrl,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: authFieldDecoration('이메일'),
+                    ),
                     const SizedBox(height: 10),
                     TextField(
                       controller: _passwordCtrl,
                       obscureText: true,
                       onSubmitted: (_) => _submit(),
-                      decoration: _dec('비밀번호'),
+                      decoration: authFieldDecoration('비밀번호'),
                     ),
-                    if (_error != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 12),
-                        child: Text(_error!, style: const TextStyle(color: AppColors.red, fontSize: 12.5)),
-                      ),
+                    if (_error != null) AuthError(_error!),
                     const SizedBox(height: 18),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _loading ? null : _submit,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.yellow,
-                          foregroundColor: AppColors.ink,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          elevation: 0,
-                          disabledBackgroundColor: AppColors.yellowSoft,
-                        ),
-                        child: _loading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.ink),
-                              )
-                            : const Text('로그인', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-                      ),
-                    ),
+                    AuthSubmitButton(label: '로그인', loading: _loading, onPressed: _submit),
                     const SizedBox(height: 16),
                     TextButton(
                       onPressed: _loading ? null : _openSignup,

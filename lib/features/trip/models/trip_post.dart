@@ -52,7 +52,7 @@ class TripPost {
       type: j['type'] == 'asking' ? 'asking' : 'going',
       author: '${j['author'] ?? '나'}',
       area: '${j['area'] ?? ''}',
-      cc: j['cc'] as String?,
+      cc: j['cc'] is String ? j['cc'] as String : null,
       title: j['title'] as String,
       when: '${j['when'] ?? ''}',
       quote: '${j['quote'] ?? ''}',

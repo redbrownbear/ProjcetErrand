@@ -21,6 +21,7 @@ import '../../../trip/widgets/trip_widgets.dart';
 import 'widgets/home_buttons.dart';
 import 'widgets/nearby_section.dart';
 import 'widgets/pick_carousel.dart';
+import '../../../../core/utils/stable_sort.dart';
 
 /// 홈 '돈벌기' 갈래.
 ///
@@ -49,7 +50,7 @@ class HomeEarnTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tasks = query.apply(home.items, home.scope);
-    final jobs = List.of(dayJobs)..sort((a, b) => b.pay - a.pay);
+    final jobs = List.of(dayJobs)..sortStable((a, b) => b.pay - a.pay);
 
     return Column(
       children: [

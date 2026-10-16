@@ -14,6 +14,7 @@ import 'package:gyeomsa/features/lucky/screens/lucky_draw_screen.dart';
 import 'package:gyeomsa/features/lucky/widgets/lucky_card.dart';
 import 'package:gyeomsa/features/proposal/models/proposal.dart';
 import 'package:gyeomsa/features/proposal/widgets/live_board.dart';
+import 'package:gyeomsa/features/benefits/models/point_wallet.dart';
 
 import 'support/social.dart';
 
@@ -132,15 +133,12 @@ void main() {
       items: _items,
       scope: '서울 서초구',
       actions: social.actions(),
-      points: 3200,
+      wallet: PointWallet.fixed(points: 3200),
       steps: 0,
       monthEarn: 0,
-      coupons: const [],
       doneMissions: const [],
       isClaimed: (k, {daily = true}) => false,
       earn: (a, l, {required key, daily = true}) async {},
-      redeem: (_) {},
-      useCoupon: (_) {},
       completeMission: (_) {},
       flash: (_) {},
       goPay: () {},
@@ -190,8 +188,7 @@ void main() {
         tester,
         SideJobView(
           social: social,
-          points: 3200,
-          coupons: const [],
+          wallet: PointWallet.fixed(points: 3200),
           items: _items,
           scope: '서울 서초구',
           actions: social.actions(),
@@ -200,8 +197,6 @@ void main() {
           doneMissions: const [],
           earn: (a, l, {required key, daily = true}) async {},
           isClaimed: (k, {daily = true}) => false,
-          redeem: (_) {},
-          useCoupon: (_) {},
           completeMission: (_) {},
           goPointsHub: () {},
           flash: (_) {},

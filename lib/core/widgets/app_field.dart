@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../theme/app_theme.dart';
 import '../theme/colors.dart';
@@ -42,6 +43,8 @@ class AppField extends StatelessWidget {
             controller: controller,
             maxLines: maxLines,
             keyboardType: keyboardType,
+            // 숫자 칸은 숫자만 받는다. 쉼표·'원'이 섞이면 int.tryParse가 실패해 값이 0이 된다.
+            inputFormatters: keyboardType == TextInputType.number ? [FilteringTextInputFormatter.digitsOnly] : null,
             onChanged: onChanged,
             style: AppType.body.copyWith(fontSize: 14, height: 1.5),
             decoration: fieldDecoration(placeholder),

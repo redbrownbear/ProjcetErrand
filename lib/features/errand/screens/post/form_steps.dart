@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../../core/theme/colors.dart';
 import '../../../../core/utils/formatters.dart';
@@ -340,6 +341,8 @@ class CostStep extends StatelessWidget {
           TextField(
             controller: form.budgetText,
             keyboardType: TextInputType.number,
+            // '15,000'처럼 쉼표를 넣으면 숫자로 못 읽어 예산이 0원이 되고 다음 단계로 못 간다
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             onChanged: (_) => update(),
             decoration: formFieldDecoration('예: 15000'),
           ),
@@ -385,7 +388,7 @@ class CostStep extends StatelessWidget {
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.ink),
                 ),
                 SizedBox(height: 2),
-                Text('더 빨리 매칭돼요 · 1,000원', style: TextStyle(fontSize: 11.5, color: AppColors.sub)),
+                Text('더 빨리 매칭돼요 · 1,000원 (결제 연동 전이라 지금은 무료)', style: TextStyle(fontSize: 11.5, color: AppColors.sub)),
               ],
             ),
           ),

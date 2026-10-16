@@ -6,7 +6,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/chip_widget.dart';
 import '../../../core/widgets/screen_frame.dart';
 import '../data/reward_brands.dart';
-import '../models/coupon.dart';
+import '../models/point_wallet.dart';
 import '../models/reward_product.dart';
 import '../repositories/benefits_repository.dart';
 import '../widgets/redeem_sheet.dart';
@@ -14,19 +14,9 @@ import '../widgets/reward_cards.dart';
 import 'my_coupons_screen.dart';
 
 class PointShopScreen extends StatefulWidget {
-  final int points;
-  final void Function(RewardProduct) redeem;
-  final List<Coupon> coupons;
-  final void Function(int id) useCoupon;
+  final PointWallet wallet;
   final VoidCallback goPointsHub;
-  const PointShopScreen({
-    super.key,
-    required this.points,
-    required this.redeem,
-    required this.coupons,
-    required this.useCoupon,
-    required this.goPointsHub,
-  });
+  const PointShopScreen({super.key, required this.wallet, required this.goPointsHub});
   @override
   State<PointShopScreen> createState() => _PointShopScreenState();
 }
@@ -40,16 +30,21 @@ class _PointShopScreenState extends State<PointShopScreen> {
 
   void _toggleWish(String id) => setState(() => wished.contains(id) ? wished.remove(id) : wished.add(id));
 
-  void _doRedeem(RewardProduct p) {
-    widget.redeem(p);
+  /// 교환이 실제로 됐을 때만 '교환 완료'를 띄운다 (로그인 취소·포인트 부족이면 확인 창만 닫는다).
+  Future<void> _doRedeem(RewardProduct p) async {
+    final ok = await widget.wallet.redeem(p);
+    if (!mounted) return;
     setState(() {
       confirm = null;
-      done = p;
+      done = ok ? p : null;
     });
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      ListenableBuilder(listenable: widget.wallet.changes, builder: (context, _) => _build(context));
+
+  Widget _build(BuildContext context) {
     final rewardProducts = LocalBenefitsRepository().fetchRewardProducts();
     var list = rewardProducts;
     if (cat != 'all') list = list.where((p) => brandOf(p.brand).cat == cat).toList();
@@ -64,21 +59,14 @@ class _PointShopScreenState extends State<PointShopScreen> {
             title: '포인트샵',
             subtitle: '모은 포인트를 생활 혜택으로',
             onBack: () => Navigator.of(context).pop(),
-            right: InkWell(
+            // 머리줄 오른쪽 칸은 44px라 글자 버튼('내 쿠폰')이 '내/쿠'로 접혀 보였다. 아이콘 버튼으로 둔다.
+            right: IconBtn(
+              icon: 'ticket',
+              label: '내 쿠폰',
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) =>
-                      MyCouponsScreen(coupons: widget.coupons, useCoupon: widget.useCoupon, goPointsHub: widget.goPointsHub),
-                ),
-              ),
-              borderRadius: BorderRadius.circular(9),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                decoration: BoxDecoration(color: AppColors.page, borderRadius: BorderRadius.circular(9)),
-                child: const Text(
-                  '내 쿠폰',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.ink),
+                  builder: (_) => MyCouponsScreen(wallet: widget.wallet, goPointsHub: widget.goPointsHub),
                 ),
               ),
             ),
@@ -91,19 +79,27 @@ class _PointShopScreenState extends State<PointShopScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('보유 포인트', style: TextStyle(fontSize: 12, color: Colors.white60)),
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Text(
-                              '${nf(widget.points)}P',
-                              style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: AppColors.yellow),
+                      // 포인트가 여섯 자리를 넘으면 좁은 폰에서 옆 안내와 부딪혀 넘쳤다. 남는 폭 안에서 줄여 그린다.
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('보유 포인트', style: TextStyle(fontSize: 12, color: Colors.white60)),
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  '${nf(widget.wallet.points)}P',
+                                  style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: AppColors.yellow),
+                                ),
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
+                      const SizedBox(width: 10),
                       const Text(
                         '1P ≈ 1원처럼\n사용할 수 있어요',
                         textAlign: TextAlign.right,
@@ -144,13 +140,18 @@ class _PointShopScreenState extends State<PointShopScreen> {
                     ),
                   ),
                   SizedBox(
-                    height: 150,
+                    // 카드 내용(그림 60 · 브랜드 · 이름 두 줄 · 포인트 + 여백)이 170 남짓이라
+                    // 150으로 두면 카드 아래가 잘렸다
+                    height: 180,
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
                       itemCount: popular.length,
                       separatorBuilder: (_, _) => const SizedBox(width: 10),
-                      itemBuilder: (context, i) =>
-                          RewardMini(p: popular[i], points: widget.points, onOpen: () => setState(() => confirm = popular[i])),
+                      itemBuilder: (context, i) => RewardMini(
+                        p: popular[i],
+                        points: widget.wallet.points,
+                        onOpen: () => setState(() => confirm = popular[i]),
+                      ),
                     ),
                   ),
                   const Padding(
@@ -218,7 +219,7 @@ class _PointShopScreenState extends State<PointShopScreen> {
                 for (final p in list)
                   RewardCard(
                     p: p,
-                    points: widget.points,
+                    points: widget.wallet.points,
                     wished: wished.contains(p.id),
                     onWish: () => _toggleWish(p.id),
                     onRedeem: () => setState(() => confirm = p),
@@ -231,7 +232,7 @@ class _PointShopScreenState extends State<PointShopScreen> {
         if (confirm != null)
           RedeemSheet(
             p: confirm!,
-            points: widget.points,
+            points: widget.wallet.points,
             onClose: () => setState(() => confirm = null),
             onConfirm: () => _doRedeem(confirm!),
           ),
@@ -244,8 +245,7 @@ class _PointShopScreenState extends State<PointShopScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) =>
-                      MyCouponsScreen(coupons: widget.coupons, useCoupon: widget.useCoupon, goPointsHub: widget.goPointsHub),
+                  builder: (_) => MyCouponsScreen(wallet: widget.wallet, goPointsHub: widget.goPointsHub),
                 ),
               );
             },

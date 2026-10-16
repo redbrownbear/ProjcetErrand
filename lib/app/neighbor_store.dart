@@ -9,6 +9,7 @@ import '../features/market/models/used_item.dart';
 import '../features/proposal/data/proposals.dart';
 import '../features/proposal/models/proposal.dart';
 import '../features/trip/models/trip_post.dart';
+import '../core/utils/stable_sort.dart';
 
 /// v77에서 새로 생긴 이웃 활동(제안 · 커뮤니티 이야기 · 가는 김에 · 중고 · 응모권)을 한곳에 둔다.
 ///
@@ -102,15 +103,9 @@ class NeighborStore extends ChangeNotifier {
   List<Proposal> get proposals => [...myProposals, ..._seedProposals];
 
   List<Proposal> board({required bool abroad}) {
-    final list = proposals.where((p) => p.abroad == abroad).toList();
-    // 열린 것 먼저, 마감은 아래로
-    list.sort((a, b) {
-      final af = a.expired || a.isFull(joined.contains(a.id)) ? 1 : 0;
-      final bf = b.expired || b.isFull(joined.contains(b.id)) ? 1 : 0;
-      if (af != bf) return af - bf;
-      return 0;
-    });
-    return list;
+    int closed(Proposal p) => p.expired || p.isFull(joined.contains(p.id)) ? 1 : 0;
+    // 열린 것 먼저, 마감은 아래로. 같은 칸 안에서는 올린 순서를 지킨다.
+    return proposals.where((p) => p.abroad == abroad).toList()..sortStable((a, b) => closed(a) - closed(b));
   }
 
   Proposal? proposalById(int id) {

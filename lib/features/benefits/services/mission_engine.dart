@@ -4,6 +4,7 @@ import '../models/daily_mission.dart';
 import '../models/mission_provider.dart';
 import '../models/reward_ledger.dart';
 import 'mission_tracker.dart';
+import '../../../core/utils/stable_sort.dart';
 
 /// 미션 하나의 지금 상태. 화면은 이 값만 보고 그린다.
 class MissionState {
@@ -85,14 +86,12 @@ class MissionEngine {
   ///
   /// 변동 지급 미션은 [MissionState.nextPoints]가 0이라 뒤로 밀린다. 금액을 모르는
   /// 미션을 위에 올려 봐야 "얼마 주는데?"에 답을 못 하니 그게 맞다. 같은 값끼리는
-  /// 목록에 적은 순서를 지킨다 (Dart의 sort는 안정 정렬이 아니라 명시해야 한다).
+  /// 목록에 적은 순서를 지킨다.
   List<MissionState> forHome({int take = 3}) {
     final rows = all().where((s) => !s.done && !s.locked).toList();
-    final order = {for (var i = 0; i < rows.length; i++) rows[i].m.id: i};
-    rows.sort((a, b) {
+    rows.sortStable((a, b) {
       if (a.m.daily != b.m.daily) return a.m.daily ? -1 : 1;
-      if (a.nextPoints != b.nextPoints) return b.nextPoints - a.nextPoints;
-      return order[a.m.id]!.compareTo(order[b.m.id]!);
+      return b.nextPoints - a.nextPoints;
     });
     return rows.take(take).toList();
   }

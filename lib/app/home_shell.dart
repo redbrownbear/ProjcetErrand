@@ -8,6 +8,7 @@ import '../core/widgets/screen_frame.dart';
 import '../features/activity/screens/activity_view.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/benefits/models/partner_mission.dart';
+import '../features/benefits/models/point_wallet.dart';
 import '../features/benefits/models/reward_product.dart';
 import '../features/benefits/screens/attendance_screen.dart';
 import '../features/benefits/screens/side_job_view.dart';
@@ -119,12 +120,15 @@ class _HomeShellState extends State<HomeShell> {
 
   /// 로그인돼 있으면 바로, 아니면 로그인 화면을 거친 뒤 [action]을 실행한다.
   /// 로그인하지 않고 돌아오면 아무 일도 하지 않는다.
+  ///
+  /// 실행 전에 계정의 서버 자료가 다 붙기를 기다린다. 안 그러면 방금 받은 포인트를
+  /// 뒤늦게 도착한 서버 값이 덮어쓴다 ([AppSession.accountReady]).
   Future<void> requireLogin(VoidCallback action) async {
-    if (session.isLoggedIn) {
-      action();
-      return;
+    if (!session.isLoggedIn) {
+      await Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+      if (!mounted || !session.isLoggedIn) return;
     }
-    await Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+    await session.accountReady();
     if (!mounted || !session.isLoggedIn) return;
     action();
   }
@@ -132,8 +136,23 @@ class _HomeShellState extends State<HomeShell> {
   Future<void> earn(int amount, String label, {required String key, bool daily = true}) =>
       requireLogin(() => session.earn(amount, label, key: key, daily: daily));
 
-  void redeem(RewardProduct p) => requireLogin(() => session.redeem(p));
+  /// 교환됐으면 true. 로그인을 취소했거나 포인트가 모자라면 false.
+  Future<bool> redeem(RewardProduct p) async {
+    var ok = false;
+    await requireLogin(() => ok = session.redeem(p));
+    return ok;
+  }
+
   void useCoupon(int id) => requireLogin(() => session.useCoupon(id));
+
+  /// 포인트·쿠폰을 보여 주고 바꾸는 화면들이 같이 쓰는 지갑. 열린 화면도 바뀐 값을 바로 그린다.
+  late final PointWallet wallet = PointWallet(
+    changes: session,
+    readPoints: () => session.points,
+    readCoupons: () => session.coupons,
+    redeem: redeem,
+    useCoupon: useCoupon,
+  );
   void completeMission(PartnerMission m) => requireLogin(() => session.completeMission(m));
   void checkIn() => requireLogin(session.checkIn);
   void sendOffer(TaskItem it, int price, String msg) => requireLogin(() => session.sendOffer(it, price, msg));
@@ -150,13 +169,19 @@ class _HomeShellState extends State<HomeShell> {
     setState(() => tab = ShellTab.home);
   }
 
-  ErrandActions get actions => ErrandActions(
+  ErrandActions get actions => _buildActions();
+
+  ErrandActions _buildActions() => ErrandActions(
     grabbed: session.grabbed,
     onGrab: grab,
     onOffer: sendOffer,
     offers: session.offers,
-    isSaved: session.bookmarks.contains,
+    // `session.bookmarks.contains`로 넘기면 그 순간의 목록에 묶여서, 저장할 때마다
+    // 목록이 새로 바뀌어도 상세 화면의 관심 표시가 옛 값을 본다.
+    isSaved: (id) => session.bookmarks.contains(id),
     toggleSave: session.toggleSave,
+    changes: session,
+    latest: _buildActions,
   );
 
   // ── 이동 ────────────────────────────────────────────────────────────────
@@ -356,17 +381,14 @@ class _HomeShellState extends State<HomeShell> {
         items: s.items,
         scope: s.scope,
         actions: actions,
-        points: s.points,
+        wallet: wallet,
         steps: s.steps,
         monthEarn: s.monthEarnedCash,
         goPay: goPay,
         goProfile: goProfile,
-        coupons: s.coupons,
         doneMissions: s.doneMissions,
         earn: earn,
         isClaimed: s.isClaimed,
-        redeem: redeem,
-        useCoupon: useCoupon,
         completeMission: completeMission,
         flash: s.flash,
         goPointsHub: goPointsHub,
@@ -382,8 +404,7 @@ class _HomeShellState extends State<HomeShell> {
       ShellTab.side => SideJobView(
         key: ValueKey('side-$sideSub'),
         initialSub: sideSub,
-        points: s.points,
-        coupons: s.coupons,
+        wallet: wallet,
         items: s.items,
         scope: s.scope,
         actions: actions,
@@ -392,8 +413,6 @@ class _HomeShellState extends State<HomeShell> {
         doneMissions: s.doneMissions,
         earn: earn,
         isClaimed: s.isClaimed,
-        redeem: redeem,
-        useCoupon: useCoupon,
         completeMission: completeMission,
         goPointsHub: goPointsHub,
         flash: s.flash,
@@ -408,10 +427,8 @@ class _HomeShellState extends State<HomeShell> {
         profile: s.profile,
         stats: s.stats,
         trust: s.trust,
-        points: s.points,
+        wallet: wallet,
         payBalance: s.payBalance,
-        coupons: s.coupons,
-        useCoupon: useCoupon,
         goPointsHub: goPointsHub,
         goPay: goPay,
         goAttendance: goAttendance,

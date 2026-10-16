@@ -52,6 +52,10 @@ class AppSession extends ChangeNotifier {
   StreamSubscription<List<TaskItem>>? _requestSub;
   bool _disposed = false;
 
+  /// 서버 자료를 다 붙인 계정의 uid. [accountReady]가 이 값을 기다린다.
+  String? _boundUid;
+  final List<Completer<void>> _boundWaiters = [];
+
   UserProfile? profile;
   bool syncing = false;
   String scope = '서울 서초구';
@@ -105,6 +109,8 @@ class AppSession extends ChangeNotifier {
     _rewards.restore(_store.loadLedger());
     doneMissions = _store.loadMissions();
     payEntries = _store.loadPay();
+    points = _store.loadPoints();
+    coupons = _store.loadCoupons();
 
     _requestSub = _requests.watchOpen().listen((list) => _update(() => _server = list));
     _authSub = AuthService().authStateChanges.listen(_bindUser);
@@ -220,20 +226,52 @@ class AppSession extends ChangeNotifier {
 
   // ── 계정 연결 ───────────────────────────────────────────────────────────
 
+  /// 로그인한 계정의 서버 자료를 다 붙일 때까지 기다린다. 로그아웃 상태면 바로 끝난다.
+  ///
+  /// 로그인 직후 바로 적립·교환을 하면, 뒤이어 도착한 서버 값이 방금 바꾼 포인트를 덮어쓴다.
+  /// 그래서 참여 행동은 이걸 기다린 뒤에 한다 ([HomeShell.requireLogin]).
+  /// 서버가 끝내 응답하지 않으면 제한 시간 뒤에 그냥 넘어간다.
+  Future<void> accountReady() {
+    final uid = AuthService().currentUser?.uid;
+    if (uid == null || uid == _boundUid) return Future.value();
+    final waiter = Completer<void>();
+    _boundWaiters.add(waiter);
+    return waiter.future.timeout(Backend.timeout * 2, onTimeout: () {});
+  }
+
+  void _markBound(String? uid) {
+    _boundUid = uid;
+    for (final w in _boundWaiters) {
+      if (!w.isCompleted) w.complete();
+    }
+    _boundWaiters.clear();
+  }
+
+  /// 기다리는 사이에 로그아웃하거나 다른 계정으로 바뀌지 않았는지
+  bool _stillBound(User user) => !_disposed && AuthService().currentUser?.uid == user.uid;
+
   /// 로그인 상태가 바뀔 때마다 서버 자료를 붙이거나 뗀다.
   Future<void> _bindUser(User? user) async {
     if (_disposed) return;
     TaskItem.currentUid = user?.uid;
+    final owner = _store.loadOwner();
 
     if (user == null) {
+      // 서버에 붙은 채로 로그아웃 상태라면, 남아 있는 계정 사본은 앞사람 것이다.
+      // 서버에 못 붙어서 로그인 여부를 모르는 경우(오프라인 실행)는 그 사본이 유일한 자료라 남긴다.
+      if (Backend.ready && owner != null) _resetAccount();
       _update(() {
         _user = null;
         _pay = null;
         profile = null;
         syncing = false;
       });
+      _markBound(null);
       return;
     }
+
+    // 다른 계정의 사본이 남아 있으면 지운다. 안 지우면 그 자료가 새 계정 화면에 섞인다.
+    if (owner != null && owner != user.uid) _resetAccount();
 
     final repo = UserRepository(user.uid);
     _update(() {
@@ -242,11 +280,32 @@ class AppSession extends ChangeNotifier {
       syncing = true;
     });
 
-    if (!await repo.isMigrated()) await _migrateLocal(repo);
-    if (_disposed) return;
+    // 계정으로 올리는 건 로그아웃 상태에서 쌓인 사본뿐이다.
+    if (owner == null && !await repo.isMigrated()) await _migrateLocal(repo);
+    if (!_stillBound(user)) return;
+    _store.saveOwner(user.uid);
 
     await _pullServer(repo, user);
+    if (!_stillBound(user)) return;
     _update(() => syncing = false);
+    _markBound(user.uid);
+  }
+
+  /// 계정 자료를 메모리와 이 기기 사본에서 비운다. 원본은 서버에 있다.
+  void _resetAccount() {
+    _store.clearAccount();
+    _store.saveOwner(null);
+    _update(() {
+      created = [];
+      bookmarks = [];
+      trades = {};
+      offers = {};
+      _rewards.restore(const {});
+      doneMissions = [];
+      payEntries = [];
+      points = 0;
+      coupons = [];
+    });
   }
 
   /// 첫 로그인 이관. 이 기기에 있던 부탁·관심·지원 내역·제안을 계정으로 한 번 올린다.
@@ -280,11 +339,14 @@ class AppSession extends ChangeNotifier {
     final serverCoupons = await repo.loadCoupons();
     final serverLedger = await repo.loadLedger();
     final serverPay = await PayRepository(repo.uid).load();
-    if (_disposed) return;
+    if (!_stillBound(user)) return;
 
     _update(() {
       profile = loaded;
       if (loaded != null) points = loaded.points;
+      // 계정에 저장해 둔 활동 지역이 있으면 그 동네로 연다
+      final region = loaded?.region;
+      if (region != null && region.isNotEmpty) scope = region;
       if (serverBookmarks.isNotEmpty) bookmarks = serverBookmarks;
       if (serverTrades.isNotEmpty) trades = serverTrades;
       if (serverOffers.isNotEmpty) offers = serverOffers;
@@ -307,6 +369,8 @@ class AppSession extends ChangeNotifier {
     _store.saveLedger(_rewards.entries);
     _store.saveMissions(doneMissions);
     _store.savePay(payEntries);
+    _store.savePoints(points);
+    _store.saveCoupons(coupons);
   }
 
   // ── 포인트·쿠폰 ─────────────────────────────────────────────────────────
@@ -320,6 +384,7 @@ class AppSession extends ChangeNotifier {
     }
     _update(() => points += amount);
     _store.saveLedger(_rewards.entries);
+    _store.savePoints(points);
     _user?.saveLedgerEntry(key, mark, amount, label);
     _user?.savePoints(points);
     flash('+${amount}P 적립됐어요 · $label');
@@ -336,25 +401,31 @@ class AppSession extends ChangeNotifier {
     if (attendance.attendedToday) onTicket?.call(TicketRules.attend);
   }
 
-  void redeem(RewardProduct p) {
+  /// 상품 교환. 교환됐으면 true.
+  bool redeem(RewardProduct p) {
     if (points < p.points) {
       flash('보유 포인트가 부족해요');
-      return;
+      return false;
     }
+    final now = DateTime.now();
     final coupon = Coupon(
-      id: DateTime.now().millisecondsSinceEpoch,
+      id: now.millisecondsSinceEpoch,
       brandK: p.brand,
       name: p.name,
       points: p.points,
-      exp: '2026.12.31',
+      // 예전엔 '2026.12.31'로 박혀 있어서 해가 바뀌면 이미 지난 쿠폰이 발급됐다
+      exp: Coupon.expiryFrom(now),
       code: genCode(),
     );
     _update(() {
       points -= p.points;
       coupons = [coupon, ...coupons];
     });
-    _user?.saveCoupon(coupon);
+    _store.savePoints(points);
+    _store.saveCoupons(coupons);
+    _user?.saveCoupon(coupon, isNew: true);
     _user?.savePoints(points);
+    return true;
   }
 
   void useCoupon(int id) {
@@ -362,6 +433,7 @@ class AppSession extends ChangeNotifier {
     if (index < 0) return;
     final used = coupons[index].copyWith(used: true);
     _update(() => coupons = [...coupons]..[index] = used);
+    _store.saveCoupons(coupons);
     _user?.saveCoupon(used);
   }
 

@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gyeomsa/features/profile/models/trust_level.dart';
 import 'package:gyeomsa/features/profile/models/user_profile.dart';
 import 'package:gyeomsa/features/profile/screens/me_view.dart';
+import 'package:gyeomsa/features/benefits/models/point_wallet.dart';
 
 /// 마이 화면은 시안 v33의 `#myRoot`(프로필 → 숫자 세 칸 → 지갑 → 메뉴 묶음)를 따른다.
 /// 로그인 상태의 화면이 기준 폰 폭에서 넘치지 않는지와, 원·포인트를 섞지 않는지를 본다.
@@ -14,10 +15,8 @@ Widget _me({List<String>? log}) {
         profile: const UserProfile(uid: 'u1', email: 'neighbor@example.com', nickname: '서초동 이웃', region: '서울 서초구', points: 3200),
         stats: const ProfileStats(completed: 12, requested: 5, monthEarnedCash: 44000, saved: 2, applied: 3),
         trust: const TrustLevel(40),
-        points: 3200,
+        wallet: PointWallet.fixed(points: 3200),
         payBalance: 44000,
-        coupons: const [],
-        useCoupon: (_) {},
         goPointsHub: () {},
         goPay: () => log?.add('pay'),
         goAttendance: () => log?.add('attendance'),

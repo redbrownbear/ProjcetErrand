@@ -5,12 +5,12 @@ import '../../../core/widgets/app_icon.dart';
 import '../../../core/widgets/screen_frame.dart';
 import '../data/reward_brands.dart';
 import '../models/coupon.dart';
+import '../models/point_wallet.dart';
 
 class MyCouponsScreen extends StatefulWidget {
-  final List<Coupon> coupons;
-  final void Function(int id) useCoupon;
+  final PointWallet wallet;
   final VoidCallback goPointsHub;
-  const MyCouponsScreen({super.key, required this.coupons, required this.useCoupon, required this.goPointsHub});
+  const MyCouponsScreen({super.key, required this.wallet, required this.goPointsHub});
   @override
   State<MyCouponsScreen> createState() => _MyCouponsScreenState();
 }
@@ -19,10 +19,15 @@ class _MyCouponsScreenState extends State<MyCouponsScreen> {
   String tab = 'live';
   Coupon? sel;
 
+  /// 쿠폰을 쓰면 '사용 가능'에서 '사용 완료'로 바로 옮겨 그린다
   @override
-  Widget build(BuildContext context) {
-    final live = widget.coupons.where((c) => !c.used).toList();
-    final used = widget.coupons.where((c) => c.used).toList();
+  Widget build(BuildContext context) =>
+      ListenableBuilder(listenable: widget.wallet.changes, builder: (context, _) => _build(context));
+
+  Widget _build(BuildContext context) {
+    final coupons = widget.wallet.coupons;
+    final live = coupons.where((c) => !c.used).toList();
+    final used = coupons.where((c) => c.used).toList();
     final list = tab == 'live' ? live : used;
 
     return Stack(
@@ -88,7 +93,7 @@ class _MyCouponsScreenState extends State<MyCouponsScreen> {
             c: sel!,
             onClose: () => setState(() => sel = null),
             onUse: () {
-              widget.useCoupon(sel!.id);
+              widget.wallet.useCoupon(sel!.id);
               setState(() => sel = null);
             },
           ),

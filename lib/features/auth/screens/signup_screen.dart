@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/colors.dart';
 import '../services/auth_service.dart';
+import '../widgets/auth_widgets.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -49,28 +50,15 @@ class _SignupScreenState extends State<SignupScreen> {
       // AuthGate가 홈으로 전환해줄 수 있도록, 로그인 화면 위에 쌓인 이 화면을 닫아줌.
       if (mounted) Navigator.of(context).pop();
     } on FirebaseAuthException catch (e) {
-      setState(() => _error = AuthService.messageFor(e));
+      if (mounted) setState(() => _error = AuthService.messageFor(e));
+    } on ServerUnavailable catch (e) {
+      if (mounted) setState(() => _error = '$e');
     } catch (_) {
-      setState(() => _error = '문제가 발생했어요. 잠시 후 다시 시도해주세요.');
+      if (mounted) setState(() => _error = '문제가 발생했어요. 잠시 후 다시 시도해주세요.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
-
-  InputDecoration _dec(String hint) => InputDecoration(
-    hintText: hint,
-    filled: true,
-    fillColor: AppColors.card,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: AppColors.line),
-    ),
-    enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: AppColors.line),
-    ),
-  );
 
   Widget _label(String t) => Padding(
     padding: const EdgeInsets.only(bottom: 8, top: 14),
@@ -100,45 +88,25 @@ class _SignupScreenState extends State<SignupScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _label('닉네임'),
-              TextField(controller: _nicknameCtrl, maxLength: 12, decoration: _dec('겸사겸사에서 쓸 닉네임')),
+              TextField(controller: _nicknameCtrl, maxLength: 12, decoration: authFieldDecoration('겸사겸사에서 쓸 닉네임')),
               _label('이메일'),
-              TextField(controller: _emailCtrl, keyboardType: TextInputType.emailAddress, decoration: _dec('you@example.com')),
+              TextField(
+                controller: _emailCtrl,
+                keyboardType: TextInputType.emailAddress,
+                decoration: authFieldDecoration('you@example.com'),
+              ),
               _label('비밀번호'),
-              TextField(controller: _passwordCtrl, obscureText: true, decoration: _dec('6자 이상')),
+              TextField(controller: _passwordCtrl, obscureText: true, decoration: authFieldDecoration('6자 이상')),
               _label('비밀번호 확인'),
               TextField(
                 controller: _passwordCheckCtrl,
                 obscureText: true,
                 onSubmitted: (_) => _submit(),
-                decoration: _dec('비밀번호를 한번 더 입력해주세요'),
+                decoration: authFieldDecoration('비밀번호를 한번 더 입력해주세요'),
               ),
-              if (_error != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 12),
-                  child: Text(_error!, style: const TextStyle(color: AppColors.red, fontSize: 12.5)),
-                ),
+              if (_error != null) AuthError(_error!),
               const SizedBox(height: 22),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _loading ? null : _submit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.yellow,
-                    foregroundColor: AppColors.ink,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    elevation: 0,
-                    disabledBackgroundColor: AppColors.yellowSoft,
-                  ),
-                  child: _loading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.ink),
-                        )
-                      : const Text('가입하고 시작하기', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-                ),
-              ),
+              AuthSubmitButton(label: '가입하고 시작하기', loading: _loading, onPressed: _submit),
             ],
           ),
         ),

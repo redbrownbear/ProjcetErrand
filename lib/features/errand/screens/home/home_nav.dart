@@ -54,26 +54,15 @@ class HomeNav {
       items: home.items,
       scope: home.scope,
       steps: home.steps,
-      points: home.points,
-      coupons: home.coupons,
+      wallet: home.wallet,
       actions: home.actions,
       earn: home.earn,
       isClaimed: home.isClaimed,
-      redeem: home.redeem,
-      useCoupon: home.useCoupon,
       goPointsHub: home.goPointsHub,
     ),
   );
 
-  void shop() => _push(
-    PointShopScreen(
-      points: home.points,
-      redeem: home.redeem,
-      coupons: home.coupons,
-      useCoupon: home.useCoupon,
-      goPointsHub: home.goPointsHub,
-    ),
-  );
+  void shop() => _push(PointShopScreen(wallet: home.wallet, goPointsHub: home.goPointsHub));
 
   /// 제휴 미션 '오늘 벌기' 허브
   void earnHub() => _push(

@@ -256,6 +256,8 @@ class _MapPreview extends StatelessWidget {
                 ElevatedButton(
                   onPressed: onOpen,
                   style: ElevatedButton.styleFrom(
+                    // Row 안이라 테마의 무한 폭 최소 크기를 쓰면 지도 미리보기 카드가 깨진다
+                    minimumSize: const Size(0, 44),
                     backgroundColor: AppColors.black,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),

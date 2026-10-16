@@ -152,7 +152,7 @@ class _PostRequestState extends State<PostRequest> {
   Widget _footer() {
     final canNext = _form.readyAt(_step);
     final hint = _form.hintAt(_step);
-    final label = !_lastStep ? '다음' : (_form.hot ? '1,000원 결제하고 올리기' : '부탁 올리기');
+    final label = !_lastStep ? '다음' : (_form.hot ? '급해요로 올리기' : '부탁 올리기');
 
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 12, 18, 16),

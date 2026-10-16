@@ -13,11 +13,10 @@ import '../../gongu/widgets/gongu_grid.dart';
 import '../../lucky/widgets/lucky_banner.dart';
 import '../../market/widgets/used_list.dart';
 import '../../partner/screens/brand_hub_screen.dart';
-import '../models/coupon.dart';
 import '../models/partner_mission.dart';
 import '../models/reward_ledger.dart';
-import '../models/reward_product.dart';
 import 'mission_tab.dart';
+import '../models/point_wallet.dart';
 
 /// 하단 '마켓' 탭 (v77 — 예전 '미션·공구').
 ///
@@ -26,8 +25,7 @@ import 'mission_tab.dart';
 class SideJobView extends StatefulWidget {
   /// 처음 열 안쪽 탭 — 0 미션 · 1 공동구매 · 2 중고장터 · 3 나눔
   final int initialSub;
-  final int points;
-  final List<Coupon> coupons;
+  final PointWallet wallet;
   final List<TaskItem> items;
   final String scope;
   final ErrandActions actions;
@@ -36,8 +34,6 @@ class SideJobView extends StatefulWidget {
   final List<String> doneMissions;
   final EarnFn earn;
   final IsClaimedFn isClaimed;
-  final void Function(RewardProduct) redeem;
-  final void Function(int id) useCoupon;
   final void Function(PartnerMission) completeMission;
   final VoidCallback goPointsHub;
   final void Function(String) flash;
@@ -48,8 +44,7 @@ class SideJobView extends StatefulWidget {
   const SideJobView({
     super.key,
     this.initialSub = 0,
-    required this.points,
-    required this.coupons,
+    required this.wallet,
     required this.items,
     required this.scope,
     required this.actions,
@@ -58,8 +53,6 @@ class SideJobView extends StatefulWidget {
     required this.doneMissions,
     required this.earn,
     required this.isClaimed,
-    required this.redeem,
-    required this.useCoupon,
     required this.completeMission,
     required this.goPointsHub,
     required this.flash,

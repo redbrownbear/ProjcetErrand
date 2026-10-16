@@ -14,6 +14,7 @@ import '../data/partner_missions.dart';
 import '../models/partner_mission.dart';
 import '../widgets/earn_row_full.dart';
 import 'partner_mission_detail_screen.dart';
+import '../../../core/utils/stable_sort.dart';
 
 /// 1차 메뉴 '오늘 벌기' 허브. (가이드 §6·§15)
 ///
@@ -195,7 +196,7 @@ class _EarnHubScreenState extends State<EarnHubScreen> {
 
   /// 단기알바 — 공연·행사·전시·단기알바를 한 카테고리로 묶었다 (§6)
   List<Widget> _dayJobSection() {
-    final top = List.of(dayJobs)..sort((a, b) => b.pay - a.pay);
+    final top = List.of(dayJobs)..sortStable((a, b) => b.pay - a.pay);
     return [
       for (final j in top.take(3))
         InkWell(
@@ -282,7 +283,7 @@ class _EarnHubScreenState extends State<EarnHubScreen> {
 
   /// 참여·리워드 / 간단 미션
   List<Widget> _missionSection(String group) {
-    final list = List.of(missionsByGroup(group, cat: cat))..sort((a, b) => b.points - a.points);
+    final list = List.of(missionsByGroup(group, cat: cat))..sortStable((a, b) => b.points - a.points);
     final cats = [
       missionCats.first,
       for (final c in missionCats.skip(1))

@@ -10,6 +10,7 @@ import '../../errand/data/countries.dart';
 import '../../errand/models/task_item.dart';
 import '../models/proposal.dart';
 import '../widgets/live_board.dart';
+import '../../../core/utils/stable_sort.dart';
 
 /// 세계 제안 지도 (시안 v43 `openWorld`).
 ///
@@ -76,7 +77,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
           if (p + a > 0) stats[c] = (props: p, asks: a);
         }
         final order = stats.keys.toList()
-          ..sort((a, b) => (stats[b]!.props + stats[b]!.asks) - (stats[a]!.props + stats[a]!.asks));
+          ..sortStable((a, b) => (stats[b]!.props + stats[b]!.asks) - (stats[a]!.props + stats[a]!.asks));
         final totalP = props.length;
         final totalA = widget.seaItems.length;
 

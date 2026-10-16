@@ -178,6 +178,8 @@ class RequestForm {
       desc: desc.text.trim(),
       deadline: deadline,
       deliveryPlace: to.isEmpty ? null : to,
+      sample: false,
+      mine: true,
     );
   }
 }

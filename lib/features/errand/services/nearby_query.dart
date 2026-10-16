@@ -1,4 +1,5 @@
 import '../models/task_item.dart';
+import '../../../core/utils/stable_sort.dart';
 
 /// 홈 '지금 내 주변 부탁'의 조건과 그 결과 계산.
 ///
@@ -74,9 +75,9 @@ class NearbyQuery {
   /// 새로 올린 부탁은 좌표가 없어서(`distM == null`) 반경 조건에 걸리면 통째로 사라진다.
   /// 방금 올린 내 부탁이 안 보이면 안 되므로 반경·정렬과 무관하게 맨 앞에 붙인다.
   List<TaskItem> apply(List<TaskItem> items, String scope) {
-    final real = items.where((i) => !i.sample && matches(i, scope)).toList()..sort((a, b) => b.id.compareTo(a.id));
+    final real = items.where((i) => !i.sample && matches(i, scope)).toList()..sortStable((a, b) => b.id.compareTo(a.id));
     final samples = items.where((i) => i.sample && matches(i, scope) && i.distM != null && i.distM! <= radius * 1000).toList()
-      ..sort(_comparator);
+      ..sortStable(_comparator);
     return [...real, ...samples];
   }
 

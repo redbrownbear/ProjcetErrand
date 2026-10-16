@@ -1,4 +1,5 @@
 import '../../../core/storage/local_store.dart';
+import '../../benefits/models/reward_ledger.dart';
 
 /// 응모권을 받는 방법. 시안(v77) '응모권 모으는 방법' 표를 그대로 옮겼다.
 ///
@@ -109,13 +110,20 @@ class TicketWallet {
   });
 
   /// 달이 바뀌면 이번 달 응모·모은 장수를 0으로. 가진 장수는 남는다.
+  /// 지난 달의 '하루 한 번' 기록도 이때 버린다 — 안 버리면 받은 기록이 끝없이 쌓인다.
   TicketWallet _rollMonth(DateTime now) {
     final m = LuckyDraw(now).monthKey;
     if (m == month) return this;
-    return TicketWallet(have: have, entered: 0, earnedThisMonth: 0, month: m, claimed: claimed);
+    final kept = {
+      for (final k in claimed)
+        if (!k.contains(':') || k.substring(k.indexOf(':') + 1).startsWith(m)) k,
+    };
+    return TicketWallet(have: have, entered: 0, earnedThisMonth: 0, month: m, claimed: kept);
   }
 
-  static String _day(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  /// 하루의 기준은 포인트 출석과 같은 한국 시간이다. 기기 시간대가 달라도
+  /// 출석 포인트와 출석 응모권이 같은 날로 묶인다.
+  static String _day(DateTime d) => RewardLedger.todayKey(d);
 
   bool canClaim(TicketRule r, DateTime now) {
     if (r.once) return !claimed.contains(r.key);

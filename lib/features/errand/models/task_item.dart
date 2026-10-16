@@ -161,10 +161,12 @@ class TaskItem {
   /// 정렬용 거리. 거리 미확인은 맨 뒤로 보낸다.
   double get distSort => distM ?? double.infinity;
 
-  /// 내가 올린 부탁인지. 서버 글은 uid로, 이 기기에만 있는 글은 작성자 이름으로 가린다.
-  /// 세 가지 중 하나라도 맞으면 내 글이다.
-  /// 올릴 때 남긴 표시 · 로그인한 uid와 같은 주인 · 이 기기에만 있던 옛 글의 작성자 이름.
-  bool get isMine => mine || (ownerUid != null && currentUid != null && ownerUid == currentUid) || who == '나';
+  /// 내가 올린 부탁인지. 올릴 때 남긴 표시나 로그인한 uid와 같은 주인이면 내 글이다.
+  ///
+  /// 작성자 이름('나')으로는 가리지 않는다. 프로필을 읽기 전에 올린 글은 이름이 '나'로
+  /// 서버에 올라가서, 그 글을 받은 **다른 사람 화면에서도** 내 글로 보였다.
+  /// 이 기기에 보관된 옛 글은 [fromJson]이 [mine]을 붙여 주므로 이름 없이도 알아본다.
+  bool get isMine => mine || (ownerUid != null && currentUid != null && ownerUid == currentUid);
 
   /// 마감 시각이 지났는지. 마감 시각과 정확히 같은 순간부터 마감으로 본다.
   bool isExpiredAt(DateTime now) => deadline != null && !deadline!.isAfter(now);

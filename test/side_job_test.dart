@@ -6,6 +6,7 @@ import 'package:gyeomsa/features/benefits/models/mission_meta.dart';
 import 'package:gyeomsa/features/benefits/screens/side_job_view.dart';
 import 'package:gyeomsa/features/errand/navigation/errand_actions.dart';
 import 'package:gyeomsa/features/errand/repositories/errand_repository.dart';
+import 'package:gyeomsa/features/benefits/models/point_wallet.dart';
 
 import 'support/social.dart';
 
@@ -26,8 +27,7 @@ Widget _view({List<String> done = const []}) {
     home: Scaffold(
       body: SideJobView(
         social: testSocial(),
-        points: 3200,
-        coupons: const [],
+        wallet: PointWallet.fixed(points: 3200),
         items: items,
         scope: '서울 서초구',
         actions: actions,
@@ -36,8 +36,6 @@ Widget _view({List<String> done = const []}) {
         doneMissions: done,
         earn: (a, l, {required key, daily = true}) async {},
         isClaimed: (k, {daily = true}) => false,
-        redeem: (_) {},
-        useCoupon: (_) {},
         completeMission: (_) {},
         goPointsHub: () {},
         flash: (_) {},

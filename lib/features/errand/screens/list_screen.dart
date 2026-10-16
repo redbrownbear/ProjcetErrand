@@ -9,6 +9,7 @@ import '../models/task_item.dart';
 import '../navigation/errand_actions.dart';
 import '../widgets/task_card.dart';
 import 'map_screen.dart';
+import '../../../core/utils/stable_sort.dart';
 
 class ListScreen extends StatefulWidget {
   final ScreenRoute config;
@@ -55,7 +56,7 @@ class _ListScreenState extends State<ListScreen> {
     if (fprice != 'all') base = base.where((i) => i.price >= int.parse(fprice)).toList();
 
     // 급해요 우선은 추천순에서만. 사용자가 고른 정렬(가까운 순 등)을 덮어쓰지 않는다.
-    base.sort((a, b) {
+    base.sortStable((a, b) {
       // '부탁하기'로 올린 진짜 부탁을 예시 데이터보다 항상 위에 둔다.
       if (a.sample != b.sample) return a.sample ? 1 : -1;
       switch (sort) {

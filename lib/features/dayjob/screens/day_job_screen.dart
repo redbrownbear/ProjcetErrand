@@ -13,6 +13,7 @@ import '../repositories/job_posting_repository.dart';
 import '../widgets/day_job_card.dart';
 import 'day_job_detail_screen.dart';
 import 'job_posting_detail_screen.dart';
+import '../../../core/utils/stable_sort.dart';
 
 /// 단기알바 전체 화면.
 /// 가이드 §6대로 공연·행사·전시 스태프와 단기알바를 하나의 카테고리로 묶었다.
@@ -39,7 +40,7 @@ class _DayJobScreenState extends State<DayJobScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final list = List.of(dayJobsByCat(cat))..sort((a, b) => b.pay - a.pay);
+    final list = List.of(dayJobsByCat(cat))..sortStable((a, b) => b.pay - a.pay);
     final mine = postings.where((p) => !p.closed).toList();
     return ScreenFrame(
       title: '단기알바',

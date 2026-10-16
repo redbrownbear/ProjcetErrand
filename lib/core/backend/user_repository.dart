@@ -164,7 +164,9 @@ class UserRepository {
     ];
   }, const []);
 
-  Future<void> saveCoupon(Coupon c) => Backend.push(
+  /// 쿠폰을 저장한다. 목록 순서를 정하는 `createdAt`은 [isNew]일 때만 찍는다.
+  /// 사용 처리 때마다 다시 찍으면 쓴 쿠폰이 목록 맨 위로 올라간다.
+  Future<void> saveCoupon(Coupon c, {bool isNew = false}) => Backend.push(
     () => _sub('coupons').doc('${c.id}').set({
       'brandK': c.brandK,
       'name': c.name,
@@ -172,7 +174,7 @@ class UserRepository {
       'exp': c.exp,
       'code': c.code,
       'used': c.used,
-      'createdAt': FieldValue.serverTimestamp(),
+      if (isNew) 'createdAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true)),
   );
 

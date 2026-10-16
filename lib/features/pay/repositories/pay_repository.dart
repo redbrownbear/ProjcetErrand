@@ -18,8 +18,9 @@ class PayRepository {
 
   CollectionReference<Map<String, dynamic>> get _col => Backend.users.doc(uid).collection('payEntries');
 
-  Future<List<PayEntry>> load({int limit = 100}) => Backend.guard<List<PayEntry>>(() async {
-    final snap = await _col.orderBy('at', descending: true).limit(limit).get();
+  /// 원장 전체. 잔액이 이 기록의 합이라 일부만 읽으면 잔액이 틀린다 (예전엔 최근 100줄만 읽었다).
+  Future<List<PayEntry>> load() => Backend.guard<List<PayEntry>>(() async {
+    final snap = await _col.orderBy('at', descending: true).get();
     final out = <PayEntry>[];
     for (final d in snap.docs) {
       final e = PayEntry.fromMap(d.id, d.data());

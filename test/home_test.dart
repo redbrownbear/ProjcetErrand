@@ -6,6 +6,7 @@ import 'package:gyeomsa/features/benefits/widgets/attendance_card.dart';
 import 'package:gyeomsa/features/errand/navigation/errand_actions.dart';
 import 'package:gyeomsa/features/errand/repositories/errand_repository.dart';
 import 'package:gyeomsa/features/errand/screens/home/home_content.dart';
+import 'package:gyeomsa/features/benefits/models/point_wallet.dart';
 
 import 'support/social.dart';
 
@@ -28,15 +29,12 @@ Widget _home({List<String>? log}) {
         items: items,
         scope: '서울 서초구',
         actions: actions,
-        points: 3200,
+        wallet: PointWallet.fixed(points: 3200),
         steps: 6430,
         monthEarn: 84500,
-        coupons: const [],
         doneMissions: const [],
         isClaimed: (k, {daily = true}) => false,
         earn: (a, l, {required key, daily = true}) async {},
-        redeem: (_) {},
-        useCoupon: (_) {},
         completeMission: (_) {},
         flash: (_) {},
         goPay: () {},

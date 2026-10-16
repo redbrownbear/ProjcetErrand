@@ -59,15 +59,7 @@ class _MissionTabState extends State<MissionTab> {
     if (mounted) setState(() => _progress = MissionProgress.load());
   }
 
-  void _openShop() => _push(
-    PointShopScreen(
-      points: _view.points,
-      redeem: _view.redeem,
-      coupons: _view.coupons,
-      useCoupon: _view.useCoupon,
-      goPointsHub: _view.goPointsHub,
-    ),
-  );
+  void _openShop() => _push(PointShopScreen(wallet: _view.wallet, goPointsHub: _view.goPointsHub));
 
   /// 출석 밖의 기본 적립(광고·프로필·친구 추천 등)
   void _openDailyBenefits() => _push(
@@ -75,8 +67,7 @@ class _MissionTabState extends State<MissionTab> {
       title: '매일의 혜택',
       onBack: () => Navigator.pop(context),
       child: BenefitsView(
-        points: _view.points,
-        coupons: _view.coupons,
+        wallet: _view.wallet,
         items: _view.items,
         scope: _view.scope,
         actions: _view.actions,
@@ -85,8 +76,6 @@ class _MissionTabState extends State<MissionTab> {
         doneMissions: _view.doneMissions,
         earn: _view.earn,
         isClaimed: _view.isClaimed,
-        redeem: _view.redeem,
-        useCoupon: _view.useCoupon,
         completeMission: _view.completeMission,
         goPointsHub: _view.goPointsHub,
         flash: _view.flash,
@@ -100,7 +89,7 @@ class _MissionTabState extends State<MissionTab> {
     final list = _filter.apply(partnerMissions, isDone: _isDone, isActive: _isActive);
     return Column(
       children: [
-        PointsCard(points: _view.points, onOpenShop: _openShop),
+        PointsCard(points: _view.wallet.points, onOpenShop: _openShop),
         RewardAdCard(isClaimed: _view.isClaimed, earn: _view.earn, flash: _view.flash),
         SecCard(
           child: Column(

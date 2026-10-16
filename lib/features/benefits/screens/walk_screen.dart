@@ -9,36 +9,30 @@ import '../../errand/screens/map_screen.dart';
 import '../../errand/widgets/task_card.dart';
 import '../data/point_rules.dart';
 import '../data/reward_products.dart';
-import '../models/coupon.dart';
 import '../models/reward_ledger.dart';
-import '../models/reward_product.dart';
 import '../widgets/walk_ring.dart';
 import 'point_shop_screen.dart';
+import '../../../core/utils/stable_sort.dart';
+import '../models/point_wallet.dart';
 
 class WalkScreen extends StatefulWidget {
   final List<TaskItem> items;
   final String scope;
   final int steps;
-  final int points;
-  final List<Coupon> coupons;
+  final PointWallet wallet;
   final ErrandActions actions;
   final EarnFn earn;
   final IsClaimedFn isClaimed;
-  final void Function(RewardProduct) redeem;
-  final void Function(int id) useCoupon;
   final VoidCallback goPointsHub;
   const WalkScreen({
     super.key,
     required this.items,
     required this.scope,
     required this.steps,
-    required this.points,
-    required this.coupons,
+    required this.wallet,
     required this.actions,
     required this.earn,
     required this.isClaimed,
-    required this.redeem,
-    required this.useCoupon,
     required this.goPointsHub,
   });
   @override
@@ -52,9 +46,9 @@ class _WalkScreenState extends State<WalkScreen> {
   Widget build(BuildContext context) {
     final claimable = walkClaimable(widget.steps);
     final got = widget.isClaimed(walkRewardKey);
-    final goal = nextRewardGoal(widget.points);
+    final goal = nextRewardGoal(widget.wallet.points);
     final near = widget.items.where((i) => i.mode == 'ask' && _inScope(i) && i.distSort < 100000).toList()
-      ..sort((a, b) => a.distSort.compareTo(b.distSort));
+      ..sortStable((a, b) => a.distSort.compareTo(b.distSort));
     final nearTop = near.take(4).toList();
     final next = nearTop.isNotEmpty ? nearTop.first : null;
 
@@ -110,13 +104,7 @@ class _WalkScreenState extends State<WalkScreen> {
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => PointShopScreen(
-                      points: widget.points,
-                      redeem: widget.redeem,
-                      coupons: widget.coupons,
-                      useCoupon: widget.useCoupon,
-                      goPointsHub: widget.goPointsHub,
-                    ),
+                    builder: (_) => PointShopScreen(wallet: widget.wallet, goPointsHub: widget.goPointsHub),
                   ),
                 ),
                 borderRadius: BorderRadius.circular(12),

@@ -4,16 +4,15 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../app/app_nav.dart';
 import '../../../../core/widgets/surface.dart';
-import '../../../benefits/models/coupon.dart';
 import '../../../benefits/models/partner_mission.dart';
 import '../../../benefits/models/reward_ledger.dart';
-import '../../../benefits/models/reward_product.dart';
 import '../../models/task_item.dart';
 import '../../navigation/errand_actions.dart';
 import 'ask_tab.dart';
 import 'earn_tab.dart';
 import 'home_nav.dart';
 import '../../services/nearby_query.dart';
+import '../../../benefits/models/point_wallet.dart';
 
 /// 홈. 맨 위 '부탁하기 | 돈벌기' 전환으로 두 갈래를 나눈다.
 ///
@@ -28,7 +27,7 @@ class HomeContent extends StatefulWidget {
   final ErrandActions actions;
 
   /// 리워드 포인트(P)
-  final int points;
+  final PointWallet wallet;
   final int steps;
 
   /// 이번 달 완료한 부탁의 사례비(원)
@@ -36,13 +35,9 @@ class HomeContent extends StatefulWidget {
 
   final VoidCallback goPay;
   final VoidCallback goProfile;
-
-  final List<Coupon> coupons;
   final List<String> doneMissions;
   final EarnFn earn;
   final IsClaimedFn isClaimed;
-  final void Function(RewardProduct) redeem;
-  final void Function(int id) useCoupon;
   final void Function(PartnerMission) completeMission;
   final void Function(String) flash;
   final VoidCallback goPointsHub;
@@ -76,17 +71,14 @@ class HomeContent extends StatefulWidget {
     required this.items,
     required this.scope,
     required this.actions,
-    required this.points,
+    required this.wallet,
     required this.steps,
     required this.monthEarn,
     required this.goPay,
     required this.goProfile,
-    required this.coupons,
     required this.doneMissions,
     required this.isClaimed,
     required this.earn,
-    required this.redeem,
-    required this.useCoupon,
     required this.completeMission,
     required this.flash,
     required this.goPointsHub,

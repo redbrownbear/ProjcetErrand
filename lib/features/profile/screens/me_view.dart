@@ -4,7 +4,6 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../auth/services/auth_service.dart';
-import '../../benefits/models/coupon.dart';
 import '../../benefits/screens/my_coupons_screen.dart';
 import '../../partner/screens/brand_hub_screen.dart';
 import '../models/trust_level.dart';
@@ -12,6 +11,7 @@ import '../models/user_profile.dart';
 import '../widgets/me_cards.dart';
 import '../widgets/nickname_sheet.dart';
 import '../widgets/trust_sheet.dart';
+import '../../benefits/models/point_wallet.dart';
 
 /// 마이 화면. 프로필 카드 → 숫자 세 칸 → 내 지갑 → 메뉴 묶음 순서다.
 ///
@@ -25,11 +25,8 @@ class MeView extends StatelessWidget {
   final TrustLevel trust;
 
   /// 리워드 포인트(P)와 겸사페이 잔액(원). 서로 다른 값이다.
-  final int points;
+  final PointWallet wallet;
   final int payBalance;
-
-  final List<Coupon> coupons;
-  final void Function(int id) useCoupon;
   final VoidCallback goPointsHub;
   final VoidCallback goPay;
 
@@ -62,10 +59,8 @@ class MeView extends StatelessWidget {
     required this.profile,
     required this.stats,
     required this.trust,
-    required this.points,
+    required this.wallet,
     required this.payBalance,
-    required this.coupons,
-    required this.useCoupon,
     required this.goPointsHub,
     required this.goPay,
     required this.goAttendance,
@@ -88,7 +83,7 @@ class MeView extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!isLoggedIn) return _loggedOut();
 
-    final liveCoupons = coupons.where((c) => !c.used).length;
+    final liveCoupons = wallet.liveCoupons;
     final nickname = profile?.nickname ?? UserProfile.defaultNickname;
     final email = profile?.email ?? '';
 
@@ -114,7 +109,7 @@ class MeView extends StatelessWidget {
         WalletCard(
           payBalance: payBalance,
           monthEarned: stats.monthEarnedCash,
-          points: points,
+          points: wallet.points,
           onOpenPay: goPay,
           onOpenAttendance: goAttendance,
         ),
@@ -192,7 +187,7 @@ class MeView extends StatelessWidget {
   void _openCoupons(BuildContext context) => Navigator.push(
     context,
     MaterialPageRoute(
-      builder: (_) => MyCouponsScreen(coupons: coupons, useCoupon: useCoupon, goPointsHub: goPointsHub),
+      builder: (_) => MyCouponsScreen(wallet: wallet, goPointsHub: goPointsHub),
     ),
   );
 }

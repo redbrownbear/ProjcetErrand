@@ -18,6 +18,7 @@ import '../../../lucky/models/tickets.dart';
 import '../../../lucky/widgets/lucky_bubble.dart';
 import '../../../proposal/widgets/live_board.dart';
 import '../../../trip/widgets/trip_widgets.dart';
+import '../../../../core/utils/stable_sort.dart';
 
 /// 홈 '부탁하기' 갈래.
 ///
@@ -47,7 +48,7 @@ class HomeAskTab extends StatelessWidget {
   Widget build(BuildContext context) {
     // 겸이 카드의 한 줄은 지어낸 거래 소식이 아니라 실제로 올라온 부탁에서 뽑는다.
     final asks = home.items.where((i) => i.mode == 'ask' && !i.isExpired && NearbyQuery.inScope(i, home.scope)).toList()
-      ..sort((a, b) => (a.sample ? 1 : 0) - (b.sample ? 1 : 0));
+      ..sortStable((a, b) => (a.sample ? 1 : 0) - (b.sample ? 1 : 0));
     final latest = asks.firstOrNull;
 
     return Column(
