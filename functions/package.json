@@ -1,0 +1,30 @@
+{
+  "name": "gyeomsa-functions",
+  "private": true,
+  "description": "겸사겸사 서버 함수 (Cloud Functions for Firebase, asia-northeast3)",
+  "main": "lib/src/index.js",
+  "engines": {
+    "node": "20"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test:unit": "node --import tsx --test test/unit/*.test.ts",
+    "test:emu": "node --import tsx --test --test-concurrency=1 test/emu/*.test.ts",
+    "test": "firebase emulators:exec --only firestore --project demo-gyeomsa \"npm run test:unit && npm run test:emu\"",
+    "serve": "npm run build && firebase emulators:start --only functions,firestore,auth",
+    "deploy:dev": "firebase deploy --project dev --only firestore,functions",
+    "deploy:prod": "firebase deploy --project prod --only firestore,functions"
+  },
+  "dependencies": {
+    "firebase-admin": "13.10.0",
+    "firebase-functions": "6.6.0"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "4.0.1",
+    "@types/node": "20.17.30",
+    "firebase": "11.10.0",
+    "firebase-tools": "14.27.0",
+    "tsx": "4.19.2",
+    "typescript": "5.9.3"
+  }
+}

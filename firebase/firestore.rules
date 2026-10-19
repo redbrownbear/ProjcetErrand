@@ -1,53 +1,154 @@
 rules_version = '2';
 
-// 겸사겸사 Firestore 보안 규칙
+// 겸사겸사 Firestore 보안 규칙 v2 — 설계: docs/1차_백엔드_설계.md (W2)
 //
-// 원칙 두 가지.
-//  1. `users/{uid}` 아래는 **본인만** 읽고 쓴다. 포인트·쿠폰·지원 내역은 남이 볼 이유가 없다.
-//  2. `requests`(공개 부탁글)는 누구나 읽지만, 쓰는 건 글쓴이 본인만이다.
-//     로그인하지 않은 사람도 목록을 볼 수 있어야 앱 첫 화면이 비지 않는다.
+// 원칙
+//  1. 상태를 바꾸는 쓰기(지원·수락·거래 단계·포인트)는 서버(Cloud Functions, Admin SDK)만 한다.
+//     Admin SDK는 이 규칙을 거치지 않는다. 앱은 functions/src/errand/callables.ts 의 함수를 부른다.
+//  2. 공개 정보와 거래 당사자 정보는 문서 단위로 나눈다.
+//     requests/{id} 는 누구나 읽지만 정확한 위치·주소는 requests/{id}/private/detail 에만 둔다.
+//  3. 앱이 쓸 수 있는 필드는 목록으로 정해 둔다(화이트리스트). 목록 밖 필드는 거부한다.
 //
-// 콘솔 > Firestore Database > 규칙에 이 내용을 붙여넣고 '게시'를 누르세요.
+// 배포: firebase deploy --project dev --only firestore  (콘솔 붙여넣기 대신)
+// 주의: 이 규칙은 앱의 W3 변경(함수 호출)과 함께 운영(prod)에 배포한다. 그 전의 앱은 지원·포인트 쓰기가 거부된다.
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function signedIn() {
-      return request.auth != null;
+    // ── 공통 ──────────────────────────────────────────────────────────────
+    function signedIn() { return request.auth != null; }
+    function isMe(uid) { return signedIn() && request.auth.uid == uid; }
+    function isAdmin() { return signedIn() && request.auth.token.role == 'admin'; }
+    function incoming() { return request.resource.data; }
+    function onlyKeys(allowed) { return incoming().keys().hasOnly(allowed); }
+    function changedOnly(allowed) {
+      return incoming().diff(resource.data).affectedKeys().hasOnly(allowed);
     }
+    function str(v, min, max) { return v is string && v.size() >= min && v.size() <= max; }
+    function money(v) { return v is int && v >= 0 && v <= 10000000; }
+    function optStr(m, k, max) { return !(k in m) || m[k] == null || str(m[k], 0, max); }
+    function optMoney(m, k) { return !(k in m) || m[k] == null || money(m[k]); }
 
-    function isMe(uid) {
-      return signedIn() && request.auth.uid == uid;
-    }
+    // ── 사용자 ────────────────────────────────────────────────────────────
+    // 서버만 쓰는 필드: 포인트 사본, 본인인증, 운영자 역할, 이용 정지, 집계
+    function serverUserFields() { return ['points', 'verified', 'role', 'suspended', 'stats']; }
 
-    // ── 내 자료 ────────────────────────────────────────────────────────
-    // users/{uid}              프로필 (닉네임·지역·포인트·본인인증)
-    //   bookmarks/{requestId}  관심 저장
-    //   trades/{requestId}     지원·거래 단계
-    //   offers/{requestId}     내가 보낸 가격 제안
-    //   coupons/{couponId}     교환한 쿠폰
-    //   ledger/{rewardKey}     포인트 적립 원장
     match /users/{uid} {
-      allow read, write: if isMe(uid);
+      allow read: if isMe(uid) || isAdmin();
+      allow create: if isMe(uid) && !incoming().keys().hasAny(serverUserFields());
+      allow update: if isMe(uid) && !incoming().diff(resource.data).affectedKeys().hasAny(serverUserFields());
+      allow delete: if false; // 탈퇴는 서버 함수로(R02)
 
-      match /{document=**} {
-        allow read, write: if isMe(uid);
+      match /fcmTokens/{token} { allow read, write: if isMe(uid); }
+      match /bookmarks/{requestId} { allow read, write: if isMe(uid); }
+      match /blocks/{targetUid} {
+        allow read, delete: if isMe(uid);
+        allow create, update: if isMe(uid) && targetUid != uid;
+      }
+      // 알림은 서버가 만들고, 앱은 읽음 표시만 한다
+      match /notifications/{id} {
+        allow read: if isMe(uid);
+        allow update: if isMe(uid) && changedOnly(['readAt']);
+      }
+      // 포인트 원장: 서버만 쓴다(W8)
+      match /pointLedger/{id} { allow read: if isMe(uid); }
+
+      // 프로토타입 기록(앱이 직접 쓰던 것). 새 구조로 옮기지 않고 읽기만 남겼다가 정리한다(결정 4)
+      match /trades/{id} { allow read: if isMe(uid); }
+      match /offers/{id} { allow read: if isMe(uid); }
+      match /coupons/{id} { allow read: if isMe(uid); }
+      match /ledger/{id} { allow read: if isMe(uid); }
+      match /payEntries/{id} { allow read: if isMe(uid); }
+    }
+
+    // 다른 사람이 볼 수 있는 프로필. 서버가 users 문서에서 골라 만든다
+    match /publicProfiles/{uid} {
+      allow read: if signedIn();
+    }
+
+    // ── 공개 부탁글 ───────────────────────────────────────────────────────
+    // 정확한 위치(place·deliveryPlace·lat·lng)는 여기 두지 않는다 → private/detail
+    function requestEditable() {
+      return ['who', 'cat', 'title', 'desc', 'region', 'area', 'cell', 'country', 'cc', 'city',
+              'mins', 'price', 'budget', 'payment', 'completion', 'hot', 'deadline', 'updatedAt'];
+    }
+    function requestFieldsValid(m) {
+      return str(m.title, 1, 80)
+          && str(m.desc, 0, 2000)
+          && money(m.price)
+          && optMoney(m, 'budget')
+          && m.mode in ['ask', 'sea', 'together']
+          && optStr(m, 'cat', 30)
+          && optStr(m, 'area', 40)
+          && optStr(m, 'cell', 12)
+          && (!('deadline' in m) || m.deadline == null || m.deadline is timestamp);
+    }
+
+    match /requests/{requestId} {
+      allow read: if true; // 첫 화면 체험용. 비용·남용은 App Check와 조회 단위로 관리(W9)
+
+      allow create: if signedIn()
+                    && incoming().ownerUid == request.auth.uid
+                    && incoming().status == 'open'
+                    && incoming().createdAt == request.time
+                    && incoming().updatedAt == request.time
+                    && onlyKeys(requestEditable().concat(['ownerUid', 'mode', 'status', 'createdAt']))
+                    && requestFieldsValid(incoming());
+
+      // 모집 중일 때 글쓴이가 내용만 고칠 수 있다. 상태·주인·지원자 수는 서버만 바꾼다
+      allow update: if signedIn()
+                    && resource.data.ownerUid == request.auth.uid
+                    && resource.data.status == 'open'
+                    && changedOnly(requestEditable())
+                    && incoming().updatedAt == request.time
+                    && requestFieldsValid(incoming());
+
+      allow delete: if false; // 모집 취소는 cancelRequest 함수로
+
+      function parent() { return get(/databases/$(database)/documents/requests/$(requestId)).data; }
+
+      // 정확한 위치: 글쓴이와 수락된 수행자만
+      match /private/{docId} {
+        allow read: if signedIn()
+                    && (parent().ownerUid == request.auth.uid || parent().get('helperUid', null) == request.auth.uid);
+        allow write: if signedIn()
+                     && docId == 'detail'
+                     && parent().ownerUid == request.auth.uid
+                     && parent().status == 'open'
+                     && onlyKeys(['place', 'deliveryPlace', 'lat', 'lng', 'note'])
+                     && optStr(incoming(), 'place', 120)
+                     && optStr(incoming(), 'deliveryPlace', 120)
+                     && optStr(incoming(), 'note', 500)
+                     && (!('lat' in incoming()) || incoming().lat is number)
+                     && (!('lng' in incoming()) || incoming().lng is number);
+      }
+
+      // 지원서: 지원자 본인과 글쓴이만 읽는다. 쓰기는 서버만
+      match /applications/{helperUid} {
+        allow read: if isMe(helperUid) || (signedIn() && parent().ownerUid == request.auth.uid);
       }
     }
 
-    // ── 공개 부탁글 ────────────────────────────────────────────────────
-    match /requests/{requestId} {
-      allow read: if true;
+    // '내가 지원한 부탁' 목록(collectionGroup 조회)용
+    match /{path=**}/applications/{helperUid} {
+      allow read: if signedIn() && resource.data.helperUid == request.auth.uid;
+    }
 
-      // 남의 이름으로 글을 올릴 수 없다
+    // ── 거래 ──────────────────────────────────────────────────────────────
+    match /trades/{tradeId} {
+      allow read: if signedIn()
+                  && (resource.data.requesterUid == request.auth.uid || resource.data.helperUid == request.auth.uid);
+      // 채팅(W3 다음 단계, 결정 5: 최소 채팅)은 trades/{id}/messages 에 둔다
+    }
+
+    // ── 신고 ──────────────────────────────────────────────────────────────
+    match /reports/{reportId} {
       allow create: if signedIn()
-                    && request.resource.data.ownerUid == request.auth.uid;
-
-      // 글쓴이만 수정·마감할 수 있고, 주인은 바뀌지 않는다
-      allow update: if signedIn()
-                    && resource.data.ownerUid == request.auth.uid
-                    && request.resource.data.ownerUid == resource.data.ownerUid;
-
-      allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+                    && incoming().reporterUid == request.auth.uid
+                    && incoming().createdAt == request.time
+                    && onlyKeys(['reporterUid', 'targetUid', 'requestId', 'tradeId', 'reason', 'detail', 'createdAt'])
+                    && str(incoming().reason, 1, 50)
+                    && optStr(incoming(), 'detail', 1000);
+      allow read: if isAdmin();
     }
   }
 }

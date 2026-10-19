@@ -24,10 +24,21 @@
 - v77 이웃 활동(제안 · 커뮤니티 이야기 · 가는 김에 · 중고/나눔 · 응모권)은 `NeighborStore`가 들고 **이 기기에만** 저장한다.
   화면 이동은 `AppNav` 하나로. 부탁·포인트·겸사페이는 그대로 `AppSession`.
 - 백엔드: Firebase(Auth·Firestore). 서버 연결이 안 되면 `LocalStore`(이 기기)에 저장 ([백엔드_연결.md](백엔드_연결.md)).
+  1차 출시용 서버 설계·갈래(W1~W10)는 [1차_백엔드_설계.md](1차_백엔드_설계.md). 서버 함수는 `functions/`(TypeScript, 서울 리전),
+  규칙은 `firebase/firestore.rules` v2 — **아직 어느 프로젝트에도 배포 안 됨**, 앱은 여전히 예전 방식(지원자 기기에만 거래 기록)으로 동작한다.
 - 지도: 네이버 지도(`flutter_naver_map`). 제휴 미션·퀴즈 API 연동 ([제휴_API_연동.md](제휴_API_연동.md)).
 - 원칙: 지어낸 숫자를 사실처럼 보여 주지 않는다(예시 데이터엔 '예시' 표시). 겸사페이(원)와 포인트(P)는 섞지 않는다.
 
 ## 다음 할 일
+
+### 1차 출시 백엔드 ([1차_백엔드_설계.md](1차_백엔드_설계.md))
+
+- [ ] (콘솔 권한자) Firebase `projecterrand-dev` 프로젝트 만들기 · Blaze 전환 · 예산 알림 → `firebase deploy --project dev`
+- [ ] W3 앱 연결 — `AppSession.apply`·`updateTrade`를 서버 함수 호출로, 요청자 '받은 지원' 화면, '요청자 수락 체험' 버튼 제거,
+      거래 완료 때 앱이 쓰던 겸사페이 기록·응모권 끄기(결정 10). `cloud_functions` 패키지 추가
+- [ ] W2 앱 연결 — 부탁 등록 때 정확한 위치를 `requests/{id}/private/detail`로, 공개 문서엔 `area`만
+- [ ] W4 알림(FCM) · W5 신고·차단·운영 · 최소 채팅(결정 5) · W6 동선 구조화 · W7 추천 v0
+- [ ] 포인트·미션·출석·응모권을 1차 출시 빌드에서 숨기기(결정 6). 포인트 서버 이전(W8)은 그다음 업데이트
 
 - [ ] v77 이웃 활동(제안·이야기·중고·응모권) 서버 저장 — 지금은 이 기기에만 남는다
 - [ ] 럭키드로우 추첨·발표 — 응모까지만 됨. 경품 재원·추첨 공정성·경품 관련 법규 검토 후 서버에서
@@ -121,6 +132,17 @@
   바꾼 뒤엔 Android Studio를 완전히 종료 후 재시작.
 
 ## 기록
+
+### 2026-10-20 · 미커밋 · Claude (1차 백엔드 W1·W2·W3 서버 부분)
+- 추가: [1차_백엔드_설계.md](1차_백엔드_설계.md) — 현재 상태 점검, 1차 출시 범위, 작업 갈래 W1~W10, 결정 필요 11건(3·5·6 결정됨)
+- 추가: `firebase.json` · `.firebaserc`(default/dev = `projecterrand-dev`, prod = `projecterrand`), `functions/`(TypeScript, `asia-northeast3`) —
+  거래 흐름 함수 `applyToRequest` · `withdrawApplication` · `acceptApplication` · `rejectApplication` · `cancelRequest` · `advanceTrade`,
+  예약 실행 `expireRequests`(1시간). 상태 머신은 앱 `Trade._transitions`를 옮기고 역할(요청자·수행자) 검사를 더함
+- 추가: 테스트 — 상태 머신 단위 테스트, 에뮬레이터 통합 테스트(거래 흐름·규칙), GitHub Actions `functions` 워크플로
+- 변경: `firebase/firestore.rules` v2 — 지원·거래·포인트는 서버만 쓰기, 공개 부탁글 필드 화이트리스트(정확한 위치 금지 → `private/detail`),
+  `users`의 points·verified·role·suspended·stats 앱 쓰기 금지, 신고(`reports`) 생성, 프로토타입 기록(`users/*/trades·offers·coupons·ledger·payEntries`)은 읽기 전용.
+  `firebase/firestore.indexes.json`에 마감 정리·거래 목록·지원 목록 색인 추가
+- 변경: 가격 제안 안내 문구 "요청자에게만 보여요" → "요청자에게 전달하는 기능은 준비 중이에요"(요청자에게 실제로 전달되지 않음)
 
 ### 2026-10-16 · 6ae165e · BEAR\speed (전체 코드 리뷰 — 버그 수정·리팩토링)
 - 변경(버그): 부탁 상세가 하얗게 뜨던 문제 — 테마의 버튼 최소 크기가 무한 폭(`Size.fromHeight`)이라 Row 안의 '가격 제안' 버튼에서

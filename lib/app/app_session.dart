@@ -505,7 +505,7 @@ class AppSession extends ChangeNotifier {
     _update(() => offers = {...offers, it.id: list});
     _store.saveOffers(offers);
     _user?.saveOffers(it.id, list);
-    flash('가격 제안을 보냈어요. 요청자에게만 보여요');
+    flash('가격 제안을 저장했어요 · 요청자에게 전달하는 기능은 준비 중이에요');
   }
 
   void addRequest(NewRequestData data) {
