@@ -136,7 +136,7 @@
 
 ## 기록
 
-### 2026-10-20 · 미커밋 · Claude (W3 앱 연결 · W2 위치 분리)
+### 2026-10-20 · be4478e · Claude (W3 앱 연결 · W2 위치 분리)
 - 추가: `core/backend/server_api.dart`(서버 함수 호출, 실패를 화면 문구로), `errand/models/application.dart`(지원서·거래 문서 모델),
   `errand/repositories/trade_repository.dart`(내 지원·받은 지원·거래 구독 + 서버 함수), '진행 중인 부탁'에 **받은 지원**(수락·거절),
   GitHub Actions `app` 워크플로(`flutter analyze`·`flutter test`), `cloud_functions` 패키지
