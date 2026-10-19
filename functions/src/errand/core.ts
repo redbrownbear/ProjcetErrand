@@ -97,15 +97,21 @@ export async function applyToRequest(db: Firestore, uid: string, data: unknown) 
     if (req.get('status') !== 'open' || deadlinePassed(req.get('deadline'), now)) {
       throw new HttpsError('failed-precondition', '모집이 끝난 부탁이에요.');
     }
-    await assertActive(tx, db, uid);
+    const me = await tx.get(paths.user(db, uid));
+    if (me.get('suspended') === true) throw new HttpsError('permission-denied', '내 계정은 지금 이용이 제한돼 있어요.');
     await assertNotBlocked(tx, db, uid, owner);
 
     const prev = app.exists ? (app.get('status') as ApplicationStatus) : null;
     if (prev === 'pending' || prev === 'accepted') throw new HttpsError('already-exists', '이미 지원한 부탁이에요.');
     if (prev === 'rejected') throw new HttpsError('failed-precondition', '이 부탁에는 다시 지원할 수 없어요.');
 
+    const nickname = me.get('nickname');
     tx.set(appRef, {
       helperUid: uid,
+      // 요청자가 '받은 지원'을 한 번에 조회할 수 있게(collectionGroup) 남기는 사본
+      requesterUid: owner,
+      helperName: typeof nickname === 'string' && nickname.trim() ? nickname.trim().slice(0, 20) : '이웃',
+      requestTitle: req.get('title') ?? '',
       requestId: rid,
       offerPrice: offerPrice ?? null,
       msg: msg ?? null,

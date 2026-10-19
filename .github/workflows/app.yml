@@ -1,0 +1,24 @@
+# 앱 정적 분석 · 테스트
+name: app
+
+on:
+  pull_request:
+    paths: ['lib/**', 'test/**', 'pubspec.yaml', 'pubspec.lock', 'analysis_options.yaml', '.github/workflows/app.yml']
+  push:
+    branches: [main]
+    paths: ['lib/**', 'test/**', 'pubspec.yaml', 'pubspec.lock', 'analysis_options.yaml', '.github/workflows/app.yml']
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter --version
+      - run: flutter pub get
+      - run: flutter analyze --no-fatal-infos
+      - run: flutter test

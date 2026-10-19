@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 import '../core/backend/backend.dart';
+import '../core/backend/server_api.dart';
 import '../core/backend/user_repository.dart';
 import '../core/utils/formatters.dart';
 import '../features/auth/services/auth_service.dart';
@@ -14,6 +15,7 @@ import '../features/benefits/models/partner_mission.dart';
 import '../features/benefits/models/reward_ledger.dart';
 import '../features/benefits/models/reward_product.dart';
 import '../features/benefits/services/mission_tracker.dart';
+import '../features/errand/models/application.dart';
 import '../features/errand/models/new_request_data.dart';
 import '../features/errand/models/offer.dart';
 import '../features/errand/models/task_item.dart';
@@ -22,6 +24,7 @@ import '../features/lucky/models/tickets.dart';
 import '../features/market/models/used_item.dart';
 import '../features/errand/repositories/errand_repository.dart';
 import '../features/errand/repositories/request_repository.dart';
+import '../features/errand/repositories/trade_repository.dart';
 import '../features/pay/models/pay_entry.dart';
 import '../features/pay/pay_config.dart';
 import '../features/pay/repositories/pay_repository.dart';
@@ -83,8 +86,24 @@ class AppSession extends ChangeNotifier {
   List<TaskItem> created = [];
   List<int> bookmarks = [];
 
-  /// 지원 내역과 거래 단계
+  /// 지원 내역과 거래 단계 (부탁 id → 단계). 로그인 + 서버 연결 상태면 서버의 지원·거래 문서에서 만든다.
+  /// 내가 요청자인 부탁도 거래가 시작되면 여기 들어온다.
   Map<int, Trade> trades = {};
+
+  /// 내 부탁에 들어와 답을 기다리는 지원 (요청자 쪽 '받은 지원')
+  List<Application> received = [];
+
+  /// 부탁 id → 서버 거래 문서 id. 단계를 진행할 때 쓴다.
+  final Map<int, String> _tradeIds = {};
+  final List<StreamSubscription<Object?>> _tradeSubs = [];
+  List<Application> _myApps = [];
+  List<Application> _received = [];
+  List<ServerTrade> _helperTrades = [];
+  List<ServerTrade> _requesterTrades = [];
+
+  /// 모집이 끝나 공개 목록(open)에서 빠졌지만 내 지원·거래와 이어진 부탁
+  final Map<int, TaskItem> _related = {};
+  final Set<int> _relatedLoading = {};
 
   /// 보낸 가격 제안
   Map<int, List<Offer>> offers = {};
@@ -121,6 +140,7 @@ class AppSession extends ChangeNotifier {
     _disposed = true;
     _authSub?.cancel();
     _requestSub?.cancel();
+    _stopTradeWatch();
     super.dispose();
   }
 
@@ -147,7 +167,8 @@ class AppSession extends ChangeNotifier {
     final mineIds = {for (final it in created) it.id};
     final seen = <int>{};
     final out = <TaskItem>[];
-    for (final it in [..._server, ...created, ..._seed]) {
+    // 내 글은 이 기기 사본이 먼저다. 공개 문서에는 정확한 장소가 없어서(보안 규칙 v2) 서버 쪽을 쓰면 장소가 비어 보인다.
+    for (final it in [...created, ..._server, ..._related.values, ..._seed]) {
       if (!seen.add(it.id)) continue;
       out.add(!it.mine && mineIds.contains(it.id) ? it.copyWith(mine: true) : it);
     }
@@ -155,6 +176,9 @@ class AppSession extends ChangeNotifier {
   }
 
   bool get isLoggedIn => AuthService().currentUser != null;
+
+  /// 지원·거래를 서버로 처리할 수 있는 상태인가 (서버 연결 + 로그인)
+  bool get _serverMode => Backend.ready && _user != null;
 
   /// 서버에 못 붙은 사유. null이면 정상.
   String? get serverIssue => Backend.ready ? null : (Backend.error ?? '이 플랫폼에서는 Firebase 연결이 아직 지원되지 않아요.');
@@ -260,6 +284,7 @@ class AppSession extends ChangeNotifier {
       // 서버에 붙은 채로 로그아웃 상태라면, 남아 있는 계정 사본은 앞사람 것이다.
       // 서버에 못 붙어서 로그인 여부를 모르는 경우(오프라인 실행)는 그 사본이 유일한 자료라 남긴다.
       if (Backend.ready && owner != null) _resetAccount();
+      _stopTradeWatch();
       _update(() {
         _user = null;
         _pay = null;
@@ -287,6 +312,7 @@ class AppSession extends ChangeNotifier {
 
     await _pullServer(repo, user);
     if (!_stillBound(user)) return;
+    _watchTrades(user.uid);
     _update(() => syncing = false);
     _markBound(user.uid);
   }
@@ -299,6 +325,7 @@ class AppSession extends ChangeNotifier {
       created = [];
       bookmarks = [];
       trades = {};
+      received = [];
       offers = {};
       _rewards.restore(const {});
       doneMissions = [];
@@ -308,24 +335,17 @@ class AppSession extends ChangeNotifier {
     });
   }
 
-  /// 첫 로그인 이관. 이 기기에 있던 부탁·관심·지원 내역·제안을 계정으로 한 번 올린다.
+  /// 첫 로그인 이관. 이 기기에 있던 부탁·관심을 계정으로 한 번 올린다.
   /// 문서 id가 곧 부탁 id라 두 번 올려도 덮어쓰기지만, 쓸데없는 호출을 막으려고 표시를 남긴다.
+  ///
+  /// 지원 내역·제안·겸사페이 기록은 올리지 않는다. 지원·거래는 서버 함수만 만들 수 있고(보안 규칙 v2),
+  /// 로그아웃 상태에서 쌓인 기록은 상대방이 없는 체험 기록이라 옮길 대상이 아니다(1차_백엔드_설계.md 결정 4).
   Future<void> _migrateLocal(UserRepository repo) async {
     for (final it in created) {
       await _requests.add(it.withOwner(repo.uid));
     }
     for (final id in bookmarks) {
       await repo.setBookmark(id, true);
-    }
-    for (final e in trades.entries) {
-      await repo.saveTrade(e.key, e.value);
-    }
-    for (final e in offers.entries) {
-      await repo.saveOffers(e.key, e.value);
-    }
-    final pay = PayRepository(repo.uid);
-    for (final e in payEntries) {
-      await pay.add(e);
     }
     await repo.markMigrated();
   }
@@ -334,8 +354,6 @@ class AppSession extends ChangeNotifier {
   Future<void> _pullServer(UserRepository repo, User user) async {
     final loaded = await repo.ensureProfile(email: user.email ?? '', nickname: user.displayName);
     final serverBookmarks = await repo.loadBookmarks();
-    final serverTrades = await repo.loadTrades();
-    final serverOffers = await repo.loadOffers();
     final serverCoupons = await repo.loadCoupons();
     final serverLedger = await repo.loadLedger();
     final serverPay = await PayRepository(repo.uid).load();
@@ -348,8 +366,6 @@ class AppSession extends ChangeNotifier {
       final region = loaded?.region;
       if (region != null && region.isNotEmpty) scope = region;
       if (serverBookmarks.isNotEmpty) bookmarks = serverBookmarks;
-      if (serverTrades.isNotEmpty) trades = serverTrades;
-      if (serverOffers.isNotEmpty) offers = serverOffers;
       if (serverCoupons.isNotEmpty) coupons = serverCoupons;
       if (serverPay.isNotEmpty) payEntries = serverPay;
       if (serverLedger.isNotEmpty) {
@@ -364,8 +380,6 @@ class AppSession extends ChangeNotifier {
 
     // 다음 실행이 오프라인일 수 있으므로 서버 값을 이 기기에도 남긴다.
     _store.saveBookmarks(bookmarks);
-    _store.saveTrades(trades);
-    _store.saveOffers(offers);
     _store.saveLedger(_rewards.entries);
     _store.saveMissions(doneMissions);
     _store.savePay(payEntries);
@@ -457,55 +471,204 @@ class AppSession extends ChangeNotifier {
     flash(saved ? '관심 저장을 해제했어요' : '관심 저장했어요 · 마이에서 볼 수 있어요');
   }
 
-  /// 지원하기 → '요청자 확인 대기'로 저장한다. 새로 지원됐으면 true.
-  /// 요청자에게 실제 알림이 가지는 않는다 (알림·수락 연동 전).
-  bool apply(TaskItem it) {
+  // ── 지원·거래 (서버 함수) ──────────────────────────────────────────────
+
+  /// 지원하기. 서버 함수가 지원서를 만들고, 결과는 구독으로 들어온다. 지원됐으면 true.
+  /// 가격 제안을 저장해 뒀으면 마지막 제안을 함께 보낸다.
+  Future<bool> apply(TaskItem it) async {
     if (it.isMine || it.isExpired) {
       flash(it.isMine ? '내가 올린 부탁에는 지원할 수 없어요' : '마감된 부탁이에요');
       return false;
     }
-    final current = trades[it.id];
-    if (current != null && current.status != 'cancelled') return false;
-
-    final trade = Trade.pending();
-    _update(() => trades = {...trades, it.id: trade});
-    _store.saveTrades(trades);
-    _user?.saveTrade(it.id, trade, title: it.title, price: it.price, mode: it.mode);
-    flash(it.mode == 'together' ? '신청했어요 · 진행 중에서 확인하세요' : '지원했어요 · 요청자 응답 연동은 준비 중이에요');
+    if (it.sample) {
+      flash('예시로 보여 주는 부탁이라 지원할 수 없어요');
+      return false;
+    }
+    if (!_serverMode) {
+      flash(serverIssue ?? '로그인 후 지원할 수 있어요');
+      return false;
+    }
+    if (trades[it.id]?.isActive ?? false) {
+      flash('이미 지원한 부탁이에요');
+      return false;
+    }
+    final offer = offers[it.id]?.lastOrNull;
+    try {
+      await TradeRepository.apply(it.id, offerPrice: offer?.price, msg: (offer?.msg.isEmpty ?? true) ? null : offer!.msg);
+    } on ServerException catch (e) {
+      flash(e.message);
+      return false;
+    }
+    // 구독이 곧 같은 값으로 덮어쓴다. 그 사이 화면이 비지 않게 먼저 표시해 둔다.
+    _update(() => trades = {...trades, it.id: Trade.pending()});
+    flash(it.mode == 'together' ? '신청했어요 · 진행 중에서 확인하세요' : '지원했어요 · 요청자가 수락하면 진행 중에서 확인할 수 있어요');
     return true;
   }
 
-  void updateTrade(int id, String action) {
+  /// 거래 단계 진행. 누가 어떤 단계를 누를 수 있는지는 서버가 확인한다
+  /// (수행자: start·finish / 요청자: confirm·revise / 시작 전 취소: 양쪽).
+  /// 대기 중인 지원의 cancel은 지원 철회다.
+  Future<void> updateTrade(int id, String action) async {
     final current = trades[id];
     if (current == null) return;
-    final next = current.advance(action);
-    if (identical(next, current)) return; // 허용되지 않는 단계 이동
-
-    _update(() => trades = {...trades, id: next});
-    _store.saveTrades(trades);
-    _user?.saveTrade(id, next);
-
-    // 완료된 순간에만 사례비를 겸사페이 원장에 남긴다. 내가 올린 부탁은 내가 받는 돈이 아니다.
-    final justCompleted = current.status != 'completed' && next.status == 'completed';
-    if (!justCompleted) return;
-    final it = items.where((i) => i.id == id).firstOrNull;
-    if (it != null && !it.isMine && it.price > 0) _addPay(PayKind.earn, it.price, it.title, requestId: it.id);
-    // 응모권 — 도와준 쪽 +3(해외 사다주기도 +3), 내 부탁 완료 확인 +2
-    if (it == null) return;
-    onTicket?.call(it.isMine ? TicketRules.myDone : (it.mode == 'sea' ? TicketRules.seaDone : TicketRules.helpDone));
+    if (!_serverMode) {
+      flash(serverIssue ?? '로그인 후 진행할 수 있어요');
+      return;
+    }
+    try {
+      if (current.status == 'pending') {
+        if (action != 'cancel') return;
+        await TradeRepository.withdraw(id);
+      } else {
+        final tradeId = _tradeIds[id];
+        if (tradeId == null) {
+          flash('거래 정보를 불러오는 중이에요. 잠시 후 다시 시도해 주세요.');
+          return;
+        }
+        await TradeRepository.advance(tradeId, action);
+      }
+    } on ServerException catch (e) {
+      flash(e.message);
+      return;
+    }
+    flash(switch (action) {
+      'start' => '부탁을 시작했어요',
+      'finish' => '완료 확인을 요청했어요',
+      'confirm' => '완료를 확인했어요',
+      'revise' => '보완을 요청했어요',
+      'cancel' => current.status == 'pending' ? '지원을 취소했어요' : '거래를 취소했어요',
+      _ => '처리했어요',
+    });
   }
 
+  /// 요청자: 받은 지원 수락 → 거래가 시작된다(같은 부탁의 다른 지원은 서버가 거절 처리)
+  Future<void> acceptApplication(Application a) async {
+    try {
+      await TradeRepository.accept(a.requestId, a.helperUid);
+      flash('${a.helperName}님의 지원을 수락했어요');
+    } on ServerException catch (e) {
+      flash(e.message);
+    }
+  }
+
+  Future<void> rejectApplication(Application a) async {
+    try {
+      await TradeRepository.reject(a.requestId, a.helperUid);
+      flash('지원을 거절했어요');
+    } on ServerException catch (e) {
+      flash(e.message);
+    }
+  }
+
+  /// 가격 제안. 이 기기에 저장해 두었다가 지원할 때 함께 보낸다.
   void sendOffer(TaskItem it, int price, String msg) {
     final min = it.mode == 'sea' ? seaMin : 1000;
     if (price < min) {
       flash('제안 금액은 ${won(min)} 이상이어야 해요');
       return;
     }
+    if (trades[it.id]?.isActive ?? false) {
+      flash('이미 지원한 부탁이에요 · 제안 금액은 지원할 때 함께 보내요');
+      return;
+    }
     final list = [...?offers[it.id], Offer(price, msg)];
     _update(() => offers = {...offers, it.id: list});
     _store.saveOffers(offers);
-    _user?.saveOffers(it.id, list);
-    flash('가격 제안을 저장했어요 · 요청자에게 전달하는 기능은 준비 중이에요');
+    flash('가격 제안을 저장했어요 · 지원할 때 요청자에게 함께 보내요');
+  }
+
+  void _watchTrades(String uid) {
+    _stopTradeWatch();
+    if (!Backend.ready) return;
+    final repo = TradeRepository(uid);
+    _tradeSubs.addAll([
+      repo.watchMyApplications().listen((v) {
+        _myApps = v;
+        _rebuildTrades();
+      }),
+      repo.watchReceived().listen((v) {
+        _received = v;
+        _rebuildTrades();
+      }),
+      repo.watchTrades(asRequester: false).listen((v) {
+        _helperTrades = v;
+        _rebuildTrades();
+      }),
+      repo.watchTrades(asRequester: true).listen((v) {
+        _requesterTrades = v;
+        _rebuildTrades();
+      }),
+    ]);
+  }
+
+  void _stopTradeWatch() {
+    for (final sub in _tradeSubs) {
+      sub.cancel();
+    }
+    _tradeSubs.clear();
+    _myApps = [];
+    _received = [];
+    _helperTrades = [];
+    _requesterTrades = [];
+    _tradeIds.clear();
+  }
+
+  /// 서버의 지원서·거래 문서를 화면용 [trades] 하나로 합친다.
+  void _rebuildTrades() {
+    final next = <int, Trade>{};
+    final ids = <int, String>{};
+    final byId = {for (final t in [..._helperTrades, ..._requesterTrades]) t.id: t};
+
+    // 내가 수행자: 지원서 상태 + 수락 뒤에는 거래 문서의 단계
+    for (final a in _myApps) {
+      final rid = a.requestIdInt;
+      if (rid == null) continue;
+      final t = a.tradeId == null ? null : byId[a.tradeId];
+      final status = switch (a.status) {
+        'pending' => 'pending',
+        'accepted' => t?.status ?? 'matched',
+        _ => 'cancelled', // 거절·철회·시작 전 취소
+      };
+      next[rid] = Trade(status, t?.updatedAt ?? a.updatedAt);
+      if (a.status == 'accepted' && a.tradeId != null) ids[rid] = a.tradeId!;
+    }
+
+    // 내가 요청자: 같은 부탁에 거래가 여러 번(취소 뒤 다시 수락) 생길 수 있어 가장 최근 것을 쓴다
+    final mine = [..._requesterTrades]..sort((a, b) => a.updatedAt.compareTo(b.updatedAt));
+    for (final t in mine) {
+      final rid = int.tryParse(t.requestId);
+      if (rid == null) continue;
+      next[rid] = Trade(t.status, t.updatedAt);
+      ids[rid] = t.id;
+    }
+
+    _update(() {
+      trades = next;
+      _tradeIds
+        ..clear()
+        ..addAll(ids);
+      received = [
+        for (final a in _received)
+          if (a.isPending) a,
+      ]..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    });
+    _store.saveTrades(trades);
+    _loadRelated(next.keys);
+  }
+
+  /// 내 지원·거래와 이어진 부탁 중 목록에 없는 것(모집이 끝나 공개 목록에서 빠진 것)을 한 번씩 불러온다.
+  Future<void> _loadRelated(Iterable<int> ids) async {
+    final known = {for (final it in items) it.id};
+    final missing = [
+      for (final id in ids)
+        if (!known.contains(id) && !_relatedLoading.contains(id)) id,
+    ];
+    if (missing.isEmpty) return;
+    _relatedLoading.addAll(missing);
+    for (final id in missing) {
+      final it = await _requests.get(id);
+      if (it != null) _update(() => _related[id] = it);
+    }
   }
 
   void addRequest(NewRequestData data) {

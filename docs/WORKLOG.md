@@ -25,7 +25,8 @@
   화면 이동은 `AppNav` 하나로. 부탁·포인트·겸사페이는 그대로 `AppSession`.
 - 백엔드: Firebase(Auth·Firestore). 서버 연결이 안 되면 `LocalStore`(이 기기)에 저장 ([백엔드_연결.md](백엔드_연결.md)).
   1차 출시용 서버 설계·갈래(W1~W10)는 [1차_백엔드_설계.md](1차_백엔드_설계.md). 서버 함수는 `functions/`(TypeScript, 서울 리전),
-  규칙은 `firebase/firestore.rules` v2 — **아직 어느 프로젝트에도 배포 안 됨**, 앱은 여전히 예전 방식(지원자 기기에만 거래 기록)으로 동작한다.
+  지원·수락·거래 단계는 **서버 함수로 처리**한다(`TradeRepository` → `functions/src/errand`). 앱은 결과를 Firestore 구독으로 받는다.
+  서버 함수는 dev(`projecterrand`)에 배포됨(2026-10-20). 규칙 v2는 아직 배포 전 — 앱 W3 반영본과 함께 올린다.
 - 지도: 네이버 지도(`flutter_naver_map`). 제휴 미션·퀴즈 API 연동 ([제휴_API_연동.md](제휴_API_연동.md)).
 - 원칙: 지어낸 숫자를 사실처럼 보여 주지 않는다(예시 데이터엔 '예시' 표시). 겸사페이(원)와 포인트(P)는 섞지 않는다.
 
@@ -33,13 +34,12 @@
 
 ### 1차 출시 백엔드 ([1차_백엔드_설계.md](1차_백엔드_설계.md))
 
-- [ ] 서버 함수·색인 첫 배포 — 저장소 폴더에서 `firebase deploy --project dev --only functions,firestore:indexes`
-      (`projecterrand`가 dev. Blaze 전환은 2026-10-20 완료). 규칙 v2는 W3 앱 연결과 함께 `--only firestore:rules`
+- [ ] W3 앱 반영본 배포 — 저장소 폴더에서 `firebase deploy --project dev --only functions,firestore`(함수 갱신 + 규칙 v2 + 색인).
+      그 뒤 예전 앱 빌드는 지원·포인트 저장이 막히므로 테스트 기기 앱도 새로 설치
+- [ ] W3 실기기 확인 — 계정 두 개로 지원 → 받은 지원 수락 → 시작 → 완료 요청 → 완료 확인, 취소·거절
 - [ ] 예산 알림 설정(Google Cloud 콘솔 › 결제 › 예산 및 알림, 50·90·100%)
 - [ ] 출시 전 운영 프로젝트 새로 만들기 → `.firebaserc`에 `prod` 추가, 앱 `google-services.json` 교체
-- [ ] W3 앱 연결 — `AppSession.apply`·`updateTrade`를 서버 함수 호출로, 요청자 '받은 지원' 화면, '요청자 수락 체험' 버튼 제거,
-      거래 완료 때 앱이 쓰던 겸사페이 기록·응모권 끄기(결정 10). `cloud_functions` 패키지 추가
-- [ ] W2 앱 연결 — 부탁 등록 때 정확한 위치를 `requests/{id}/private/detail`로, 공개 문서엔 `area`만
+- [ ] 수락된 수행자에게 정확한 장소 보여 주기 — 지금은 `private/detail`에 저장만 하고 수행자 화면에서 읽지 않는다
 - [ ] W4 알림(FCM) · W5 신고·차단·운영 · 최소 채팅(결정 5) · W6 동선 구조화 · W7 추천 v0
 - [ ] 포인트·미션·출석·응모권을 1차 출시 빌드에서 숨기기(결정 6). 포인트 서버 이전(W8)은 그다음 업데이트
 
@@ -135,6 +135,20 @@
   바꾼 뒤엔 Android Studio를 완전히 종료 후 재시작.
 
 ## 기록
+
+### 2026-10-20 · 미커밋 · Claude (W3 앱 연결 · W2 위치 분리)
+- 추가: `core/backend/server_api.dart`(서버 함수 호출, 실패를 화면 문구로), `errand/models/application.dart`(지원서·거래 문서 모델),
+  `errand/repositories/trade_repository.dart`(내 지원·받은 지원·거래 구독 + 서버 함수), '진행 중인 부탁'에 **받은 지원**(수락·거절),
+  GitHub Actions `app` 워크플로(`flutter analyze`·`flutter test`), `cloud_functions` 패키지
+- 변경: `AppSession.apply`·`updateTrade`가 서버 함수를 부르고, `trades`는 서버의 지원서·거래 문서에서 만든다.
+  단계 버튼은 역할별(수행자: 시작·완료 요청 / 요청자: 완료 확인·보완 요청). 가격 제안은 지원할 때 함께 보낸다.
+  모집이 끝나 공개 목록에서 빠진 내 거래의 부탁은 따로 불러온다(`RequestRepository.get`). 예시 부탁에는 지원할 수 없다
+- 변경(W2): 부탁 등록 때 정확한 장소·좌표를 `requests/{id}/private/detail`로, 공개 문서엔 `area`만. 내 글은 이 기기 사본을 먼저 보여 준다
+- 변경(서버): 지원서에 `requesterUid`·`helperName`·`requestTitle` 사본 저장, 요청자의 '받은 지원' collectionGroup 조회 규칙·색인
+- 제거: '요청자 수락 체험'·'요청자 완료 확인 체험' 버튼 — 이제 실제 요청자가 누른다.
+  거래 완료 때 앱이 쓰던 겸사페이 '번 돈' 기록과 응모권 지급 — 결제·정산이 미정이고(결정 10) 포인트·응모권은 1차에서 숨긴다(결정 6).
+  `RequestRepository.close` — 모집 취소·마감은 서버 함수(cancelRequest·expireRequests)만 한다.
+  첫 로그인 이관에서 지원 내역·제안·겸사페이 기록 업로드 — 서버 함수만 지원·거래를 만들 수 있고 체험 기록이라 옮기지 않는다(결정 4)
 
 ### 2026-10-20 · 4a7ae2f · Claude (개발 프로젝트 지정)
 - 변경: `projecterrand`를 개발용(dev)으로 쓰기로 함(결정 3 변경). `.firebaserc`는 default/dev = `projecterrand`, prod는 출시 전에 새 프로젝트로 추가.

@@ -5,18 +5,24 @@ import '../../../core/theme/colors.dart';
 import '../../../core/widgets/app_icon.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/chip_widget.dart';
+import '../../errand/models/application.dart';
 import '../../errand/models/task_item.dart';
 import '../../errand/models/trade.dart';
 
-/// 하단 "진행 중" 탭. 지원한 부탁의 단계와 다음 할 일을 보여준다.
+/// "진행 중인 부탁". 내 부탁에 들어온 지원(요청자)과, 지원·거래의 단계와 다음 할 일을 보여준다.
 ///
-/// 요청자 수락·완료 확인은 아직 상대방이 연결되지 않아 체험 버튼으로 둔다.
-/// 실제 상대방 응답·메시지·결제·정산은 발생하지 않는다.
+/// 단계마다 누를 수 있는 사람이 정해져 있다 — 수행자: 시작·완료 요청 / 요청자: 수락·완료 확인·보완 요청.
+/// 실제 판단은 서버 함수가 한다(functions/src/domain/tradeMachine.ts). 결제·정산은 아직 없다.
 class ActivityView extends StatefulWidget {
   final List<TaskItem> items;
   final Map<int, Trade> trades;
   final void Function(int id, String action) updateTrade;
   final void Function(TaskItem) openDetail;
+
+  /// 내 부탁에 들어와 답을 기다리는 지원
+  final List<Application> received;
+  final void Function(Application) onAccept;
+  final void Function(Application) onReject;
 
   /// 전체화면으로 띄울 때는 바깥 [ScreenFrame]이 제목을 그리므로 false를 준다.
   final bool showHeader;
@@ -26,8 +32,12 @@ class ActivityView extends StatefulWidget {
     required this.trades,
     required this.updateTrade,
     required this.openDetail,
+    this.received = const [],
+    this.onAccept = _noop,
+    this.onReject = _noop,
     this.showHeader = true,
   });
+  static void _noop(Application _) {}
   @override
   State<ActivityView> createState() => _ActivityViewState();
 }
@@ -36,12 +46,19 @@ class _ActivityViewState extends State<ActivityView> {
   String filter = 'active'; // active | finished | all
   int? cancelId;
 
-  // 단계별 [액션, 버튼 문구, 안내]
-  static const _next = {
-    'pending': ['accept', '요청자 수락 체험', '요청자가 내용을 확인하고 수락하면 매칭돼요.'],
+  // 단계별 [액션(없으면 ''), 버튼 문구, 안내] — 수행자(내가 지원한 부탁)
+  static const _helperNext = {
+    'pending': ['', '', '요청자가 지원을 확인하고 수락하면 매칭돼요.'],
     'matched': ['start', '부탁 시작하기', '장소·구매비·완료 조건을 확인한 뒤 시작하세요.'],
-    'working': ['finish', '완료 확인 요청', '전달을 마친 뒤 요청자의 확인을 기다려요.'],
-    'confirmation': ['confirm', '요청자 완료 확인 체험', '요청자가 완료를 확인하면 부탁이 끝나요.'],
+    'working': ['finish', '완료 확인 요청', '전달을 마쳤으면 요청자에게 완료 확인을 요청하세요.'],
+    'confirmation': ['', '', '요청자가 완료를 확인하면 부탁이 끝나요.'],
+  };
+
+  // 요청자(내가 올린 부탁)
+  static const _requesterNext = {
+    'matched': ['', '', '수행자가 부탁을 시작하면 진행 중으로 바뀌어요.'],
+    'working': ['', '', '수행자가 부탁을 진행하고 있어요.'],
+    'confirmation': ['confirm', '완료 확인하기', '받은 물건·결과를 확인한 뒤 완료를 눌러 주세요.'],
   };
   static const _steps = ['pending', 'matched', 'working', 'confirmation', 'completed'];
   static const _stepLabels = ['지원', '매칭', '진행', '확인', '완료'];
@@ -68,7 +85,7 @@ class _ActivityViewState extends State<ActivityView> {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
           decoration: BoxDecoration(color: AppColors.yellowSoft, borderRadius: BorderRadius.circular(12)),
           child: const Text(
-            '거래 흐름 체험 · 실제 상대방 연결이나 결제는 이루어지지 않아요. 내역은 이 기기에 저장돼요.',
+            '지원·수락·완료는 상대방에게 바로 전달돼요. 앱 안의 결제·정산은 아직 없어서 사례비는 직접 주고받아요.',
             style: TextStyle(fontSize: 12.5, color: AppColors.yellowDeep, height: 1.5, fontWeight: FontWeight.w600),
           ),
         ),
@@ -88,6 +105,17 @@ class _ActivityViewState extends State<ActivityView> {
             ],
           ),
         ),
+        if (widget.received.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+            child: Text(
+              '받은 지원 ${widget.received.length}',
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.ink),
+            ),
+          ),
+          for (final a in widget.received) _receivedCard(a),
+          const SizedBox(height: 6),
+        ],
         if (visible.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 30, vertical: 50),
@@ -113,8 +141,58 @@ class _ActivityViewState extends State<ActivityView> {
     );
   }
 
+  Widget _receivedCard(Application a) => Container(
+    margin: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: AppColors.card,
+      border: Border.all(color: AppColors.line),
+      borderRadius: BorderRadius.circular(16),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(a.requestTitle, style: const TextStyle(fontSize: 13, color: AppColors.sub)),
+        const SizedBox(height: 4),
+        Text(
+          '${a.helperName}님이 지원했어요',
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink),
+        ),
+        if (a.offerPrice != null || (a.msg?.isNotEmpty ?? false)) ...[
+          const SizedBox(height: 6),
+          Text(
+            [if (a.offerPrice != null) '제안 ${won(a.offerPrice!)}', if (a.msg?.isNotEmpty ?? false) a.msg!].join(' · '),
+            style: const TextStyle(fontSize: 13, color: AppColors.ink, height: 1.5),
+          ),
+        ],
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(child: _outlined('거절', () => widget.onReject(a))),
+            const SizedBox(width: 8),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () => widget.onAccept(a),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.black,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                ),
+                child: const Text('수락하기', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5)),
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+
   Widget _card(TaskItem it, Trade trade) {
-    final next = _next[trade.status];
+    final requester = it.isMine;
+    final step = (requester ? _requesterNext : _helperNext)[trade.status];
+    final next = step != null && step[0].isNotEmpty ? step : null;
     final current = _steps.indexOf(trade.status);
     final statusColor = switch (trade.status) {
       'completed' => AppColors.green,
@@ -213,9 +291,13 @@ class _ActivityViewState extends State<ActivityView> {
             ),
           const SizedBox(height: 12),
           Text(
-            next != null
-                ? next[2]
-                : (trade.status == 'completed' ? '부탁 완료를 체험했어요. 실제 정산 금액은 발생하지 않아요.' : '지원이 취소됐어요. 상세에서 다시 지원할 수 있어요.'),
+            step != null
+                ? step[2]
+                : (trade.status == 'completed'
+                      ? '부탁이 완료됐어요. 앱 안의 결제·정산은 아직 없어요.'
+                      : requester
+                      ? '거래가 취소됐어요.'
+                      : '지원이 취소되거나 거절됐어요.'),
             style: const TextStyle(fontSize: 13, color: AppColors.ink, height: 1.5),
           ),
           if (next != null)
@@ -236,7 +318,7 @@ class _ActivityViewState extends State<ActivityView> {
                 ),
               ),
             ),
-          if (trade.status == 'confirmation') _link('보완 요청 체험 · 진행 중으로 돌아가기', () => widget.updateTrade(it.id, 'revise')),
+          if (requester && trade.status == 'confirmation') _link('보완 요청 · 진행 중으로 돌아가기', () => widget.updateTrade(it.id, 'revise')),
           if (trade.canCancel)
             cancelId == it.id
                 ? Container(
@@ -246,8 +328,8 @@ class _ActivityViewState extends State<ActivityView> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          '이 부탁의 지원을 취소할까요?',
+                        Text(
+                          trade.status == 'pending' ? '이 부탁의 지원을 취소할까요?' : '시작 전인 거래를 취소할까요?',
                           style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.ink),
                         ),
                         const SizedBox(height: 8),
@@ -256,7 +338,7 @@ class _ActivityViewState extends State<ActivityView> {
                             Expanded(child: _outlined('유지하기', () => setState(() => cancelId = null))),
                             const SizedBox(width: 8),
                             Expanded(
-                              child: _outlined('지원 취소 확정', () {
+                              child: _outlined('취소 확정', () {
                                 widget.updateTrade(it.id, 'cancel');
                                 setState(() => cancelId = null);
                               }, danger: true),
@@ -266,7 +348,7 @@ class _ActivityViewState extends State<ActivityView> {
                       ],
                     ),
                   )
-                : _link('지원 취소', () => setState(() => cancelId = it.id)),
+                : _link(trade.status == 'pending' ? '지원 취소' : '거래 취소', () => setState(() => cancelId = it.id)),
         ],
       ),
     );

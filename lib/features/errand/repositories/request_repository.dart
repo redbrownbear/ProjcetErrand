@@ -35,23 +35,32 @@ class RequestRepository {
         .handleError((Object e) => debugPrint('부탁 목록 구독 실패: $e'));
   }
 
-  Future<void> add(TaskItem it) => Backend.push(
-    () => Backend.requests.doc('${it.id}').set({
+  /// 새 부탁을 올린다. 공개 문서에는 대략적인 지역(`region`·`area`)만 두고,
+  /// 정확한 장소·좌표는 글쓴이와 수락된 수행자만 읽는 `private/detail`에 따로 쓴다(보안 규칙 v2).
+  Future<void> add(TaskItem it) => Backend.push(() async {
+    final ref = Backend.requests.doc('${it.id}');
+    await ref.set({
       ...toMap(it),
       'status': 'open',
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
-    }),
-  );
+    });
+    final detail = privateDetail(it);
+    if (detail.isNotEmpty) await ref.collection('private').doc('detail').set(detail);
+  });
 
-  /// 모집을 닫는다(삭제하지 않는다 — 지원자 쪽 기록이 남아야 하므로).
-  Future<void> close(int id) => Backend.push(
-    () =>
-        Backend.requests.doc('$id').set({'status': 'closed', 'updatedAt': FieldValue.serverTimestamp()}, SetOptions(merge: true)),
-  );
+  /// 부탁 하나. 모집이 끝나 공개 목록에서 빠진 내 지원·거래의 부탁을 채울 때 쓴다.
+  Future<TaskItem?> get(int id) => Backend.guard<TaskItem?>(() async {
+    final d = await Backend.requests.doc('$id').get();
+    final m = d.data();
+    return m == null ? null : fromDoc(d.id, m);
+  }, null);
+
+  // 모집 취소·마감은 앱이 직접 쓰지 않는다 → 서버 함수 cancelRequest · expireRequests
 
   // ── 변환 ────────────────────────────────────────────────────────────────
 
+  /// 공개 문서. 보안 규칙 v2의 필드 목록(`requestEditable`)과 맞춰야 한다 — 목록 밖 필드가 있으면 저장이 거부된다.
   static Map<String, Object?> toMap(TaskItem it) => {
     'ownerUid': it.ownerUid,
     'who': it.who,
@@ -60,14 +69,10 @@ class RequestRepository {
     'title': it.title,
     'desc': it.desc,
     'region': it.region,
-    'place': it.place,
-    'deliveryPlace': it.deliveryPlace,
+    'area': it.region,
     'country': it.country,
     'cc': it.cc,
     'city': it.city,
-    'lat': it.lat,
-    'lng': it.lng,
-    'distM': it.distM,
     'mins': it.mins,
     'price': it.price,
     'budget': it.budget,
@@ -75,6 +80,14 @@ class RequestRepository {
     'completion': it.completion,
     'hot': it.hot,
     'deadline': it.deadline == null ? null : Timestamp.fromDate(it.deadline!),
+  };
+
+  /// 정확한 위치. 값이 있는 것만.
+  static Map<String, Object?> privateDetail(TaskItem it) => {
+    if (it.place != null) 'place': it.place,
+    if (it.deliveryPlace != null) 'deliveryPlace': it.deliveryPlace,
+    if (it.lat != null) 'lat': it.lat,
+    if (it.lng != null) 'lng': it.lng,
   };
 
   static TaskItem? fromDoc(String docId, Map<String, dynamic> m) {

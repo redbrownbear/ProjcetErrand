@@ -158,8 +158,9 @@ class _HomeShellState extends State<HomeShell> {
   void sendOffer(TaskItem it, int price, String msg) => requireLogin(() => session.sendOffer(it, price, msg));
 
   /// 지원하기. 지원되면 홈으로 돌아와 진행 중 화면을 연다.
-  void grab(TaskItem it) => requireLogin(() {
-    if (!session.apply(it)) return;
+  void grab(TaskItem it) => requireLogin(() async {
+    if (!await session.apply(it)) return;
+    if (!mounted) return;
     _switchTab(ShellTab.home);
     goActivity();
   });
@@ -304,6 +305,9 @@ class _HomeShellState extends State<HomeShell> {
         items: session.items,
         trades: session.trades,
         updateTrade: session.updateTrade,
+        received: session.received,
+        onAccept: session.acceptApplication,
+        onReject: session.rejectApplication,
         openDetail: (it) => actions.open(context, it),
         showHeader: false,
       ),

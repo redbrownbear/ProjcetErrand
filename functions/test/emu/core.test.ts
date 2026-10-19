@@ -37,6 +37,10 @@ describe('정상 흐름', () => {
       status: 'pending',
     });
     assert.equal((await req()).applicantCount, 1);
+    const a = (await app(HELPER))!;
+    assert.equal(a.requesterUid, OWNER, '요청자 조회용 사본');
+    assert.equal(a.requestTitle, '편의점 택배 찾아 주세요');
+    assert.equal(a.helperName, '이웃', '닉네임이 없으면 이웃');
 
     const { tradeId } = await core.acceptApplication(db, OWNER, { requestId: RID, helperUid: HELPER });
     let t = await trade(tradeId);

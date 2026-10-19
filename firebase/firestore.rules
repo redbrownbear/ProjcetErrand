@@ -128,9 +128,10 @@ service cloud.firestore {
       }
     }
 
-    // '내가 지원한 부탁' 목록(collectionGroup 조회)용
+    // '내가 지원한 부탁'(지원자)·'받은 지원'(요청자) 목록 — collectionGroup 조회용
     match /{path=**}/applications/{helperUid} {
-      allow read: if signedIn() && resource.data.helperUid == request.auth.uid;
+      allow read: if signedIn()
+                  && (resource.data.helperUid == request.auth.uid || resource.data.requesterUid == request.auth.uid);
     }
 
     // ── 거래 ──────────────────────────────────────────────────────────────

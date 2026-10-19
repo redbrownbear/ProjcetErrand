@@ -13,7 +13,19 @@ import {
   initializeTestEnvironment,
   RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { deleteDoc, doc, getDoc, serverTimestamp, setDoc, Timestamp, updateDoc } from 'firebase/firestore';
+import {
+  collectionGroup,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  serverTimestamp,
+  setDoc,
+  Timestamp,
+  updateDoc,
+  where,
+} from 'firebase/firestore';
 
 import { PROJECT } from './helpers';
 
@@ -58,7 +70,7 @@ beforeEach(async () => {
     const f = ctx.firestore();
     await setDoc(doc(f, 'requests', RID), { ...newRequest(), createdAt: Timestamp.now(), updatedAt: Timestamp.now(), helperUid: HELPER });
     await setDoc(doc(f, 'requests', RID, 'private', 'detail'), { place: '역삼동 GS25', lat: 37.5, lng: 127.03 });
-    await setDoc(doc(f, 'requests', RID, 'applications', HELPER), { helperUid: HELPER, status: 'pending' });
+    await setDoc(doc(f, 'requests', RID, 'applications', HELPER), { helperUid: HELPER, requesterUid: OWNER, status: 'pending' });
     await setDoc(doc(f, 'trades', 't1'), { requestId: RID, requesterUid: OWNER, helperUid: HELPER, status: 'matched' });
     await setDoc(doc(f, 'users', OWNER), { nickname: '요청자', points: 100 });
   });
@@ -130,6 +142,12 @@ describe('지원서 · 거래 — 서버만 쓴다', () => {
     await assertFails(getDoc(doc(db(STRANGER), 'requests', RID, 'applications', HELPER)));
     await assertFails(setDoc(doc(db(STRANGER), 'requests', RID, 'applications', STRANGER), { helperUid: STRANGER, status: 'pending' }));
     await assertFails(updateDoc(doc(db(OWNER), 'requests', RID, 'applications', HELPER), { status: 'accepted' }));
+  });
+
+  test('내 지원(지원자) · 받은 지원(요청자) 목록은 조회되고, 남의 것은 조회 불가', async () => {
+    await assertSucceeds(getDocs(query(collectionGroup(db(HELPER), 'applications'), where('helperUid', '==', HELPER))));
+    await assertSucceeds(getDocs(query(collectionGroup(db(OWNER), 'applications'), where('requesterUid', '==', OWNER))));
+    await assertFails(getDocs(query(collectionGroup(db(STRANGER), 'applications'), where('requesterUid', '==', OWNER))));
   });
 
   test('거래는 당사자만 읽고, 아무도 직접 쓰지 못한다', async () => {
