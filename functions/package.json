@@ -12,8 +12,7 @@
     "test:emu": "node --import tsx --test --test-concurrency=1 test/emu/*.test.ts",
     "test": "firebase emulators:exec --only firestore --project demo-gyeomsa \"npm run test:unit && npm run test:emu\"",
     "serve": "npm run build && firebase emulators:start --only functions,firestore,auth",
-    "deploy:dev": "firebase deploy --project dev --only firestore,functions",
-    "deploy:prod": "firebase deploy --project prod --only firestore,functions"
+    "deploy:dev": "firebase deploy --project dev --only functions,firestore:indexes"
   },
   "dependencies": {
     "firebase-admin": "13.10.0",

@@ -1,7 +1,6 @@
 {
   "projects": {
-    "default": "projecterrand-dev",
-    "dev": "projecterrand-dev",
-    "prod": "projecterrand"
+    "default": "projecterrand",
+    "dev": "projecterrand"
   }
 }

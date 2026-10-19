@@ -33,7 +33,10 @@
 
 ### 1차 출시 백엔드 ([1차_백엔드_설계.md](1차_백엔드_설계.md))
 
-- [ ] (콘솔 권한자) Firebase `projecterrand-dev` 프로젝트 만들기 · Blaze 전환 · 예산 알림 → `firebase deploy --project dev`
+- [ ] 서버 함수·색인 첫 배포 — 저장소 폴더에서 `firebase deploy --project dev --only functions,firestore:indexes`
+      (`projecterrand`가 dev. Blaze 전환은 2026-10-20 완료). 규칙 v2는 W3 앱 연결과 함께 `--only firestore:rules`
+- [ ] 예산 알림 설정(Google Cloud 콘솔 › 결제 › 예산 및 알림, 50·90·100%)
+- [ ] 출시 전 운영 프로젝트 새로 만들기 → `.firebaserc`에 `prod` 추가, 앱 `google-services.json` 교체
 - [ ] W3 앱 연결 — `AppSession.apply`·`updateTrade`를 서버 함수 호출로, 요청자 '받은 지원' 화면, '요청자 수락 체험' 버튼 제거,
       거래 완료 때 앱이 쓰던 겸사페이 기록·응모권 끄기(결정 10). `cloud_functions` 패키지 추가
 - [ ] W2 앱 연결 — 부탁 등록 때 정확한 위치를 `requests/{id}/private/detail`로, 공개 문서엔 `area`만
@@ -132,6 +135,10 @@
   바꾼 뒤엔 Android Studio를 완전히 종료 후 재시작.
 
 ## 기록
+
+### 2026-10-20 · 미커밋 · Claude (개발 프로젝트 지정)
+- 변경: `projecterrand`를 개발용(dev)으로 쓰기로 함(결정 3 변경). `.firebaserc`는 default/dev = `projecterrand`, prod는 출시 전에 새 프로젝트로 추가.
+  `firebase.json` predeploy를 `npm --prefix functions run build`로(Windows에서 `$RESOURCE_DIR`가 안 풀리는 문제), `deploy:prod` 스크립트 제거
 
 ### 2026-10-20 · 854d3f3 · Claude (1차 백엔드 W1·W2·W3 서버 부분)
 - 추가: [1차_백엔드_설계.md](1차_백엔드_설계.md) — 현재 상태 점검, 1차 출시 범위, 작업 갈래 W1~W10, 결정 필요 11건(3·5·6 결정됨)
