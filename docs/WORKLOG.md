@@ -133,7 +133,7 @@
 
 ## 기록
 
-### 2026-10-20 · 미커밋 · Claude (1차 백엔드 W1·W2·W3 서버 부분)
+### 2026-10-20 · 854d3f3 · Claude (1차 백엔드 W1·W2·W3 서버 부분)
 - 추가: [1차_백엔드_설계.md](1차_백엔드_설계.md) — 현재 상태 점검, 1차 출시 범위, 작업 갈래 W1~W10, 결정 필요 11건(3·5·6 결정됨)
 - 추가: `firebase.json` · `.firebaserc`(default/dev = `projecterrand-dev`, prod = `projecterrand`), `functions/`(TypeScript, `asia-northeast3`) —
   거래 흐름 함수 `applyToRequest` · `withdrawApplication` · `acceptApplication` · `rejectApplication` · `cancelRequest` · `advanceTrade`,
