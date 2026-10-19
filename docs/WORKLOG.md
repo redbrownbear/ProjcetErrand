@@ -136,7 +136,7 @@
 
 ## 기록
 
-### 2026-10-20 · 미커밋 · Claude (개발 프로젝트 지정)
+### 2026-10-20 · 4a7ae2f · Claude (개발 프로젝트 지정)
 - 변경: `projecterrand`를 개발용(dev)으로 쓰기로 함(결정 3 변경). `.firebaserc`는 default/dev = `projecterrand`, prod는 출시 전에 새 프로젝트로 추가.
   `firebase.json` predeploy를 `npm --prefix functions run build`로(Windows에서 `$RESOURCE_DIR`가 안 풀리는 문제), `deploy:prod` 스크립트 제거
 
