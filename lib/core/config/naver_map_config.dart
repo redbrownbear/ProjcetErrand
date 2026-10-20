@@ -15,3 +15,7 @@ const naverMapClientId = 'y4pzwzjsed';
 /// 웹·데스크톱에서는 초기화도, NaverMap 위젯도 사용할 수 없다.
 final bool naverMapSupported =
     !kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS);
+
+/// 초기화([initNaverMap])까지 끝났는가. 초기화 전에 NaverMap 위젯을 그리면 플러그인이 assert로 멈춘다
+/// (화면 테스트도 플랫폼이 android로 잡혀서 [naverMapSupported]만으로는 못 거른다). 지도는 이 값이 true일 때만 그린다.
+bool naverMapReady = false;

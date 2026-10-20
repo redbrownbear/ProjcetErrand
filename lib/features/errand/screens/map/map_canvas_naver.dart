@@ -144,7 +144,7 @@ class _MapCanvasState extends State<MapCanvas> {
     // dart.library.io에는 Windows·macOS·Linux도 포함되지만 네이버 지도 SDK는
     // Android·iOS만 지원한다. 데스크톱에서 NaverMap 위젯을 그리면 플러그인이 없어
     // 그 자리에서 죽으므로, 안내 화면으로 대신한다. (initNaverMap도 같은 조건으로 건너뛴다)
-    if (!naverMapSupported) {
+    if (!naverMapSupported || !naverMapReady) {
       return Container(
         color: const Color(0xFFE7ECE4),
         alignment: Alignment.center,
@@ -155,7 +155,7 @@ class _MapCanvasState extends State<MapCanvas> {
             const Icon(Icons.map_outlined, size: 34, color: AppColors.faint),
             const SizedBox(height: 10),
             const Text(
-              '지도는 모바일 앱(Android · iOS)에서만 볼 수 있어요',
+              naverMapSupported ? '지도를 불러오지 못했어요' : '지도는 모바일 앱(Android · iOS)에서만 볼 수 있어요',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 13, color: AppColors.sub),
             ),
