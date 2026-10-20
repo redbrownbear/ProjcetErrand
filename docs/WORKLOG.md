@@ -138,7 +138,7 @@
 
 ## 기록
 
-### 2026-10-20 · 미커밋 · Claude (W4 알림 · W5 신고·차단·운영)
+### 2026-10-20 · 46b5698 · Claude (W4 알림 · W5 신고·차단·운영)
 - 추가(서버): `functions/src/notify/` — 지원서·거래 문서 변경 트리거(`onApplicationWrite`·`onTradeWrite`) → 알림함
   `users/{uid}/notifications` 기록 + FCM 푸시(만료 토큰 정리, 같은 이벤트는 한 번만). `functions/src/admin/` — 운영자 함수
   `adminSetSuspended`·`adminResolveReport`(custom claim `role=admin`, `adminLog` 기록), `functions/scripts/set-admin.js`(운영자 지정)
