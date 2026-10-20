@@ -24,20 +24,26 @@ class _TripFormState extends State<TripForm> {
   final where = TextEditingController();
   final when = TextEditingController();
   final quote = TextEditingController();
+  final title = TextEditingController();
+
+  /// 제목을 직접 고쳤으면 더 이상 '어디로'를 따라 바꾸지 않는다
+  bool titleEdited = false;
 
   @override
   void dispose() {
+    title.dispose();
     where.dispose();
     when.dispose();
     quote.dispose();
     super.dispose();
   }
 
-  bool get _ok => where.text.trim().isNotEmpty && quote.text.trim().isNotEmpty;
+  bool get _ok => where.text.trim().isNotEmpty && title.text.trim().isNotEmpty && quote.text.trim().isNotEmpty;
 
-  String get _title {
-    final w = where.text.trim().isEmpty ? '○○' : where.text.trim();
-    return type == 'going' ? '$w 가요' : '$w 가시는 분 있나요?';
+  /// '어디로'·종류가 바뀌면 제목 제안을 다시 채운다(직접 고친 뒤엔 그대로 둔다)
+  void _suggest() {
+    if (titleEdited) return;
+    title.text = TripPost.suggestTitle(type, where.text);
   }
 
   void _submit() {
@@ -49,7 +55,8 @@ class _TripFormState extends State<TripForm> {
         author: widget.author,
         area: widget.area,
         cc: abroad ? cc : null,
-        title: _title,
+        where: where.text.trim(),
+        title: title.text.trim(),
         when: when.text.trim().isEmpty ? (type == 'going' ? '곧 출발' : '언제든') : when.text.trim(),
         quote: quote.text.trim(),
         mine: true,
@@ -71,7 +78,10 @@ class _TripFormState extends State<TripForm> {
             labels: const ['제가 가요', '가는 분 찾아요'],
             index: type == 'going' ? 0 : 1,
             margin: EdgeInsets.zero,
-            onChanged: (i) => setState(() => type = i == 0 ? 'going' : 'asking'),
+            onChanged: (i) => setState(() {
+              type = i == 0 ? 'going' : 'asking';
+              _suggest();
+            }),
           ),
           const FieldLabel('어디로?'),
           Row(
@@ -94,28 +104,39 @@ class _TripFormState extends State<TripForm> {
             ),
           TextField(
             controller: where,
-            onChanged: (_) => setState(() {}),
-            decoration: InputDecoration(hintText: abroad ? '예) 오사카' : '예) 성수동 · 코스트코 양재점'),
+            maxLength: 40,
+            onChanged: (_) => setState(_suggest),
+            decoration: InputDecoration(
+              hintText: abroad ? '예) 오사카' : '예) 성수동 · 코스트코 양재점',
+              helperText: '장소 이름만 적어 주세요. 제목은 아래에서 고칠 수 있어요',
+              counterText: '',
+            ),
+          ),
+          const FieldLabel('제목'),
+          TextField(
+            controller: title,
+            maxLength: 60,
+            onChanged: (v) => setState(() => titleEdited = v.trim().isNotEmpty),
+            decoration: InputDecoration(
+              hintText: type == 'going' ? '예) 내일 오사카 가요' : '예) 오늘 성수 가시는 분 있나요?',
+              counterText: '',
+            ),
           ),
           const FieldLabel('언제?', hint: '선택'),
           TextField(
             controller: when,
-            decoration: const InputDecoration(hintText: '예) 내일 오후 · 10.02 출국 3박'),
+            maxLength: 40,
+            decoration: const InputDecoration(hintText: '예) 내일 오후 · 10.02 출국 3박', counterText: ''),
           ),
           const FieldLabel('한마디'),
           TextField(
             controller: quote,
             onChanged: (_) => setState(() {}),
             maxLines: 3,
+            maxLength: 300,
             decoration: InputDecoration(
               hintText: type == 'going' ? '예) 돈키호테 들를 예정인데 필요한 거 있으면 부탁 주세요.' : '예) 팝업 굿즈 하나만 부탁드리고 싶어요.',
             ),
-          ),
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(color: AppColors.page, borderRadius: BorderRadius.circular(14)),
-            child: Text('이렇게 올라가요 · $_title', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
           ),
         ],
       ),

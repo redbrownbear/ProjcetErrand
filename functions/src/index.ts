@@ -21,3 +21,4 @@ export {
 export { onApplicationWrite, onTradeWrite } from './notify/triggers';
 export { adminResolveReport, adminSetSuspended } from './admin/callables';
 export { markChatRead, sendMessage } from './chat/callables';
+export { addTripComment } from './trip/callables';

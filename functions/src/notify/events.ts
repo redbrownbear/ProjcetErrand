@@ -15,7 +15,8 @@ export type NotifyKind =
   | 'trade.confirmRequested'
   | 'trade.completed'
   | 'trade.cancelled'
-  | 'chat.message';
+  | 'chat.message'
+  | 'trip.comment';
 
 export interface NotifyEvent {
   to: string;
@@ -24,6 +25,8 @@ export interface NotifyEvent {
   body: string;
   requestId: string;
   tradeId?: string;
+  /** '가는 김에' 글 id (trip.comment) */
+  tripId?: string;
 }
 
 type Doc = Record<string, unknown> | undefined;

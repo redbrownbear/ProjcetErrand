@@ -38,6 +38,7 @@ export async function deliver(
         body: ev.body,
         requestId: ev.requestId,
         tradeId: ev.tradeId ?? null,
+        tripId: ev.tripId ?? null,
         createdAt: Timestamp.now(),
         readAt: null,
       });
@@ -53,7 +54,7 @@ export async function deliver(
     tokens,
     title: ev.title,
     body: ev.body,
-    data: { kind: ev.kind, requestId: ev.requestId, ...(ev.tradeId ? { tradeId: ev.tradeId } : {}) },
+    data: { kind: ev.kind, requestId: ev.requestId, ...(ev.tradeId ? { tradeId: ev.tradeId } : {}), ...(ev.tripId ? { tripId: ev.tripId } : {}) },
   });
   await Promise.all(bad.map((t) => user.collection('fcmTokens').doc(t).delete()));
   return true;

@@ -147,6 +147,31 @@ service cloud.firestore {
       }
     }
 
+    // ── 가는 김에 ─────────────────────────────────────────────────────────
+    // 글은 앱이 쓴다(화이트리스트). 댓글 수·댓글은 서버 함수 addTripComment만 쓴다(연락처 가리기·글쓴이 알림)
+    match /tripPosts/{postId} {
+      allow read: if true;
+      allow create: if signedIn()
+                    && incoming().ownerUid == request.auth.uid
+                    && incoming().createdAt == request.time
+                    && incoming().commentCount == 0
+                    && onlyKeys(['ownerUid', 'author', 'area', 'type', 'cc', 'where', 'title', 'when', 'quote', 'commentCount', 'createdAt'])
+                    && incoming().type in ['going', 'asking']
+                    && str(incoming().title, 1, 60)
+                    && str(incoming().quote, 1, 300)
+                    && str(incoming().author, 1, 20)
+                    && optStr(incoming(), 'area', 40)
+                    && optStr(incoming(), 'where', 40)
+                    && optStr(incoming(), 'when', 40)
+                    && optStr(incoming(), 'cc', 4);
+      allow update: if false;
+      allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+
+      match /comments/{commentId} {
+        allow read: if true;
+      }
+    }
+
     // ── 신고 ──────────────────────────────────────────────────────────────
     match /reports/{reportId} {
       allow create: if signedIn()

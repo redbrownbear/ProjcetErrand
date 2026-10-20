@@ -39,10 +39,7 @@ class _TripFeedScreenState extends State<TripFeedScreen> {
               for (final t in list)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
-                  child: TripCard(
-                    t: t,
-                    onCta: () => t.going ? nav.openAskForm() : nav.flash('도와주기 의사를 전했어요 · ${t.author} 님이 확인하면 채팅이 열려요'),
-                  ),
+                  child: TripCard(t: t, mine: nav.store.isMyTrip(t), onOpen: () => nav.openTrip(context, t.id)),
                 ),
             ],
           ),

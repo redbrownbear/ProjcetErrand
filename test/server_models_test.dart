@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gyeomsa/features/chat/models/chat_message.dart';
 import 'package:gyeomsa/features/errand/models/application.dart';
 import 'package:gyeomsa/features/profile/models/app_notice.dart';
+import 'package:gyeomsa/features/trip/models/trip_post.dart';
 
 /// 서버 문서 → 앱 모델 변환 (W3·W4). 서버가 쓰는 필드 이름이 바뀌면 여기서 먼저 깨진다.
 void main() {
@@ -64,4 +65,47 @@ void main() {
     expect(read.read, isTrue);
     expect(AppNotice.fromDoc('n3', {'body': '제목 없음'}), isNull);
   });
+
+group('가는 김에 글', () {
+  test('서버 글: 내 글 여부는 계정으로 판단한다(같은 기기의 다른 계정에겐 남의 글)', () {
+    final t = TripPost.fromDoc('1760000000000', {
+      'ownerUid': 'a',
+      'author': '민지',
+      'type': 'going',
+      'title': '오사카 가요',
+      'quote': '필요한 거 있으면 댓글 주세요',
+      'commentCount': 2,
+      'createdAt': Timestamp.fromDate(DateTime(2026, 10, 20, 10)),
+    })!;
+    expect(t.server, isTrue);
+    expect(t.isMine('a'), isTrue);
+    expect(t.isMine('b'), isFalse);
+    expect(t.isMine(null), isFalse);
+    expect(t.comments, 2);
+    expect(t.agoAt(DateTime(2026, 10, 20, 10, 5)), '5분 전');
+    expect(t.agoAt(DateTime(2026, 10, 20, 13)), '3시간 전');
+  });
+
+  test('필수 값이 없으면 버린다', () {
+    expect(TripPost.fromDoc('abc', {'title': 'x', 'quote': 'y'}), isNull);
+    expect(TripPost.fromDoc('1', {'quote': 'y'}), isNull);
+  });
+
+  test('제목 제안 — 장소만 쓰면 자연스럽게, 비우면 빈칸', () {
+    expect(TripPost.suggestTitle('going', ' 오사카 '), '오사카 가요');
+    expect(TripPost.suggestTitle('asking', '성수동'), '성수동 가시는 분 있나요?');
+    expect(TripPost.suggestTitle('going', ''), '');
+  });
+
+  test('서버 문서는 규칙의 필드 목록 안에서만 쓴다', () {
+    const t = TripPost(id: 1, type: 'going', author: '아주아주아주아주아주아주긴닉네임입니다', area: '반포동', title: 't', when: '', quote: 'q');
+    final m = t.toDoc('a');
+    expect(
+      m.keys.toSet(),
+      {'ownerUid', 'author', 'area', 'type', 'cc', 'where', 'title', 'when', 'quote', 'commentCount', 'createdAt'},
+    );
+    expect((m['author'] as String).length, lessThanOrEqualTo(20));
+    expect(m['commentCount'], 0);
+  });
+});
 }

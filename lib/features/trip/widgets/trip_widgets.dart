@@ -117,7 +117,7 @@ class TripFeedSection extends StatelessWidget {
               ),
             ),
             for (final t in nav.store.trips.take(take)) ...[
-              TripCard(t: t, onCta: () => t.going ? nav.openAskForm() : nav.flash('도와주기 의사를 전했어요 · ${t.author} 님이 확인하면 채팅이 열려요')),
+              TripCard(t: t, mine: nav.store.isMyTrip(t), onOpen: () => nav.openTrip(context, t.id)),
               const SizedBox(height: 8),
             ],
           ],
@@ -127,14 +127,16 @@ class TripFeedSection extends StatelessWidget {
   }
 }
 
+/// 글 한 장. 누르면 상세(댓글)로 간다. 남의 글엔 '댓글로 부탁하기' · '댓글로 도와주기'
 class TripCard extends StatelessWidget {
   final TripPost t;
-  final VoidCallback onCta;
-  const TripCard({super.key, required this.t, required this.onCta});
+  final bool mine;
+  final VoidCallback onOpen;
+  const TripCard({super.key, required this.t, required this.mine, required this.onOpen});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return Tap(onTap: onOpen, radius: 18, child: Container(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
       decoration: BoxDecoration(
         color: AppColors.card,
@@ -148,9 +150,16 @@ class TripCard extends StatelessWidget {
             children: [
               Avatar(t.author),
               const SizedBox(width: 8),
-              Text(t.mine ? '나' : t.author, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+              Text(mine ? '${t.author} (나)' : t.author, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
               const SizedBox(width: 4),
-              Text('${t.area} · ${t.ago}', style: const TextStyle(fontSize: 12, color: AppColors.sub)),
+              Flexible(
+                child: Text(
+                  [if (t.area.isNotEmpty) t.area, t.agoAt(DateTime.now()), if (!t.server && !t.mine) '예시'].join(' · '),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12, color: AppColors.sub),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 10),
@@ -201,11 +210,11 @@ class TripCard extends StatelessWidget {
               const SizedBox(width: 4),
               Text('댓글 ${t.comments}', style: const TextStyle(fontSize: 12.5, color: AppColors.sub)),
               const Spacer(),
-              if (!t.mine) LineButton(label: t.going ? '부탁하기' : '도와주기', onTap: onCta),
+              if (!mine) LineButton(label: t.going ? '댓글로 부탁하기' : '댓글로 도와주기', onTap: onOpen),
             ],
           ),
         ],
       ),
-    );
+    ));
   }
 }

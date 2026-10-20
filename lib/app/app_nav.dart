@@ -16,6 +16,7 @@ import '../features/proposal/screens/propose_form.dart';
 import '../features/proposal/screens/proposal_list_screen.dart';
 import '../features/proposal/screens/world_map_screen.dart';
 import '../features/proposal/widgets/proposal_sheet.dart';
+import '../features/trip/screens/trip_detail_screen.dart';
 import '../features/trip/screens/trip_feed_screen.dart';
 import '../features/trip/screens/trip_form.dart';
 import '../features/trip/widgets/dart_sheet.dart';
@@ -146,6 +147,9 @@ class AppNav {
 
   /// 가는 김에 — 전체보기
   void openTripFeed(BuildContext context) => _push(context, TripFeedScreen(nav: this));
+
+  /// 가는 김에 글 하나 — 댓글로 부탁·도움을 남긴다
+  void openTrip(BuildContext context, int id) => _push(context, TripDetailScreen(nav: this, id: id));
 
   void openTripForm(BuildContext context) =>
       showSheet(context, (_) => TripForm(author: nickname(), area: area(), onSubmit: store.addTrip));

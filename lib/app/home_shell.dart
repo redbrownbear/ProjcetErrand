@@ -93,6 +93,8 @@ class _HomeShellState extends State<HomeShell> {
     session.start();
     store.toast = session.flash;
     store.gate = requireLogin;
+    store.uid = () => session.myUid;
+    store.watchTrips();
     store.addListener(_onSessionChanged);
     Future.delayed(const Duration(milliseconds: 1600), () {
       if (mounted && splash) setState(() => splash = false);
@@ -285,7 +287,12 @@ class _HomeShellState extends State<HomeShell> {
                 ),
                 onTap: () {
                   Navigator.pop(ctx);
-                  goActivity();
+                  final trip = int.tryParse(n.tripId ?? '');
+                  if (trip != null) {
+                    social.openTrip(context, trip);
+                  } else {
+                    goActivity();
+                  }
                 },
               ),
             if (notices.isNotEmpty) const Divider(height: 20),
