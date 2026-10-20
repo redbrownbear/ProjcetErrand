@@ -29,5 +29,28 @@ jobs:
           awk -F'|' '$1=="ERROR"||$1=="WARNING" { gsub(/^.*\/lib\//,"lib/",$4); gsub(/^.*\/test\//,"test/",$4); printf "::error file=%s,line=%s,col=%s::%s %s\n",$4,$5,$6,$3,$8 }' analyze.txt
           cat analyze.txt
           exit $code
+      # 실패한 테스트 이름·오류를 주석으로 남긴다(로그를 못 여는 곳에서도 보이게)
       - name: flutter test
-        run: flutter test --reporter github
+        run: |
+          set +e
+          flutter test --reporter json > test.jsonl
+          code=$?
+          python3 - <<'PY'
+          import json
+          names, errs = {}, {}
+          for line in open('test.jsonl', encoding='utf-8'):
+              line = line.strip()
+              if not line.startswith('{'):
+                  continue
+              e = json.loads(line)
+              t = e.get('type')
+              if t == 'testStart':
+                  names[e['test']['id']] = (e['test']['name'], e['test'].get('url') or '')
+              elif t == 'error':
+                  errs.setdefault(e['testID'], []).append(e.get('error', ''))
+              elif t == 'testDone' and e.get('result') != 'success' and not e.get('hidden'):
+                  name, url = names.get(e['testID'], ('?', ''))
+                  msg = ' | '.join(errs.get(e['testID'], []))[:900].replace('\n', ' ').replace('%', '%25')
+                  print(f"::error title=test failed::{name} — {msg}")
+          PY
+          exit $code
