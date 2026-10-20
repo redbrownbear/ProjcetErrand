@@ -10,7 +10,7 @@ import { applicationEvents, NotifyEvent, tradeEvents } from './events';
 
 const INVALID = new Set(['messaging/registration-token-not-registered', 'messaging/invalid-registration-token']);
 
-const fcm: PushSender = async ({ tokens, title, body, data }) => {
+export const fcm: PushSender = async ({ tokens, title, body, data }) => {
   const res = await getMessaging().sendEachForMulticast({
     tokens,
     notification: { title, body },

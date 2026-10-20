@@ -24,6 +24,10 @@ class ActivityView extends StatefulWidget {
   final void Function(Application) onAccept;
   final void Function(Application) onReject;
 
+  /// 거래가 시작된 부탁의 채팅 열기 (부탁 id)
+  final void Function(int requestId)? openChat;
+  final bool Function(int requestId)? canChat;
+
   /// 전체화면으로 띄울 때는 바깥 [ScreenFrame]이 제목을 그리므로 false를 준다.
   final bool showHeader;
   const ActivityView({
@@ -35,6 +39,8 @@ class ActivityView extends StatefulWidget {
     this.received = const [],
     this.onAccept = _noop,
     this.onReject = _noop,
+    this.openChat,
+    this.canChat,
     this.showHeader = true,
   });
   static void _noop(Application _) {}
@@ -318,6 +324,8 @@ class _ActivityViewState extends State<ActivityView> {
                 ),
               ),
             ),
+          if (widget.openChat != null && (widget.canChat?.call(it.id) ?? false))
+            _link('상대방과 채팅하기', () => widget.openChat!(it.id)),
           if (requester && trade.status == 'confirmation') _link('보완 요청 · 진행 중으로 돌아가기', () => widget.updateTrade(it.id, 'revise')),
           if (trade.canCancel)
             cancelId == it.id

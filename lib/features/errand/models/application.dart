@@ -66,6 +66,13 @@ class ServerTrade {
   final String status; // matched | working | confirmation | completed | cancelled
   final DateTime updatedAt;
 
+  /// 마지막 채팅 한 줄(서버가 메시지를 받을 때 남긴다)
+  final String? lastMessage;
+  final DateTime? lastMessageAt;
+
+  /// 사람별 안 읽은 메시지 수 (uid → 개수)
+  final Map<String, int> unread;
+
   const ServerTrade({
     required this.id,
     required this.requestId,
@@ -75,12 +82,19 @@ class ServerTrade {
     required this.price,
     required this.status,
     required this.updatedAt,
+    this.lastMessage,
+    this.lastMessageAt,
+    this.unread = const {},
   });
+
+  bool get isOpenForChat => status != 'cancelled';
+  int unreadFor(String uid) => unread[uid] ?? 0;
 
   static ServerTrade? fromDoc(String id, Map<String, dynamic> m) {
     final status = m['status'], rid = m['requestId'];
     if (status is! String || rid is! String) return null;
     final at = m['updatedAt'];
+    final last = m['lastMessage'];
     return ServerTrade(
       id: id,
       requestId: rid,
@@ -90,6 +104,13 @@ class ServerTrade {
       price: m['price'] is int ? m['price'] as int : 0,
       status: status,
       updatedAt: at is Timestamp ? at.toDate() : DateTime.now(),
+      lastMessage: last is Map && last['text'] is String ? last['text'] as String : null,
+      lastMessageAt: last is Map && last['at'] is Timestamp ? (last['at'] as Timestamp).toDate() : null,
+      unread: {
+        if (m['unread'] is Map)
+          for (final e in (m['unread'] as Map).entries)
+            if (e.value is int) '${e.key}': e.value as int,
+      },
     );
   }
 }

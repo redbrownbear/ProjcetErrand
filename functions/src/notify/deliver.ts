@@ -18,22 +18,33 @@ export interface PushMessage {
 /** 실패한 토큰 목록을 돌려준다(앱 삭제·토큰 만료). 테스트에서는 가짜를 넣는다. */
 export type PushSender = (msg: PushMessage) => Promise<string[]>;
 
-export async function deliver(db: Firestore, send: PushSender, ev: NotifyEvent, eventId: string): Promise<boolean> {
+/**
+ * [opts.store]가 false면 알림함에 남기지 않고 푸시만 보낸다(채팅). 이때는 중복 방지가 없으니 호출하는 쪽이 한 번만 부른다.
+ */
+export async function deliver(
+  db: Firestore,
+  send: PushSender,
+  ev: NotifyEvent,
+  eventId: string,
+  opts: { store?: boolean } = {},
+): Promise<boolean> {
   if (!ev.to) return false;
   const user = db.collection('users').doc(ev.to);
-  try {
-    await user.collection('notifications').doc(eventId).create({
-      kind: ev.kind,
-      title: ev.title,
-      body: ev.body,
-      requestId: ev.requestId,
-      tradeId: ev.tradeId ?? null,
-      createdAt: Timestamp.now(),
-      readAt: null,
-    });
-  } catch (e) {
-    if ((e as { code?: number }).code === 6) return false; // ALREADY_EXISTS — 이미 보낸 알림
-    throw e;
+  if (opts.store !== false) {
+    try {
+      await user.collection('notifications').doc(eventId).create({
+        kind: ev.kind,
+        title: ev.title,
+        body: ev.body,
+        requestId: ev.requestId,
+        tradeId: ev.tradeId ?? null,
+        createdAt: Timestamp.now(),
+        readAt: null,
+      });
+    } catch (e) {
+      if ((e as { code?: number }).code === 6) return false; // ALREADY_EXISTS — 이미 보낸 알림
+      throw e;
+    }
   }
 
   const tokens = (await user.collection('fcmTokens').get()).docs.map((d) => d.id);

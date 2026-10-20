@@ -12,7 +12,9 @@ import '../features/benefits/models/point_wallet.dart';
 import '../features/benefits/models/reward_product.dart';
 import '../features/benefits/screens/attendance_screen.dart';
 import '../features/benefits/screens/side_job_view.dart';
+import '../features/chat/screens/chat_screen.dart';
 import '../features/chat/screens/chat_view.dart';
+import '../features/errand/models/application.dart';
 import '../features/community/screens/community_view.dart';
 import '../features/dayjob/screens/job_post_screen.dart';
 import '../features/errand/models/new_request_data.dart';
@@ -316,6 +318,21 @@ class _HomeShellState extends State<HomeShell> {
   /// 탭이 아닌 화면에서도 포인트·관심 목록이 바로 반영되게 하기 위함이다.
   void _pushLive(Widget Function() build) => _push(ListenableBuilder(listenable: session, builder: (_, _) => build()));
 
+  /// 거래 한 건의 채팅방
+  void openChat(ServerTrade t) {
+    final uid = session.myUid;
+    if (uid == null) return;
+    _push(
+      ChatScreen(
+        tradeId: t.id,
+        title: t.title,
+        myUid: uid,
+        peerLabel: t.requesterUid == uid ? '수행자와 대화' : '요청자와 대화',
+        closed: !t.isOpenForChat,
+      ),
+    );
+  }
+
   /// 진행 중인 부탁. 탭이 아니라 홈 배너·채팅에서 여는 전체화면이다.
   void goActivity() => _pushLive(
     () => ScreenFrame(
@@ -329,6 +346,11 @@ class _HomeShellState extends State<HomeShell> {
         received: session.received,
         onAccept: session.acceptApplication,
         onReject: session.rejectApplication,
+        openChat: (requestId) {
+          final t = session.tradeFor(requestId);
+          if (t != null) openChat(t);
+        },
+        canChat: (requestId) => session.tradeFor(requestId)?.isOpenForChat ?? false,
         openDetail: (it) => actions.open(context, it),
         showHeader: false,
       ),
@@ -447,6 +469,9 @@ class _HomeShellState extends State<HomeShell> {
       ShellTab.chat => ChatView(
         onGoActivity: goActivity,
         onBrowse: () => _openFilteredList('지금 내 주변 부탁', (i) => i.mode == 'ask'),
+        threads: s.chatThreads,
+        myUid: s.myUid,
+        onOpen: openChat,
       ),
       ShellTab.me => MeView(
         profile: s.profile,

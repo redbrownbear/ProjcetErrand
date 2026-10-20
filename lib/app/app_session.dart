@@ -677,6 +677,39 @@ class AppSession extends ChangeNotifier {
     _loadRelated(next.keys);
   }
 
+  // ── 채팅 (결정 5: 최소 채팅) ────────────────────────────────────────────
+
+  /// 로그인한 내 uid (서버 연결 상태일 때)
+  String? get myUid => _serverMode ? AuthService().currentUser?.uid : null;
+
+  /// 대화할 수 있는 거래(취소 제외). 최근 메시지·변경 순.
+  List<ServerTrade> get chatThreads {
+    final seen = <String>{};
+    final list = [
+      for (final t in [..._requesterTrades, ..._helperTrades])
+        if (t.isOpenForChat && seen.add(t.id)) t,
+    ];
+    DateTime at(ServerTrade t) => t.lastMessageAt ?? t.updatedAt;
+    list.sort((a, b) => at(b).compareTo(at(a)));
+    return list;
+  }
+
+  int get unreadChats {
+    final uid = myUid;
+    if (uid == null) return 0;
+    return chatThreads.fold(0, (sum, t) => sum + t.unreadFor(uid));
+  }
+
+  /// 부탁 id로 거래 찾기 (진행 중인 부탁 → 채팅)
+  ServerTrade? tradeFor(int requestId) {
+    final id = _tradeIds[requestId];
+    if (id == null) return null;
+    for (final t in [..._requesterTrades, ..._helperTrades]) {
+      if (t.id == id) return t;
+    }
+    return null;
+  }
+
   // ── 알림함 · 신고 · 차단 (W4·W5) ────────────────────────────────────────
 
   int get unreadNotices => notices.where((n) => !n.read).length;

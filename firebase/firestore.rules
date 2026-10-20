@@ -138,7 +138,13 @@ service cloud.firestore {
     match /trades/{tradeId} {
       allow read: if signedIn()
                   && (resource.data.requesterUid == request.auth.uid || resource.data.helperUid == request.auth.uid);
-      // 채팅(W3 다음 단계, 결정 5: 최소 채팅)은 trades/{id}/messages 에 둔다
+
+      // 최소 채팅(결정 5): 거래 당사자만 읽는다. 쓰기는 서버 함수 sendMessage만(연락처 가리기를 거친다)
+      match /messages/{messageId} {
+        allow read: if signedIn()
+                    && request.auth.uid in [get(/databases/$(database)/documents/trades/$(tradeId)).data.requesterUid,
+                                            get(/databases/$(database)/documents/trades/$(tradeId)).data.helperUid];
+      }
     }
 
     // ── 신고 ──────────────────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gyeomsa/features/chat/models/chat_message.dart';
 import 'package:gyeomsa/features/errand/models/application.dart';
 import 'package:gyeomsa/features/profile/models/app_notice.dart';
 
@@ -33,6 +34,27 @@ void main() {
     expect(t.status, 'working');
     expect(t.price, 3000);
     expect(ServerTrade.fromDoc('t2', {'status': 'working'}), isNull);
+  });
+
+  test('거래 문서의 채팅 요약: 마지막 메시지·사람별 안 읽은 수', () {
+    final t = ServerTrade.fromDoc('t1', {
+      'status': 'matched',
+      'requestId': '1',
+      'lastMessage': {'text': '도착했어요', 'at': Timestamp.fromDate(DateTime(2026, 10, 20, 10)), 'by': 'h'},
+      'unread': {'r': 2, 'h': 0, 'x': 'bad'},
+    })!;
+    expect(t.lastMessage, '도착했어요');
+    expect(t.lastMessageAt, DateTime(2026, 10, 20, 10));
+    expect(t.unreadFor('r'), 2);
+    expect(t.unreadFor('nobody'), 0);
+    expect(t.isOpenForChat, isTrue);
+    expect(ServerTrade.fromDoc('t2', {'status': 'cancelled', 'requestId': '1'})!.isOpenForChat, isFalse);
+  });
+
+  test('채팅 메시지: 보낸 사람·내용이 없으면 버린다', () {
+    final m = ChatMessage.fromDoc('m1', {'senderUid': 'h', 'text': '[전화번호 가림]로 연락', 'masked': true})!;
+    expect(m.masked, isTrue);
+    expect(ChatMessage.fromDoc('m2', {'text': 'x'}), isNull);
   });
 
   test('알림: readAt이 있으면 읽음', () {

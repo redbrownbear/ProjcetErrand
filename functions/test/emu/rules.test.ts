@@ -72,6 +72,7 @@ beforeEach(async () => {
     await setDoc(doc(f, 'requests', RID, 'private', 'detail'), { place: '역삼동 GS25', lat: 37.5, lng: 127.03 });
     await setDoc(doc(f, 'requests', RID, 'applications', HELPER), { helperUid: HELPER, requesterUid: OWNER, status: 'pending' });
     await setDoc(doc(f, 'trades', 't1'), { requestId: RID, requesterUid: OWNER, helperUid: HELPER, status: 'matched' });
+    await setDoc(doc(f, 'trades', 't1', 'messages', 'm1'), { senderUid: HELPER, text: '도착했어요' });
     await setDoc(doc(f, 'users', OWNER), { nickname: '요청자', points: 100 });
   });
 });
@@ -148,6 +149,13 @@ describe('지원서 · 거래 — 서버만 쓴다', () => {
     await assertSucceeds(getDocs(query(collectionGroup(db(HELPER), 'applications'), where('helperUid', '==', HELPER))));
     await assertSucceeds(getDocs(query(collectionGroup(db(OWNER), 'applications'), where('requesterUid', '==', OWNER))));
     await assertFails(getDocs(query(collectionGroup(db(STRANGER), 'applications'), where('requesterUid', '==', OWNER))));
+  });
+
+  test('채팅은 당사자만 읽고, 앱은 직접 쓰지 못한다(서버가 연락처를 가린 뒤 쓴다)', async () => {
+    await assertSucceeds(getDoc(doc(db(OWNER), 'trades', 't1', 'messages', 'm1')));
+    await assertSucceeds(getDoc(doc(db(HELPER), 'trades', 't1', 'messages', 'm1')));
+    await assertFails(getDoc(doc(db(STRANGER), 'trades', 't1', 'messages', 'm1')));
+    await assertFails(setDoc(doc(db(HELPER), 'trades', 't1', 'messages', 'm2'), { senderUid: HELPER, text: '010-1234-5678' }));
   });
 
   test('거래는 당사자만 읽고, 아무도 직접 쓰지 못한다', async () => {
