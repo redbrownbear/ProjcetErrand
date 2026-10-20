@@ -139,7 +139,7 @@
 
 ## 기록
 
-### 2026-10-20 · 미커밋 · Claude (브랜치 정리)
+### 2026-10-20 · d17f41d · Claude (브랜치 정리)
 - 변경: 작업 브랜치(feat/w1-w2 ~ feat/chat)를 모두 main에 합침(fast-forward). 앞으로 main에 바로 커밋 — `CLAUDE.md`에 규칙 추가
 - 제거: PR #2·#3 닫음(내용은 main에 들어감). 원격 feat 브랜치 3개는 GitHub에서 지우면 됨
 
