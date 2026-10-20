@@ -24,7 +24,7 @@ jobs:
       - name: flutter analyze
         run: |
           set +e
-          flutter analyze --no-fatal-infos --format=machine > analyze.txt 2>&1
+          dart analyze --format=machine > analyze.txt 2>&1
           code=$?
           awk -F'|' '$1=="ERROR"||$1=="WARNING" { gsub(/^.*\/lib\//,"lib/",$4); gsub(/^.*\/test\//,"test/",$4); printf "::error file=%s,line=%s,col=%s::%s %s\n",$4,$5,$6,$3,$8 }' analyze.txt
           cat analyze.txt
