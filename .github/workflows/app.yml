@@ -20,5 +20,14 @@ jobs:
           cache: true
       - run: flutter --version
       - run: flutter pub get
-      - run: flutter analyze --no-fatal-infos
-      - run: flutter test
+      # 오류·경고를 주석(annotation)으로도 남긴다 — 로그를 못 여는 곳에서도 어디가 틀렸는지 보이게
+      - name: flutter analyze
+        run: |
+          set +e
+          flutter analyze --no-fatal-infos --format=machine > analyze.txt 2>&1
+          code=$?
+          awk -F'|' '$1=="ERROR"||$1=="WARNING" { gsub(/^.*\/lib\//,"lib/",$4); gsub(/^.*\/test\//,"test/",$4); printf "::error file=%s,line=%s,col=%s::%s %s\n",$4,$5,$6,$3,$8 }' analyze.txt
+          cat analyze.txt
+          exit $code
+      - name: flutter test
+        run: flutter test --reporter github
