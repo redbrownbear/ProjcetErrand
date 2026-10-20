@@ -173,11 +173,25 @@ class TaskItem {
   /// 작성자 이름('나')으로는 가리지 않는다. 프로필을 읽기 전에 올린 글은 이름이 '나'로
   /// 서버에 올라가서, 그 글을 받은 **다른 사람 화면에서도** 내 글로 보였다.
   /// 이 기기에 보관된 옛 글은 [fromJson]이 [mine]을 붙여 주므로 이름 없이도 알아본다.
-  bool get isMine => mine || (ownerUid != null && currentUid != null && ownerUid == currentUid);
+  ///
+  /// 주인 uid가 있고 지금 로그인한 uid도 알면 **uid만 본다**. 이 기기 표시([mine])는 같은 폰에서 다른 계정으로
+  /// 바꿨을 때 앞사람 글을 내 글로 보이게 했다. 표시는 uid를 모를 때(로그아웃·오프라인 실행)만 쓴다.
+  bool get isMine {
+    final me = currentUid;
+    if (ownerUid != null && me != null) return ownerUid == me;
+    return mine;
+  }
 
   /// 마감 시각이 지났는지. 마감 시각과 정확히 같은 순간부터 마감으로 본다.
   bool isExpiredAt(DateTime now) => deadline != null && !deadline!.isAfter(now);
   bool get isExpired => isExpiredAt(DateTime.now());
+
+  /// [within] 안에 마감되는가(이미 지난 건 제외). '곧 마감' 조건 — 소요시간 대신 마감 시각으로 고른다
+  bool dueWithin(Duration within, [DateTime? now]) {
+    final t = now ?? DateTime.now();
+    final d = deadline;
+    return d != null && d.isAfter(t) && !d.isAfter(t.add(within));
+  }
 
   /// '가는 김에 · 제가 가요' — 글쓴이가 가는 길에 부탁을 받아 준다(보는 사람은 '부탁할게요')
   bool get isGoing => mode == 'going';

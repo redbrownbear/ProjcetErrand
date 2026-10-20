@@ -13,6 +13,7 @@ import '../widgets/going_ask_sheet.dart';
 import '../widgets/offer_sheet.dart';
 import '../widgets/report_sheet.dart';
 import '../widgets/request_facts.dart';
+import '../../../core/widgets/keyboard_safe_area.dart';
 
 class DetailPage extends StatefulWidget {
   final TaskItem it;
@@ -73,7 +74,7 @@ class _DetailPageState extends State<DetailPage> {
         children: [
           // 본문만 안전 영역 안에 둔다. 가격 제안 시트는 화면 전체를 덮는 딤이라
           // 여기 같이 넣으면 상태바 자리만 덮이지 않아 어색해진다 ([OfferSheet] 참고).
-          SafeArea(
+          KeyboardSafeArea(
             child: Column(
               children: [
                 _topBar(it, sea: sea, paid: paid),
@@ -258,7 +259,6 @@ class _DetailPageState extends State<DetailPage> {
       children: [
         if (it.isGoing) Text('${it.cc != null ? (it.country ?? '해외') : (it.region ?? it.place ?? '')} 가는 길', style: style),
         if (!sea && !it.isGoing) Text('${distLabel(it)} · ${it.region ?? ''}', style: style),
-        if (!sea && !it.isGoing && it.mins > 0) Text('⏱ 약 ${it.mins}분', style: style),
         if (sea) Text('${it.country ?? ''}${(it.place != null && it.place!.isNotEmpty) ? ' · ${it.place}' : ''}', style: style),
       ],
     );

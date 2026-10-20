@@ -120,7 +120,7 @@ class _PickCard extends StatelessWidget {
                   style: const TextStyle(fontSize: 18, fontWeight: AppType.w700, color: AppColors.ink, letterSpacing: -0.54),
                 ),
                 const Spacer(),
-                MetaChip(icon: Icons.schedule_rounded, label: '약 ${it.mins > 0 ? it.mins : 10}분'),
+                MetaChip(icon: Icons.schedule_rounded, label: it.deadline == null ? '마감 협의' : '${dateTimeLabel(it.deadline!)}까지'),
                 const SizedBox(width: 6),
                 MetaChip(icon: Icons.place_outlined, label: distLabel(it)),
               ],

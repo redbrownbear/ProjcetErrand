@@ -11,7 +11,7 @@ import '../models/task_item.dart';
 /// 부탁 한 줄 (시안 v33 `.row`).
 ///
 /// 카드가 아니라 **1px 밑줄로 구분되는 행**이다. 왼쪽에 종류 아이콘 타일(40px),
-/// 가운데 제목과 '장소 · 거리 · 약 N분', 오른쪽에 상태 배지와 금액이 세로로 붙는다.
+/// 가운데 제목과 '장소 · 거리', 그 아래 마감 일시, 오른쪽에 상태 배지와 금액이 세로로 붙는다.
 ///
 /// - [rich] : 신뢰 지표(별점·거래 수·본인인증) 한 줄을 덧붙인다.
 /// - [rank] : 순위 목록에서 앞에 번호를 붙인다.
@@ -41,13 +41,12 @@ class TaskCard extends StatelessWidget {
     final abroad = sea || (going && it.cc != null);
     final paid = it.mode != 'together';
 
-    // 위치 · 거리 · 시간. 예시 데이터는 목록에서부터 예시라고 밝힌다.
-    // 가는 김에(제가 가요)는 '가는 곳'이 위치다. 거리·소요시간은 받는 부탁마다 달라 적지 않는다.
+    // 위치 · 거리. 예시 데이터는 목록에서부터 예시라고 밝힌다. 시간은 아래 줄의 마감 일시로 보여 준다(소요시간은 받지 않는다).
+    // 가는 김에(제가 가요)는 '가는 곳'이 위치다.
     final meta = [
       if (abroad) (it.country ?? '해외') else (it.place ?? it.region ?? ''),
       if (going) '가는 김에 부탁 받아요',
       if (!abroad && !going) distLabel(it),
-      if (!abroad && !going) '약 ${it.mins > 0 ? it.mins : 10}분',
       if (it.sample) '예시',
     ].where((s) => s.isNotEmpty).join(' · ');
 

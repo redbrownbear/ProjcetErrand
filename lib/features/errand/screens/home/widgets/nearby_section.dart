@@ -124,7 +124,7 @@ class _NearbySectionState extends State<NearbySection> {
           ),
           const SizedBox(width: 6),
           ToggleBox(
-            label: '30분 이내',
+            label: NearbyQuery.soonLabel,
             active: _q.shortOnly,
             onTap: () => _set(_q.copyWith(shortOnly: !_q.shortOnly)),
           ),

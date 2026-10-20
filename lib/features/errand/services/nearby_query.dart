@@ -13,8 +13,12 @@ class NearbyQuery {
   final double radius;
   final String sort;
 
-  /// 30분 안에 끝나는 부탁만
+  /// 곧 마감되는 부탁만 ([soonWindow] 안). 예전엔 '30분 안에 끝나는(소요시간)' 조건이었는데,
+  /// 글쓰기에서 소요시간을 빼고 마감 일시만 받기로 해서 마감 기준으로 바꿨다.
   final bool shortOnly;
+
+  static const soonWindow = Duration(hours: 3);
+  static const soonLabel = '3시간 내 마감';
   final bool showMap;
 
   const NearbyQuery({
@@ -26,12 +30,11 @@ class NearbyQuery {
     this.showMap = false,
   });
 
-  static const sortLabels = {'dist': '가까운순', 'price': '금액 높은순', 'time': '짧은순', 'deadline': '마감임박', 'new': '최신순'};
+  static const sortLabels = {'dist': '가까운순', 'price': '금액 높은순', 'time': '마감임박', 'deadline': '마감임박', 'new': '최신순'};
 
   static const sortOptions = [
     ('dist', '가까운순'),
     ('price', '금액 높은순'),
-    ('time', '소요시간 짧은순'),
     ('deadline', '마감 임박순'),
     ('new', '최신순'),
   ];
@@ -62,13 +65,13 @@ class NearbyQuery {
 
   static bool inScope(TaskItem i, String scope) => scope == '전국' || i.region == scope;
 
-  /// 거리를 뺀 공통 조건 (지역 · 마감 · 종류 · 30분)
+  /// 거리를 뺀 공통 조건 (지역 · 마감 · 종류 · 곧 마감)
   bool matches(TaskItem i, String scope) =>
       i.mode == 'ask' &&
       inScope(i, scope) &&
       !i.isExpired &&
       (cat == 'all' || i.cat == cat) &&
-      (!shortOnly || (i.mins > 0 && i.mins <= 30));
+      (!shortOnly || i.dueWithin(soonWindow));
 
   /// 화면에 뿌릴 목록 = 직접 올린 부탁(최신순) + 예시(반경·정렬 적용).
   ///
@@ -83,13 +86,14 @@ class NearbyQuery {
 
   int Function(TaskItem, TaskItem) get _comparator => switch (sort) {
     'price' => (a, b) => b.price - a.price,
-    'time' => (a, b) => a.mins.compareTo(b.mins),
-    'deadline' => _byDeadline,
+    'time' || 'deadline' => _byDeadline,
     'new' => (a, b) => b.id.compareTo(a.id),
     _ => (a, b) => a.distSort.compareTo(b.distSort),
   };
 
   /// 마감이 없는 부탁은 뒤로 보낸다
+  static int byDeadline(TaskItem a, TaskItem b) => _byDeadline(a, b);
+
   static int _byDeadline(TaskItem a, TaskItem b) {
     final x = a.deadline, y = b.deadline;
     if (x == null && y == null) return 0;

@@ -4,6 +4,7 @@ import '../../../../core/theme/colors.dart';
 import '../../models/new_request_data.dart';
 import 'form_steps.dart';
 import 'request_form.dart';
+import '../../../../core/widgets/keyboard_safe_area.dart';
 
 /// 부탁 쓰기. 세 단계(무엇을 → 언제 어디서 → 비용과 완료 조건)로 나눠 받는다.
 ///
@@ -96,7 +97,7 @@ class _PostRequestState extends State<PostRequest> {
   Widget build(BuildContext context) {
     return Material(
       color: AppColors.page,
-      child: SafeArea(
+      child: KeyboardSafeArea(
         child: Column(
           children: [
             _progressHeader(),

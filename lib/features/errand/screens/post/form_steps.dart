@@ -295,20 +295,6 @@ class WhereStep extends StatelessWidget {
   List<Widget> _localFields() => [
     const FieldLabel('만날 장소'),
     TextField(controller: form.place, onChanged: (_) => update(), decoration: formFieldDecoration('예: 역삼동 / 강남역 3번출구')),
-    const SizedBox(height: 18),
-    const FieldLabel('예상 소요시간'),
-    ValueStepper(
-      value: '약 ${form.mins}분',
-      onMinus: () => update(() => form.mins = (form.mins - 5).clamp(5, 999)),
-      onPlus: () => update(() => form.mins += 5),
-    ),
-    const SizedBox(height: 10),
-    QuickPicks<int>(
-      values: const [10, 20, 30, 60],
-      selected: form.mins,
-      label: (m) => '$m분',
-      onPick: (m) => update(() => form.mins = m),
-    ),
   ];
 
   Widget _pill(

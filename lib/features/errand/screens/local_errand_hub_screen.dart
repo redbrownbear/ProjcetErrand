@@ -21,7 +21,7 @@ import 'search_screen.dart';
 ///
 /// 예전에는 홈 한 화면에 카테고리 그리드·반경/정렬·목록이 모두 깔려 있어서
 /// 홈이 계속 길어졌다. 홈은 진입점만 남기고, 실제 탐색은 이 허브로 한 뎁스
-/// 내려왔다. 목록을 더 좁히는 일(카테고리·반경·정렬·30분)은 전부 여기서 한다.
+/// 내려왔다. 목록을 더 좁히는 일(카테고리·반경·정렬·곧 마감)은 전부 여기서 한다.
 class LocalErrandHubScreen extends StatefulWidget {
   final List<TaskItem> items;
   final String scope;
@@ -169,16 +169,16 @@ class _LocalErrandHubScreenState extends State<LocalErrandHubScreen> {
               ),
               HubRow(
                 icon: 'clock',
-                title: '30분 안에 끝나요',
-                sub: '짧게 다녀올 수 있는 부탁',
+                title: '곧 마감돼요',
+                sub: '3시간 안에 마감되는 부탁',
                 onTap: () => _goList(
                   const ScreenRoute(
                     name: 'list',
-                    title: '30분 안에 끝나요',
+                    title: '곧 마감돼요',
                     base: 'ask',
-                    maxMins: 30,
+                    dueWithinHours: 3,
                     sortable: true,
-                    defaultSort: 'time',
+                    defaultSort: 'deadline',
                   ),
                 ),
               ),
@@ -197,7 +197,7 @@ class _LocalErrandHubScreenState extends State<LocalErrandHubScreen> {
     );
   }
 
-  /// 반경 · 정렬 · 30분 · 지도. 홈의 '지금 내 주변 부탁'과 같은 조건이다.
+  /// 반경 · 정렬 · 곧 마감 · 지도. 홈의 '지금 내 주변 부탁'과 같은 조건이다.
   Widget _filterRow(List<TaskItem> list) {
     return SizedBox(
       height: 36,
@@ -223,7 +223,7 @@ class _LocalErrandHubScreenState extends State<LocalErrandHubScreen> {
           ),
           const SizedBox(width: 6),
           ToggleBox(
-            label: '30분 이내',
+            label: NearbyQuery.soonLabel,
             active: _query.shortOnly,
             onTap: () => _set(_query.copyWith(shortOnly: !_query.shortOnly)),
           ),

@@ -46,6 +46,14 @@ void main() {
       expect(owned.isMine, isTrue);
     });
 
+    test('같은 폰에서 다른 계정으로 바꾸면 앞사람 글은 표시가 있어도 내 글이 아니다', () {
+      TaskItem.currentUid = 'b';
+      const marked = TaskItem(id: 1, mode: 'ask', title: 't', who: '닉', desc: 'd', distM: null, ownerUid: 'a', mine: true);
+      expect(marked.isMine, isFalse);
+      TaskItem.currentUid = null; // 로그아웃·오프라인이면 표시를 믿는다
+      expect(marked.isMine, isTrue);
+    });
+
     test('이 기기에 보관된 옛 글은 표시가 없어도 내 글로 되살린다', () {
       final it = TaskItem.fromJson({'id': 1, 'mode': 'ask', 'title': 't', 'desc': 'd', 'who': '나'});
       expect(it!.isMine, isTrue);

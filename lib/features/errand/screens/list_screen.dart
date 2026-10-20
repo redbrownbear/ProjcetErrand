@@ -10,6 +10,7 @@ import '../navigation/errand_actions.dart';
 import '../widgets/task_card.dart';
 import 'map_screen.dart';
 import '../../../core/utils/stable_sort.dart';
+import '../services/nearby_query.dart';
 
 class ListScreen extends StatefulWidget {
   final ScreenRoute config;
@@ -48,11 +49,11 @@ class _ListScreenState extends State<ListScreen> {
     }).toList();
 
     if (config.onlyHot) base = base.where((i) => i.hot).toList();
-    if (config.maxMins != null) base = base.where((i) => i.mins > 0 && i.mins <= config.maxMins!).toList();
+    if (config.dueWithinHours != null) base = base.where((i) => i.dueWithin(Duration(hours: config.dueWithinHours!))).toList();
     if (config.catChips && cat != 'all') base = base.where((i) => i.cat == cat).toList();
     // 거리 미확인 부탁은 거리 조건에서 제외한다
     if (fdist != 'all') base = base.where((i) => i.distM != null && i.distM! <= double.parse(fdist)).toList();
-    if (ftime != 'all') base = base.where((i) => i.mins > 0 && i.mins <= int.parse(ftime)).toList();
+    if (ftime != 'all') base = base.where((i) => i.dueWithin(NearbyQuery.soonWindow)).toList();
     if (fprice != 'all') base = base.where((i) => i.price >= int.parse(fprice)).toList();
 
     // 급해요 우선은 추천순에서만. 사용자가 고른 정렬(가까운 순 등)을 덮어쓰지 않는다.
@@ -65,7 +66,8 @@ class _ListScreenState extends State<ListScreen> {
         case 'dist':
           return a.distSort.compareTo(b.distSort);
         case 'time':
-          return a.mins.compareTo(b.mins);
+        case 'deadline':
+          return NearbyQuery.byDeadline(a, b);
         case 'new':
           return b.id - a.id;
         case 'deals':
@@ -79,7 +81,7 @@ class _ListScreenState extends State<ListScreen> {
       ['recommend', '추천순'],
       ['dist', '가까운 순'],
       ['price', '높은 사례비'],
-      ['time', '짧은 시간순'],
+      ['deadline', '마감 임박순'],
       ['new', '최신순'],
     ];
 
@@ -208,9 +210,9 @@ class _ListScreenState extends State<ListScreen> {
                             Padding(
                               padding: const EdgeInsets.only(right: 6),
                               child: ChipWidget(
-                                label: '30분 이하',
-                                active: ftime == '30',
-                                onTap: () => setState(() => ftime = ftime == '30' ? 'all' : '30'),
+                                label: NearbyQuery.soonLabel,
+                                active: ftime == 'soon',
+                                onTap: () => setState(() => ftime = ftime == 'soon' ? 'all' : 'soon'),
                               ),
                             ),
                             Padding(

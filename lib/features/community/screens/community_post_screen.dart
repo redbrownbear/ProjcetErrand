@@ -6,6 +6,7 @@ import '../../../core/utils/formatters.dart';
 import '../../errand/models/comment.dart';
 import '../../errand/models/task_item.dart';
 import '../data/categories.dart';
+import '../../../core/widgets/keyboard_safe_area.dart';
 
 class CommunityPostScreen extends StatefulWidget {
   final TaskItem it;
@@ -54,7 +55,7 @@ class _CommunityPostScreenState extends State<CommunityPostScreen> {
     return Material(
       color: AppColors.page,
       // edge-to-edge(targetSdk 36)에서 헤더가 상태바에, 본문 끝이 제스처바에 깔린다.
-      child: SafeArea(
+      child: KeyboardSafeArea(
         child: Column(
           children: [
             Container(

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../theme/colors.dart';
 import 'app_icon.dart';
+import 'keyboard_safe_area.dart';
 
 /// v77 화면(제안 · 커뮤니티 · 럭키드로우 · 중고)이 쓰는 부품 중 [surface.dart]에 없는 것들.
 ///
@@ -437,7 +438,7 @@ class PageFrame extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: background,
-      child: SafeArea(
+      child: KeyboardSafeArea(
         child: Column(
           children: [
             SizedBox(

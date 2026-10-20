@@ -55,11 +55,11 @@ void main() {
       expect(list.first.id, mine.id);
     });
 
-    test('종류·30분 조건과 반경 문구', () {
+    test('종류·곧 마감 조건과 반경 문구', () {
       final list = const NearbyQuery(radius: 30, cat: 'buy', shortOnly: true).apply(items, scope);
       for (final it in list) {
         expect(it.cat, 'buy');
-        expect(it.mins, inInclusiveRange(1, 30));
+        expect(it.dueWithin(NearbyQuery.soonWindow), isTrue);
       }
       expect(const NearbyQuery(radius: 0.5).radiusLabel, '500m');
       expect(const NearbyQuery(radius: 3).radiusLabel, '3km');

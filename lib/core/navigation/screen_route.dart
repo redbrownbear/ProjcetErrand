@@ -15,7 +15,8 @@ class ScreenRoute {
   final bool catChips;
   final bool mapBtn;
   final bool onlyHot;
-  final int? maxMins;
+  /// 이 시간 안에 마감되는 부탁만 (소요시간 대신 마감 일시로 거른다)
+  final int? dueWithinHours;
   final String? defaultSort;
   // country 화면
   final String? cc;
@@ -36,7 +37,7 @@ class ScreenRoute {
     this.catChips = false,
     this.mapBtn = false,
     this.onlyHot = false,
-    this.maxMins,
+    this.dueWithinHours,
     this.defaultSort,
     this.cc,
     this.mission,

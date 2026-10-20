@@ -147,7 +147,7 @@ class RequestForm {
       place.text.trim().length >= 2 &&
           delivery.text.trim().length >= 2 &&
           deadlineOk &&
-          (pickCountry ? (cc.isNotEmpty && city.isNotEmpty) : (going || mins > 0)),
+          (!pickCountry || (cc.isNotEmpty && city.isNotEmpty)),
     _ => price >= floor && completion.text.trim().length >= 5 && (going || payment == 'none' || budget > 0),
   };
 
@@ -181,7 +181,8 @@ class RequestForm {
     cc: pickCountry ? cc : null,
     city: pickCountry ? city : null,
     country: _countryLabel,
-    mins: pickCountry || going ? 0 : mins,
+    // 소요시간은 받지 않는다 — '언제까지(마감 일시)'로 충분하다
+    mins: 0,
     price: _finalPrice,
     hot: going ? false : hot,
     deadline: deadline,

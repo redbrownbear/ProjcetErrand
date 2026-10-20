@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../theme/colors.dart';
 import 'app_icon.dart';
+import 'keyboard_safe_area.dart';
 
 /// 전체화면 하위 화면 공통 프레임 (뒤로가기 헤더 + 스크롤 바디).
 ///
@@ -36,7 +37,7 @@ class ScreenFrame extends StatelessWidget {
       // 여기 한 곳에서 막으면 [ScreenFrame]을 쓰는 20개 화면이 같이 해결된다.
       // 아래쪽까지 감싸는 이유는, 상세 화면들이 이 안에서 `Positioned(bottom: 0)`으로
       // 참여 버튼을 깔기 때문이다 — 그 0이 제스처바 위가 되어야 누를 수 있다.
-      child: SafeArea(
+      child: KeyboardSafeArea(
         child: Column(
           children: [
             Container(

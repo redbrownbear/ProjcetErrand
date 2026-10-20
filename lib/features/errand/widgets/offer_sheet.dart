@@ -39,6 +39,8 @@ class _OfferSheetState extends State<OfferSheet> {
         child: Container(
           color: const Color(0x73141420),
           alignment: Alignment.bottomCenter,
+          // 메시지 칸을 누르면 키보드가 패널을 가리지 않게 그만큼 올린다
+          padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
           child: GestureDetector(
             onTap: () {},
             child: Container(
@@ -51,6 +53,8 @@ class _OfferSheetState extends State<OfferSheet> {
               // 딤은 화면 전체를 덮되, 실제로 누르는 패널은 제스처바 위로 올린다.
               child: SafeArea(
                 top: false,
+                bottom: MediaQuery.viewInsetsOf(context).bottom == 0,
+                child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -167,6 +171,7 @@ class _OfferSheetState extends State<OfferSheet> {
                       ),
                     ),
                   ],
+                ),
                 ),
               ),
             ),

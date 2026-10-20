@@ -196,7 +196,9 @@ class AppSession extends ChangeNotifier {
     for (final it in [...created, ..._server, ..._related.values, ..._seed]) {
       if (!seen.add(it.id)) continue;
       if (it.ownerUid != null && blocked.contains(it.ownerUid)) continue; // 차단한 사람의 글
-      var x = !it.mine && mineIds.contains(it.id) ? it.copyWith(mine: true) : it;
+      // 이 기기 사본에 같은 글이 있으면 내 글 표시를 옮긴다. 단, 주인이 다른 계정이면 옮기지 않는다
+      final other = it.ownerUid != null && TaskItem.currentUid != null && it.ownerUid != TaskItem.currentUid;
+      var x = !it.mine && !other && mineIds.contains(it.id) ? it.copyWith(mine: true) : it;
       final p = _private[it.id];
       if (p != null) {
         x = x.copyWith(
@@ -332,6 +334,11 @@ class AppSession extends ChangeNotifier {
 
     // 다른 계정의 사본이 남아 있으면 지운다. 안 지우면 그 자료가 새 계정 화면에 섞인다.
     if (owner != null && owner != user.uid) _resetAccount();
+    // 사본 주인 기록이 없더라도, 다른 계정 uid가 박힌 내 글 사본은 이 계정 것이 아니다
+    if (created.any((i) => i.ownerUid != null && i.ownerUid != user.uid)) {
+      _update(() => created = [for (final i in created) if (i.ownerUid == null || i.ownerUid == user.uid) i]);
+      _store.saveRequests(created);
+    }
 
     final repo = UserRepository(user.uid);
     _update(() {
