@@ -154,10 +154,10 @@ class _MapCanvasState extends State<MapCanvas> {
           children: [
             const Icon(Icons.map_outlined, size: 34, color: AppColors.faint),
             const SizedBox(height: 10),
-            const Text(
+            Text(
               naverMapSupported ? '지도를 불러오지 못했어요' : '지도는 모바일 앱(Android · iOS)에서만 볼 수 있어요',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: AppColors.sub),
+              style: const TextStyle(fontSize: 13, color: AppColors.sub),
             ),
             const SizedBox(height: 4),
             Text('주변 부탁 ${widget.pins.length}건', style: const TextStyle(fontSize: 12, color: AppColors.faint)),
