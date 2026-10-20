@@ -16,9 +16,7 @@ import '../features/proposal/screens/propose_form.dart';
 import '../features/proposal/screens/proposal_list_screen.dart';
 import '../features/proposal/screens/world_map_screen.dart';
 import '../features/proposal/widgets/proposal_sheet.dart';
-import '../features/trip/screens/trip_detail_screen.dart';
 import '../features/trip/screens/trip_feed_screen.dart';
-import '../features/trip/screens/trip_form.dart';
 import '../features/trip/widgets/dart_sheet.dart';
 import 'neighbor_store.dart';
 
@@ -38,6 +36,9 @@ class AppNav {
   final VoidCallback openAskForm;
   final VoidCallback openSeaForm;
 
+  /// 가는 김에 글쓰기 — going이면 제가 가요(도움 주기), 아니면 가는 분 찾아요(도움 요청). 부탁과 같은 글쓰기 화면이다
+  final void Function({bool going}) openTripPost;
+
   /// 커뮤니티 탭으로 옮겨 [scope](local · travel · abroad)와 [place]로 거른다
   final void Function(String scope, {String? place}) goCommunity;
 
@@ -53,6 +54,7 @@ class AppNav {
     required this.flash,
     required this.openAskForm,
     required this.openSeaForm,
+    required this.openTripPost,
     required this.goCommunity,
     required this.requestDelivery,
   });
@@ -115,8 +117,8 @@ class AppNav {
               AppColors.blueSoft,
               AppColors.blue,
               '가는 김에 글쓰기',
-              '어디 가는 길인지, 같이 할 일을 올려요',
-              () => openTripForm(context),
+              '가는 길에 부탁 받기 · 가는 분에게 부탁하기',
+              () => openTripPost(going: true),
             ),
             item(
               'gift',
@@ -148,11 +150,6 @@ class AppNav {
   /// 가는 김에 — 전체보기
   void openTripFeed(BuildContext context) => _push(context, TripFeedScreen(nav: this));
 
-  /// 가는 김에 글 하나 — 댓글로 부탁·도움을 남긴다
-  void openTrip(BuildContext context, int id) => _push(context, TripDetailScreen(nav: this, id: id));
-
-  void openTripForm(BuildContext context) =>
-      showSheet(context, (_) => TripForm(author: nickname(), area: area(), onSubmit: store.addTrip));
 
   void openUsedForm(BuildContext context, {bool share = false}) =>
       showSheet(context, (_) => UsedForm(seller: nickname(), area: area(), share: share, onSubmit: store.addUsed));

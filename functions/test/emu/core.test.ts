@@ -207,3 +207,46 @@ describe('차단 · 정지 · 마감', () => {
     assert.equal((await db.collection('requests').doc('1760000000001').get()).get('status'), 'open');
   });
 });
+
+describe('가는 김에 · 제가 가요(going) — 글쓴이가 도와주는 쪽', () => {
+  const GID = '1760000000005';
+  beforeEach(async () => {
+    await seedRequest(db, GID, OWNER, { mode: 'going', title: '내일 오사카 가요', price: 3000 });
+  });
+
+  test('신청자가 요청자, 글쓴이가 수행자. 여러 명 수락해도 모집은 열려 있고 거래는 따로', async () => {
+    await rejectsWith(core.applyToRequest(db, HELPER, { requestId: GID }), 'invalid-argument'); // 무엇을 부탁할지 없음
+    await core.applyToRequest(db, HELPER, { requestId: GID, msg: '곤약젤리 2봉', offerPrice: 5000 });
+    await core.applyToRequest(db, OTHER, { requestId: GID, msg: '동전파스' });
+    const a = await db.collection('requests').doc(GID).collection('applications').doc(HELPER).get();
+    assert.equal(a.get('requestMode'), 'going');
+
+    const { tradeId: t1 } = await core.acceptApplication(db, OWNER, { requestId: GID, helperUid: HELPER });
+    let r = (await db.collection('requests').doc(GID).get()).data()!;
+    assert.equal(r.status, 'open', '모집은 그대로');
+    assert.equal(r.applicantCount, 1);
+    const tr = await trade(t1);
+    assert.equal(tr.requesterUid, HELPER, '신청자가 요청자');
+    assert.equal(tr.helperUid, OWNER, '글쓴이가 수행자');
+    assert.equal(tr.ask, '곤약젤리 2봉');
+    assert.equal(tr.price, 5000);
+    assert.equal((await db.collection('requests').doc(GID).collection('applications').doc(OTHER).get()).get('status'), 'pending', '다른 신청은 그대로');
+
+    const { tradeId: t2 } = await core.acceptApplication(db, OWNER, { requestId: GID, helperUid: OTHER });
+    assert.equal((await trade(t2)).price, 3000, '제안이 없으면 글의 사례비');
+
+    // 수행자(글쓴이)가 시작·완료 요청, 요청자(신청자)가 확인
+    await rejectsWith(core.advanceTrade(db, HELPER, { tradeId: t1, action: 'start' }), 'permission-denied');
+    await core.advanceTrade(db, OWNER, { tradeId: t1, action: 'start' });
+    await core.advanceTrade(db, OWNER, { tradeId: t1, action: 'finish' });
+    await core.advanceTrade(db, HELPER, { tradeId: t1, action: 'confirm' });
+    assert.equal((await trade(t1)).status, 'completed');
+    r = (await db.collection('requests').doc(GID).get()).data()!;
+    assert.equal(r.status, 'open', '거래 하나가 끝나도 글은 그대로');
+
+    // 시작 전 취소 → 그 신청만 cancelled, 글은 그대로
+    await core.advanceTrade(db, OTHER, { tradeId: t2, action: 'cancel' });
+    assert.equal((await db.collection('requests').doc(GID).collection('applications').doc(OTHER).get()).get('status'), 'cancelled');
+    assert.equal((await db.collection('requests').doc(GID).get()).get('status'), 'open');
+  });
+});

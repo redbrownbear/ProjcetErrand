@@ -69,14 +69,15 @@ service cloud.firestore {
     // 정확한 위치(place·deliveryPlace·lat·lng)는 여기 두지 않는다 → private/detail
     function requestEditable() {
       return ['who', 'cat', 'title', 'desc', 'region', 'area', 'cell', 'country', 'cc', 'city',
-              'mins', 'price', 'budget', 'payment', 'completion', 'hot', 'deadline', 'updatedAt'];
+              'mins', 'price', 'budget', 'payment', 'completion', 'hot', 'deadline', 'extra', 'updatedAt'];
     }
     function requestFieldsValid(m) {
       return str(m.title, 1, 80)
           && str(m.desc, 0, 2000)
           && money(m.price)
           && optMoney(m, 'budget')
-          && m.mode in ['ask', 'sea', 'together']
+          && m.mode in ['ask', 'sea', 'together', 'going']
+          && (!('extra' in m) || m.extra == null || m.extra in ['used', 'trip'])
           && optStr(m, 'cat', 30)
           && optStr(m, 'area', 40)
           && optStr(m, 'cell', 12)
@@ -122,7 +123,12 @@ service cloud.firestore {
                      && (!('lng' in incoming()) || incoming().lng is number);
       }
 
-      // 지원서: 지원자 본인과 글쓴이만 읽는다. 쓰기는 서버만
+      // 공개 댓글: 누구나 읽고, 쓰기는 서버 함수 addComment만(연락처 가리기·알림)
+      match /comments/{commentId} {
+        allow read: if true;
+      }
+
+      // 지원서(신청서): 신청자 본인과 글쓴이만 읽는다. 쓰기는 서버만
       match /applications/{helperUid} {
         allow read: if isMe(helperUid) || (signedIn() && parent().ownerUid == request.auth.uid);
       }
@@ -144,31 +150,6 @@ service cloud.firestore {
         allow read: if signedIn()
                     && request.auth.uid in [get(/databases/$(database)/documents/trades/$(tradeId)).data.requesterUid,
                                             get(/databases/$(database)/documents/trades/$(tradeId)).data.helperUid];
-      }
-    }
-
-    // ── 가는 김에 ─────────────────────────────────────────────────────────
-    // 글은 앱이 쓴다(화이트리스트). 댓글 수·댓글은 서버 함수 addTripComment만 쓴다(연락처 가리기·글쓴이 알림)
-    match /tripPosts/{postId} {
-      allow read: if true;
-      allow create: if signedIn()
-                    && incoming().ownerUid == request.auth.uid
-                    && incoming().createdAt == request.time
-                    && incoming().commentCount == 0
-                    && onlyKeys(['ownerUid', 'author', 'area', 'type', 'cc', 'where', 'title', 'when', 'quote', 'commentCount', 'createdAt'])
-                    && incoming().type in ['going', 'asking']
-                    && str(incoming().title, 1, 60)
-                    && str(incoming().quote, 1, 300)
-                    && str(incoming().author, 1, 20)
-                    && optStr(incoming(), 'area', 40)
-                    && optStr(incoming(), 'where', 40)
-                    && optStr(incoming(), 'when', 40)
-                    && optStr(incoming(), 'cc', 4);
-      allow update: if false;
-      allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
-
-      match /comments/{commentId} {
-        allow read: if true;
       }
     }
 

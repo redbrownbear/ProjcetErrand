@@ -4,9 +4,12 @@ import '../../../core/theme/colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/tag.dart';
 import '../data/categories.dart';
+import '../models/going_deal.dart';
 import '../models/offer.dart';
 import '../models/task_item.dart';
+import '../widgets/comments_section.dart';
 import '../widgets/detail_parts.dart';
+import '../widgets/going_ask_sheet.dart';
 import '../widgets/offer_sheet.dart';
 import '../widgets/report_sheet.dart';
 import '../widgets/request_facts.dart';
@@ -21,6 +24,11 @@ class DetailPage extends StatefulWidget {
   final void Function(int id) toggleSave;
   final Future<bool> Function(TaskItem it, String reason, String detail)? onReport;
   final void Function(TaskItem it)? onBlock;
+
+  /// '가는 김에 · 제가 가요': 부탁 보내기와 내가 이미 보낸 부탁
+  final Future<bool> Function(TaskItem it, String msg, int price)? onAskGoing;
+  final GoingDeal? goingAsk;
+  final String? myUid;
   const DetailPage({
     super.key,
     required this.it,
@@ -32,6 +40,9 @@ class DetailPage extends StatefulWidget {
     required this.toggleSave,
     this.onReport,
     this.onBlock,
+    this.onAskGoing,
+    this.goingAsk,
+    this.myUid,
   });
   @override
   State<DetailPage> createState() => _DetailPageState();
@@ -43,13 +54,17 @@ class _DetailPageState extends State<DetailPage> {
   @override
   Widget build(BuildContext context) {
     final it = widget.it;
+    final going = it.isGoing;
     final sea = it.mode == 'sea';
-    final paid = it.mode == 'ask' || sea;
-    // 자기 부탁·마감된 부탁에는 지원할 수 없다
+    final paid = it.mode == 'ask' || sea || going;
+    final ask = widget.goingAsk;
+    // 자기 글·마감된 글에는 신청할 수 없다. 가는 김에 글에 이미 보낸 부탁이 진행 중이면 그 상태를 보여 준다
     final blocked = it.isMine
-        ? '내가 올린 부탁'
+        ? (going ? '내가 올린 가는 김에 글 · 받은 부탁은 진행 중에서 확인해요' : '내가 올린 부탁')
         : it.isExpired
-        ? '마감된 부탁'
+        ? (going ? '마감된 글' : '마감된 부탁')
+        : (going && ask != null && ask.trade.isActive)
+        ? '보낸 부탁 · ${ask.trade.label} — 진행 중에서 확인하세요'
         : null;
 
     return Material(
@@ -83,11 +98,15 @@ class _DetailPageState extends State<DetailPage> {
                         Padding(
                           padding: const EdgeInsets.only(top: 14, bottom: 4),
                           child: Text(
-                            paid ? won(it.price) : '무료 동행',
+                            going ? (it.price > 0 ? '건당 ${won(it.price)}' : '사례비 협의') : (paid ? won(it.price) : '무료 동행'),
                             style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: AppColors.ink),
                           ),
                         ),
-                        if (sea) const Text('물건값은 영수증 확인 후 별도 정산', style: TextStyle(fontSize: 12.5, color: AppColors.sub)),
+                        if (sea || going)
+                          Text(
+                            going ? '부탁 1건당 사례비 · 물건값은 영수증 보고 따로' : '물건값은 영수증 확인 후 별도 정산',
+                            style: const TextStyle(fontSize: 12.5, color: AppColors.sub),
+                          ),
                         Padding(
                           padding: const EdgeInsets.only(top: 16, bottom: 20),
                           child: _where(it, sea: sea),
@@ -103,6 +122,11 @@ class _DetailPageState extends State<DetailPage> {
                         Text(it.desc, style: const TextStyle(fontSize: 14.5, color: AppColors.ink, height: 1.7)),
                         const SizedBox(height: 18),
                         if (widget.myOffers.isNotEmpty) DetailMyOffers(offers: widget.myOffers),
+                        // 서버에 올라간 실제 글에만 댓글을 단다(예시 글 제외)
+                        if (!it.sample && it.ownerUid != null) ...[
+                          CommentsSection(it: it, myUid: widget.myUid),
+                          const SizedBox(height: 18),
+                        ],
                         DetailSafetyNote(sea: sea),
                         if (_canReport(it))
                           Align(
@@ -122,11 +146,12 @@ class _DetailPageState extends State<DetailPage> {
                 ),
                 DetailActionBar(
                   sea: sea,
-                  paid: paid,
-                  done: widget.grabbed.contains(it.id),
+                  paid: paid && !going,
+                  done: !going && widget.grabbed.contains(it.id),
                   blocked: blocked,
+                  grabLabel: going ? '부탁할게요' : (it.extra == 'trip' ? '도와줄게요 (지원)' : null),
                   onOffer: () => setState(() => offerOpen = true),
-                  onGrab: () => widget.onGrab(it),
+                  onGrab: going ? () => _askGoing(it) : () => widget.onGrab(it),
                 ),
               ],
             ),
@@ -143,6 +168,14 @@ class _DetailPageState extends State<DetailPage> {
         ],
       ),
     );
+  }
+
+  Future<void> _askGoing(TaskItem it) async {
+    final send = widget.onAskGoing;
+    if (send == null) return;
+    final r = await openGoingAskSheet(context, it);
+    if (r == null) return;
+    await send(it, r.msg, r.price);
   }
 
   /// 남이 올린 실제 부탁만 신고·차단할 수 있다(예시 글·내 글 제외)
@@ -175,7 +208,11 @@ class _DetailPageState extends State<DetailPage> {
                     child: Text('‹', style: TextStyle(fontSize: 24, color: AppColors.ink)),
                   ),
                   Text(
-                    sea
+                    it.isGoing
+                        ? '가는 김에 · 제가 가요'
+                        : it.extra == 'trip'
+                        ? '가는 김에 · 가는 분 찾아요'
+                        : sea
                         ? '해외 대행구매'
                         : paid
                         ? '부탁해요'
@@ -198,7 +235,9 @@ class _DetailPageState extends State<DetailPage> {
       children: [
         if (it.hot) ...[const Tag(label: '급해요', c: AppColors.red, bg: AppColors.redSoft), const SizedBox(width: 6)],
         if (sea) ...[const Tag(label: '해외대행', c: AppColors.purple, bg: AppColors.purpleSoft), const SizedBox(width: 6)],
-        if (paid) Tag(label: catOf(it.cat).label, c: AppColors.sub, bg: AppColors.page),
+        if (it.isGoing) ...[const Tag(label: '제가 가요', c: AppColors.blue, bg: AppColors.blueSoft), const SizedBox(width: 6)],
+        if (it.extra == 'trip') ...[const Tag(label: '가는 분 찾아요', c: AppColors.yellowDeep, bg: AppColors.yellowSoft), const SizedBox(width: 6)],
+        if (paid && !it.isGoing) Tag(label: catOf(it.cat).label, c: AppColors.sub, bg: AppColors.page),
         // 내가 올린 글인지, 미리 만들어 둔 예시인지 상세에서도 밝힌다.
         if (it.isMine) ...[
           const SizedBox(width: 6),
@@ -217,8 +256,9 @@ class _DetailPageState extends State<DetailPage> {
       spacing: 14,
       runSpacing: 6,
       children: [
-        if (!sea) Text('${distLabel(it)} · ${it.region ?? ''}', style: style),
-        if (!sea && it.mins > 0) Text('⏱ 약 ${it.mins}분', style: style),
+        if (it.isGoing) Text('${it.cc != null ? (it.country ?? '해외') : (it.region ?? it.place ?? '')} 가는 길', style: style),
+        if (!sea && !it.isGoing) Text('${distLabel(it)} · ${it.region ?? ''}', style: style),
+        if (!sea && !it.isGoing && it.mins > 0) Text('⏱ 약 ${it.mins}분', style: style),
         if (sea) Text('${it.country ?? ''}${(it.place != null && it.place!.isNotEmpty) ? ' · ${it.place}' : ''}', style: style),
       ],
     );

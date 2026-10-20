@@ -33,6 +33,7 @@ class _ProposeFormState extends State<ProposeForm> {
   final item = TextEditingController();
   final spec = TextEditingController();
   final price = TextEditingController();
+  final fee = TextEditingController();
   final note = TextEditingController();
   bool receiptOk = false;
   int max = 5;
@@ -40,13 +41,14 @@ class _ProposeFormState extends State<ProposeForm> {
 
   @override
   void dispose() {
-    for (final c in [city, item, spec, price, note]) {
+    for (final c in [city, item, spec, price, fee, note]) {
       c.dispose();
     }
     super.dispose();
   }
 
   int get _price => int.tryParse(price.text.replaceAll(',', '')) ?? 0;
+  int get _feeValue => int.tryParse(fee.text) ?? 0;
 
   String? get _problem {
     if (abroad) {
@@ -101,6 +103,7 @@ class _ProposeFormState extends State<ProposeForm> {
         item: item.text.trim(),
         spec: spec.text.trim().isEmpty ? null : spec.text.trim(),
         price: _price,
+        fee: _feeValue,
         day: day,
         max: unlimited ? 0 : max,
         who: widget.who,
@@ -239,6 +242,22 @@ class _ProposeFormState extends State<ProposeForm> {
           ),
           const SizedBox(height: 12),
           _feeTable(),
+          const FieldLabel('심부름료 · 1명당', hint: '물건값과 별도'),
+          TextField(
+            controller: fee,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            onChanged: (_) => setState(() {}),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            decoration: const InputDecoration(hintText: '예) 2000 · 안 받으면 비워 두세요', suffixText: '원'),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              _price > 0 ? '1명이 내는 돈: ${won(_price + _feeValue)} (물건값 ${won(_price)}${_feeValue > 0 ? ' + 심부름료 ${won(_feeValue)}' : ''})' : '위 표를 참고해 정해 주세요',
+              style: const TextStyle(fontSize: 12, color: AppColors.sub),
+            ),
+          ),
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(14),

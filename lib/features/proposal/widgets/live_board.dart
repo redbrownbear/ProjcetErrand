@@ -312,7 +312,7 @@ class ProposalRow extends StatelessWidget {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  won(p.price),
+                  won(p.total),
                   style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: AppColors.sub),
                 ),
                 const SizedBox(width: 10),

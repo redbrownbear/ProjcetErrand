@@ -176,7 +176,7 @@ class ProposalSheet extends StatelessWidget {
                 TextSpan(
                   children: [
                     TextSpan(
-                      text: nf(p.price),
+                      text: nf(p.total),
                       style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900, letterSpacing: -1),
                     ),
                     const TextSpan(
@@ -190,10 +190,11 @@ class ProposalSheet extends StatelessWidget {
               const SizedBox(height: 8),
               const _CheckLine('영수증 기준 가격이에요 · 실제 금액보다 높게 적은 부분은 환불돼요', color: AppColors.sub),
               const SizedBox(height: 12),
+              _row('1명당', p.fee > 0 ? '물건값 ${won(p.price)} + 심부름료 ${won(p.fee)}' : '물건값 ${won(p.price)} · 심부름료 없음'),
               _row('사 오는 물건', [p.item, ?p.spec].join(' · ')),
               _row(p.abroad ? '출국하는 날' : '이동하는 날', '${p.day.month}/${p.day.day}'),
               _row('모집 인원', p.unlimited ? '$count명 · 제한 없음' : '$count/${p.max}명 · ${p.left(me)}자리 남음'),
-              _row('결제', '겸사 안전결제'),
+              _row('결제', '만나서 직접 주고받아요 · 앱 결제는 준비 중'),
               if (p.note.isNotEmpty) _row('한마디', p.note),
               const SizedBox(height: 14),
               const Text(

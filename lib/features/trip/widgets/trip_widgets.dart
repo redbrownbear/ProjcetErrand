@@ -4,7 +4,9 @@ import '../../../app/app_nav.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/widgets/kit.dart';
 import '../../../core/widgets/surface.dart';
-import '../models/trip_post.dart';
+import '../../errand/models/task_item.dart';
+import '../../errand/widgets/task_card.dart';
+import '../data/trip_seeds.dart';
 
 /// 홈 · 해외 탭이 같이 쓰는 v77 조각 — 여행 도구 칸과 '가는 김에' 글 목록.
 
@@ -79,142 +81,66 @@ class _Target extends StatelessWidget {
   }
 }
 
+/// 가는 김에 글 — 실제 글(서버) 먼저, 예시 글은 뒤에. 마감된 글은 뺀다.
+List<TaskItem> tripItems(AppNav nav) {
+  final real = nav.items().where((i) => i.isTrip && !i.isExpired).toList();
+  final ids = {for (final i in real) i.id};
+  return [...real, ...tripSeeds.where((s) => !ids.contains(s.id))];
+}
+
 /// 가는 김에 — 사람들은 지금 어디로 가고 있을까요? (.gkm)
+/// '지금 내 주변 부탁'과 같은 줄 모양([TaskCard])으로 보여 준다.
 class TripFeedSection extends StatelessWidget {
   final AppNav nav;
   final VoidCallback onAll;
   final int take;
-  const TripFeedSection({super.key, required this.nav, required this.onAll, this.take = 2});
+  const TripFeedSection({super.key, required this.nav, required this.onAll, this.take = 3});
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: nav.store,
-      builder: (context, _) => Padding(
-        padding: const EdgeInsets.fromLTRB(10, 14, 10, 0),
+    final list = tripItems(nav).take(take).toList();
+    final grabbed = nav.actions().grabbed;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(10, 14, 10, 0),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.line),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('가는 김에', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, letterSpacing: -0.5)),
-                        SizedBox(height: 3),
-                        Text('사람들은 지금 어디로 가고 있을까요?', style: TextStyle(fontSize: 12.5, color: AppColors.sub)),
-                      ],
-                    ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('가는 김에', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, letterSpacing: -0.5)),
+                      SizedBox(height: 3),
+                      Text('사람들은 지금 어디로 가고 있을까요?', style: TextStyle(fontSize: 12.5, color: AppColors.sub)),
+                    ],
                   ),
-                  LineButton(label: '글쓰기', icon: 'pencil', height: 28, onTap: () => nav.openTripForm(context)),
-                  const SizedBox(width: 6),
-                  TextLink(label: '전체보기', onTap: onAll),
-                ],
-              ),
+                ),
+                LineButton(label: '글쓰기', icon: 'pencil', height: 28, onTap: () => nav.openTripPost(going: true)),
+                const SizedBox(width: 6),
+                TextLink(label: '전체보기', onTap: onAll),
+              ],
             ),
-            for (final t in nav.store.trips.take(take)) ...[
-              TripCard(t: t, mine: nav.store.isMyTrip(t), onOpen: () => nav.openTrip(context, t.id)),
-              const SizedBox(height: 8),
-            ],
+            const SizedBox(height: 4),
+            for (var i = 0; i < list.length; i++)
+              TaskCard(
+                it: list[i],
+                onOpen: () => nav.actions().open(context, list[i]),
+                done: grabbed.contains(list[i].id),
+                last: i == list.length - 1,
+              ),
           ],
         ),
       ),
     );
-  }
-}
-
-/// 글 한 장. 누르면 상세(댓글)로 간다. 남의 글엔 '댓글로 부탁하기' · '댓글로 도와주기'
-class TripCard extends StatelessWidget {
-  final TripPost t;
-  final bool mine;
-  final VoidCallback onOpen;
-  const TripCard({super.key, required this.t, required this.mine, required this.onOpen});
-
-  @override
-  Widget build(BuildContext context) {
-    return Tap(onTap: onOpen, radius: 18, child: Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.line),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Avatar(t.author),
-              const SizedBox(width: 8),
-              Text(mine ? '${t.author} (나)' : t.author, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
-              const SizedBox(width: 4),
-              Flexible(
-                child: Text(
-                  [if (t.area.isNotEmpty) t.area, t.agoAt(DateTime.now()), if (!t.server && !t.mine) '예시'].join(' · '),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12, color: AppColors.sub),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              if (t.cc != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                  decoration: BoxDecoration(color: AppColors.page, borderRadius: BorderRadius.circular(5)),
-                  child: Text(
-                    t.cc!.toUpperCase(),
-                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.ink2),
-                  ),
-                )
-              else
-                Container(
-                  width: 18,
-                  height: 18,
-                  decoration: BoxDecoration(color: AppColors.page, borderRadius: BorderRadius.circular(5)),
-                  child: const Icon(Icons.shopping_bag_outlined, size: 12, color: AppColors.ink2),
-                ),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  t.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  t.when,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12, color: AppColors.faint),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 5),
-          Text('“${t.quote}”', style: const TextStyle(fontSize: 13, color: AppColors.ink2, height: 1.5)),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              const Icon(Icons.chat_bubble_outline_rounded, size: 14, color: AppColors.sub),
-              const SizedBox(width: 4),
-              Text('댓글 ${t.comments}', style: const TextStyle(fontSize: 12.5, color: AppColors.sub)),
-              const Spacer(),
-              if (!mine) LineButton(label: t.going ? '댓글로 부탁하기' : '댓글로 도와주기', onTap: onOpen),
-            ],
-          ),
-        ],
-      ),
-    ));
   }
 }

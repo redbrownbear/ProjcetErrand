@@ -13,20 +13,35 @@ class PostRequest extends StatefulWidget {
   final String scope;
   final void Function(NewRequestData) onSubmit;
 
-  /// 미리 정해 온 종류 — ask | sea. 지정하면 임시글의 종류보다 이 값을 따른다.
+  /// 미리 정해 온 종류 — ask | sea | going. 지정하면 임시글의 종류보다 이 값을 따른다.
   final String? initialKind;
+
+  /// trip이면 '가는 김에 · 가는 분 찾아요'로 연다
+  final String? initialExtra;
 
   /// 홈의 '자주 하는 부탁'에서 고른 종류. 지정하면 임시글의 종류보다 이 값을 따른다.
   final String? initialCat;
 
-  const PostRequest({super.key, required this.scope, required this.onSubmit, this.initialKind, this.initialCat});
+  const PostRequest({
+    super.key,
+    required this.scope,
+    required this.onSubmit,
+    this.initialKind,
+    this.initialCat,
+    this.initialExtra,
+  });
 
   @override
   State<PostRequest> createState() => _PostRequestState();
 }
 
 class _PostRequestState extends State<PostRequest> {
-  late final RequestForm _form = RequestForm.restore(kind: widget.initialKind, cat: widget.initialCat);
+  late final RequestForm _form = RequestForm.restore(
+    kind: widget.initialKind,
+    cat: widget.initialCat,
+    extra: widget.initialExtra,
+    scope: widget.scope,
+  );
   int _step = 0;
 
   bool get _lastStep => _step == RequestForm.stepCount - 1;
@@ -152,7 +167,11 @@ class _PostRequestState extends State<PostRequest> {
   Widget _footer() {
     final canNext = _form.readyAt(_step);
     final hint = _form.hintAt(_step);
-    final label = !_lastStep ? '다음' : (_form.hot ? '급해요로 올리기' : '부탁 올리기');
+    final label = !_lastStep
+        ? '다음'
+        : _form.going
+        ? '가는 김에 올리기'
+        : (_form.hot ? '급해요로 올리기' : '부탁 올리기');
 
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 12, 18, 16),

@@ -13,13 +13,23 @@ class RequestFacts extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final place = it.place;
-    final rows = <List<String>>[
-      ['마감', it.isExpired ? '${deadlineLabel(it)} · 마감됨' : deadlineLabel(it)],
-      ['시작 장소', (place != null && place.isNotEmpty) ? place : '요청자 확인 필요'],
-      ['완료 장소', it.deliveryPlace ?? '요청자와 협의 필요'],
-      ['구매비', '${paymentLabels[it.payment] ?? '부담 방식 확인 필요'}${it.budget > 0 ? '\n물품 예산 ${won(it.budget)} · 사례비와 별도' : ''}'],
-      ['완료 조건', it.completion ?? '지원 전 요청자와 확인해 주세요'],
-    ];
+    // 정확한 장소는 공개 글에 없다(보안 규칙 v2 — private/detail). 글쓴이와 수락된 사람만 본다.
+    final hidden = it.ownerUid != null && !it.isMine;
+    final rows = it.isGoing
+        ? <List<String>>[
+            ['가는 곳', it.cc != null ? [it.country ?? '해외', ?place].join(' · ') : (it.region ?? place ?? '글쓴이 확인 필요')],
+            ['받는 기한', it.isExpired ? '${deadlineLabel(it)} · 마감됨' : deadlineLabel(it)],
+            ['전달 장소', it.deliveryPlace ?? (hidden ? '수락되면 채팅으로 정해요' : '글쓴이와 협의')],
+            ['물건값', '영수증을 보고 따로 주고받아요'],
+            ['전달·완료', it.completion ?? '부탁 전에 글쓴이와 확인해 주세요'],
+          ]
+        : <List<String>>[
+            ['마감', it.isExpired ? '${deadlineLabel(it)} · 마감됨' : deadlineLabel(it)],
+            ['시작 장소', (place != null && place.isNotEmpty) ? place : (hidden ? '${it.region ?? '동네'} · 정확한 장소는 수락되면 보여요' : '요청자 확인 필요')],
+            ['완료 장소', it.deliveryPlace ?? (hidden ? '수락되면 보여요' : '요청자와 협의 필요')],
+            ['구매비', '${paymentLabels[it.payment] ?? '부담 방식 확인 필요'}${it.budget > 0 ? '\n물품 예산 ${won(it.budget)} · 사례비와 별도' : ''}'],
+            ['완료 조건', it.completion ?? '지원 전 요청자와 확인해 주세요'],
+          ];
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -34,7 +44,7 @@ class RequestFacts extends StatelessWidget {
           const Padding(
             padding: EdgeInsets.only(bottom: 8),
             child: Text(
-              '지원 전에 확인하세요',
+              it.isGoing ? '부탁 전에 확인하세요' : '지원 전에 확인하세요',
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.ink),
             ),
           ),

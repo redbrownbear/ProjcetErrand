@@ -23,23 +23,46 @@ class WhatStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final sea = form.sea;
+    final going = form.going;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const StepTitle('무엇을 부탁할까요?'),
+        StepTitle(form.trip ? '가는 김에 — 어떤 글인가요?' : '무엇을 부탁할까요?'),
         const Padding(
           padding: EdgeInsets.only(bottom: 14),
           child: Text('작성 중인 내용은 이 기기에 자동 보관돼요.', style: TextStyle(fontSize: 12, color: AppColors.sub)),
         ),
-        Row(
-          children: [
-            Expanded(child: _kindButton('ask', '우리 동네', AppColors.yellow, AppColors.yellowSoft, AppColors.ink)),
-            const SizedBox(width: 8),
-            Expanded(child: _kindButton('sea', '해외 대행', AppColors.purple, AppColors.purpleSoft, AppColors.purple)),
-          ],
-        ),
-        const SizedBox(height: 20),
-        if (sea)
+        if (form.trip) ...[
+          // 도움 주기(제가 가요) ↔ 도움 요청(가는 분 찾아요)
+          Row(
+            children: [
+              Expanded(child: _sideButton(true, '제가 가요', '가는 길에 부탁 받아요')),
+              const SizedBox(width: 8),
+              Expanded(child: _sideButton(false, '가는 분 찾아요', '가는 사람에게 부탁해요')),
+            ],
+          ),
+          const SizedBox(height: 20),
+          if (going)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 20),
+              child: NoteBox(
+                '이웃이 "부탁할게요"로 무엇을 사다 줄지 보내요. 수락한 부탁마다 채팅이 열리고 진행·완료를 따로 확인해요. 여러 명 받아도 돼요.',
+                bg: AppColors.blueSoft,
+                fg: AppColors.blue,
+              ),
+            ),
+        ] else
+          Row(
+            children: [
+              Expanded(child: _kindButton('ask', '우리 동네', AppColors.yellow, AppColors.yellowSoft, AppColors.ink)),
+              const SizedBox(width: 8),
+              Expanded(child: _kindButton('sea', '해외 대행', AppColors.purple, AppColors.purpleSoft, AppColors.purple)),
+            ],
+          ),
+        if (!form.trip) const SizedBox(height: 20),
+        if (going)
+          const SizedBox.shrink()
+        else if (sea)
           Padding(
             padding: const EdgeInsets.only(bottom: 20),
             child: NoteBox(
@@ -58,7 +81,13 @@ class WhatStep extends StatelessWidget {
           controller: form.title,
           maxLength: 40,
           onChanged: (_) => update(),
-          decoration: formFieldDecoration(sea ? '예: 돈키호테에서 곤약젤리 사다주세요' : '예: 성심당에서 빵 좀 사다 주세요'),
+          decoration: formFieldDecoration(
+            going
+                ? '예: 내일 오사카 가요 · 돈키호테 들러요'
+                : form.trip
+                ? '예: 오늘 성수 가시는 분, 팝업 굿즈 부탁해요'
+                : (sea ? '예: 돈키호테에서 곤약젤리 사다주세요' : '예: 성심당에서 빵 좀 사다 주세요'),
+          ),
         ),
         const FieldLabel('간단 설명'),
         TextField(
@@ -66,9 +95,32 @@ class WhatStep extends StatelessWidget {
           maxLines: 4,
           maxLength: 2000,
           onChanged: (_) => update(),
-          decoration: formFieldDecoration(sea ? '품목·수량, 예산, 귀국 예정일 등을 적어주세요' : '필요한 물건, 수량, 전달 방법을 알려주세요'),
+          decoration: formFieldDecoration(
+            going
+                ? '어디에 들르는지, 어떤 걸 사다 줄 수 있는지, 받을 수 있는 양을 적어 주세요'
+                : (sea ? '품목·수량, 예산, 귀국 예정일 등을 적어주세요' : '필요한 물건, 수량, 전달 방법을 알려주세요'),
+          ),
         ),
       ],
+    );
+  }
+
+  Widget _sideButton(bool goingSide, String label, String sub) {
+    final on = form.going == goingSide;
+    return ChoiceBox(
+      selected: on,
+      onTap: () => update(() => form.setTripSide(goingSide)),
+      accent: goingSide ? AppColors.blue : AppColors.yellow,
+      tint: goingSide ? AppColors.blueSoft : AppColors.yellowSoft,
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      alignment: Alignment.center,
+      child: Column(
+        children: [
+          Text(label, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.ink)),
+          const SizedBox(height: 2),
+          Text(sub, style: const TextStyle(fontSize: 11.5, color: AppColors.sub)),
+        ],
+      ),
     );
   }
 
@@ -136,28 +188,70 @@ class WhereStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final sea = form.sea;
+    final going = form.going;
     final deadline = form.deadline;
     final expired = deadline != null && !form.deadlineOk;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const StepTitle('언제 어디서요?'),
-        if (sea) ..._overseasFields() else ..._localFields(),
+        StepTitle(going ? '어디로, 언제까지요?' : '언제 어디서요?'),
+        if (going) ..._goingFields() else if (sea) ..._overseasFields() else ..._localFields(),
         const SizedBox(height: 18),
-        const FieldLabel('전달·완료 장소'),
-        TextField(controller: form.delivery, onChanged: (_) => update(), decoration: formFieldDecoration('예: 서초역 2번 출구 / 같은 장소')),
+        FieldLabel(going ? '어디서 전해 드려요?' : '전달·완료 장소'),
+        TextField(
+          controller: form.delivery,
+          onChanged: (_) => update(),
+          decoration: formFieldDecoration(going ? '예: 반포동 · 돌아와서 만나서 전달' : '예: 서초역 2번 출구 / 같은 장소'),
+        ),
         const SizedBox(height: 18),
-        const FieldLabel('완료해야 하는 날짜와 시각'),
+        FieldLabel(going ? '언제까지 부탁 받을까요?' : '완료해야 하는 날짜와 시각'),
         _deadlineBox(deadline, expired),
-        FieldHint(expired ? '이미 지난 시각이에요. 현재보다 이후 시각을 선택해 주세요.' : '현재보다 이후 시각을 선택해 주세요.'),
+        FieldHint(
+          expired
+              ? '이미 지난 시각이에요. 현재보다 이후 시각을 선택해 주세요.'
+              : (going ? '이 시각이 지나면 글이 마감돼요. 출발 전까지로 정해 주세요.' : '현재보다 이후 시각을 선택해 주세요.'),
+        ),
         const SizedBox(height: 14),
-        NoteBox(sea ? '매장 이름을 자세히 적어주세요.' : '여러 사람이 오가는 공개된 장소가 좋아요.'),
+        NoteBox(
+          going
+              ? '가는 곳은 목록에 보여요. 내 집 주소 같은 정확한 위치는 적지 마세요.'
+              : sea
+              ? '매장 이름을 자세히 적어주세요.'
+              : '정확한 만날 장소는 수락된 사람에게만 보여요. 목록에는 동네 이름만 보여요.',
+        ),
       ],
     );
   }
 
-  List<Widget> _overseasFields() => [
+  /// 가는 김에(제가 가요) — 국내·해외, 가는 곳
+  List<Widget> _goingFields() => [
+    const FieldLabel('어디로 가요?'),
+    Row(
+      children: [
+        Expanded(
+          child: _pill('국내', selected: !form.abroad, accent: AppColors.ink, tint: AppColors.ink, selectedInk: Colors.white, onTap: () => update(() => form.abroad = false)),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _pill('해외', selected: form.abroad, accent: AppColors.ink, tint: AppColors.ink, selectedInk: Colors.white, onTap: () => update(() => form.abroad = true)),
+        ),
+      ],
+    ),
+    const SizedBox(height: 14),
+    if (form.abroad) ...[
+      ..._overseasFields(storeLabel: '들를 곳'),
+    ] else ...[
+      TextField(
+        controller: form.place,
+        maxLength: 40,
+        onChanged: (_) => update(),
+        decoration: formFieldDecoration('예: 코스트코 양재점 · 성수동 팝업'),
+      ),
+    ],
+  ];
+
+  List<Widget> _overseasFields({String storeLabel = '구매할 매장'}) => [
     const FieldLabel('어느 나라'),
     Wrap(
       spacing: 8,
@@ -194,7 +288,7 @@ class WhereStep extends StatelessWidget {
       ],
     ),
     const SizedBox(height: 16),
-    const FieldLabel('구매할 매장'),
+    FieldLabel(storeLabel),
     TextField(controller: form.place, onChanged: (_) => update(), decoration: formFieldDecoration('예: 시부야 돈키호테')),
   ];
 
@@ -282,11 +376,12 @@ class CostStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final sea = form.sea;
+    final going = form.going;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const StepTitle('비용과 완료 조건을 알려주세요'),
-        FieldLabel(sea ? '사례비 (최소 ${nf(seaMin)}원, 물건값 별도)' : '사례비 (물건값 별도)'),
+        FieldLabel(going ? '부탁 1건당 사례비 (물건값 별도)' : (sea ? '사례비 (최소 ${nf(seaMin)}원, 물건값 별도)' : '사례비 (물건값 별도)')),
         ValueStepper(
           value: won(form.price),
           onMinus: () => update(() => form.price = (form.price - 1000).clamp(form.floor, 9999999)),
@@ -301,6 +396,12 @@ class CostStep extends StatelessWidget {
           onPick: (p) => update(() => form.price = p),
         ),
         const SizedBox(height: 10),
+        if (going)
+          const Text(
+            '부탁하는 이웃이 금액을 바꿔 제안할 수도 있어요. 물건값은 영수증을 보고 따로 주고받아요.',
+            style: TextStyle(fontSize: 12, color: AppColors.sub, height: 1.5),
+          )
+        else
         const Text.rich(
           TextSpan(
             style: TextStyle(fontSize: 12, color: AppColors.sub, height: 1.5),
@@ -314,6 +415,7 @@ class CostStep extends StatelessWidget {
             ],
           ),
         ),
+        if (!going) ...[
         const SizedBox(height: 22),
         const FieldLabel('물품 구매비 부담 방식'),
         for (final e in paymentLabels.entries)
@@ -348,20 +450,29 @@ class CostStep extends StatelessWidget {
           ),
           const FieldHint('사례비와 별도로 물건값에 쓰는 금액이에요.'),
         ],
+        ],
         const SizedBox(height: 18),
-        const FieldLabel('완료 확인 방법'),
+        FieldLabel(going ? '전달·완료 방법' : '완료 확인 방법'),
         TextField(
           controller: form.completion,
           maxLines: 2,
           onChanged: (_) => update(),
-          decoration: formFieldDecoration('예: 물품 전달 후 요청자가 수령 확인 (5자 이상)'),
+          decoration: formFieldDecoration(going ? '예: 돌아와서 만나 전달, 영수증 사진 공유 (5자 이상)' : '예: 물품 전달 후 요청자가 수령 확인 (5자 이상)'),
         ),
-        const SizedBox(height: 22),
-        const FieldLabel('급하게 올릴까요? (선택)'),
-        _hotToggle(),
+        if (!going) ...[
+          const SizedBox(height: 22),
+          const FieldLabel('급하게 올릴까요? (선택)'),
+          _hotToggle(),
+        ],
         const SizedBox(height: 22),
         const FieldLabel('이렇게 올라가요'),
-        TaskCard(it: form.preview(), onOpen: () {}, rich: true, last: true),
+        const Text(
+          '이웃의 목록에도 이 모양 그대로 보여요.',
+          style: TextStyle(fontSize: 12, color: AppColors.sub),
+        ),
+        const SizedBox(height: 4),
+        // 실제 목록('지금 내 주변 부탁')과 같은 줄 모양
+        TaskCard(it: form.preview(), onOpen: () {}, last: true),
       ],
     );
   }

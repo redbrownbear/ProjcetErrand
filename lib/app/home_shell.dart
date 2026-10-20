@@ -70,6 +70,7 @@ class _HomeShellState extends State<HomeShell> {
     flash: session.flash,
     openAskForm: () => requireLogin(() => _openRequestForm('ask')),
     openSeaForm: openPostSea,
+    openTripPost: openTripPost,
     goCommunity: goCommunity,
     requestDelivery: _requestDelivery,
   );
@@ -93,8 +94,6 @@ class _HomeShellState extends State<HomeShell> {
     session.start();
     store.toast = session.flash;
     store.gate = requireLogin;
-    store.uid = () => session.myUid;
-    store.watchTrips();
     store.addListener(_onSessionChanged);
     Future.delayed(const Duration(milliseconds: 1600), () {
       if (mounted && splash) setState(() => splash = false);
@@ -187,6 +186,9 @@ class _HomeShellState extends State<HomeShell> {
     toggleSave: session.toggleSave,
     onReport: session.report,
     onBlock: session.block,
+    onAskGoing: session.askGoing,
+    goingAsk: session.myGoingAsk,
+    myUid: session.myUid,
     changes: session,
     latest: _buildActions,
   );
@@ -255,7 +257,7 @@ class _HomeShellState extends State<HomeShell> {
               ),
               const SizedBox(height: 12),
               const Text(
-                '물건값은 판매자와 따로 정산하세요. 전달비는 안전결제로 맡겨 두고, 전달이 끝나면 지급돼요.',
+                '물건값은 판매자와 따로 정산하세요. 전달비도 앱 결제가 준비 중이라 전달한 이웃에게 직접 주고받아요.',
                 style: TextStyle(fontSize: 12.5, color: AppColors.sub, height: 1.5),
               ),
             ],
@@ -287,9 +289,11 @@ class _HomeShellState extends State<HomeShell> {
                 ),
                 onTap: () {
                   Navigator.pop(ctx);
-                  final trip = int.tryParse(n.tripId ?? '');
-                  if (trip != null) {
-                    social.openTrip(context, trip);
+                  // 댓글 알림은 그 글로, 나머지(지원·거래)는 진행 중인 부탁으로
+                  final rid = int.tryParse(n.requestId ?? '');
+                  final it = rid == null ? null : session.items.where((i) => i.id == rid).firstOrNull;
+                  if (n.kind == 'request.comment' && it != null) {
+                    actions.open(context, it);
                   } else {
                     goActivity();
                   }
@@ -359,6 +363,16 @@ class _HomeShellState extends State<HomeShell> {
         },
         canChat: (requestId) => session.tradeFor(requestId)?.isOpenForChat ?? false,
         openDetail: (it) => actions.open(context, it),
+        goingDeals: session.goingDeals,
+        onDeal: session.advanceDeal,
+        openDealChat: (tradeId) {
+          final t = session.tradeById(tradeId);
+          if (t != null) openChat(t);
+        },
+        openRequest: (id) {
+          final it = session.items.where((i) => i.id == id).firstOrNull;
+          if (it != null) actions.open(context, it);
+        },
         showHeader: false,
       ),
     ),
@@ -384,9 +398,15 @@ class _HomeShellState extends State<HomeShell> {
     ),
   );
 
-  /// 부탁 쓰기 폼. [kind]는 ask(동네 부탁) | sea(해외 사다주기).
-  void _openRequestForm(String kind, {String? cat}) =>
-      _push(PostRequest(scope: session.scope, onSubmit: addRequest, initialKind: kind, initialCat: cat));
+  /// 부탁 쓰기 폼. [kind]는 ask(동네 부탁) | sea(해외 사다주기) | going(가는 김에 · 제가 가요).
+  /// [extra]가 trip이면 '가는 김에 · 가는 분 찾아요'(일반 부탁).
+  void _openRequestForm(String kind, {String? cat, String? extra}) => _push(
+    PostRequest(scope: session.scope, onSubmit: addRequest, initialKind: kind, initialCat: cat, initialExtra: extra),
+  );
+
+  /// 가는 김에 글쓰기 — [going]이면 제가 가요(도움 주기), 아니면 가는 분 찾아요(도움 요청)
+  void openTripPost({bool going = true}) =>
+      requireLogin(() => _openRequestForm(going ? 'going' : 'ask', extra: going ? null : 'trip'));
 
   /// 오른쪽 위 '글쓰기' — 가는 김에 · 제안 · 부탁 · 해외 부탁 · 중고 · 커뮤니티 중에서 고른다 (v77).
   /// 단기알바 모집은 홈 바로가기 '전체'에 있다.

@@ -26,6 +26,9 @@ class Proposal {
   /// 1명당 물건 가격 (영수증 기준)
   final int price;
 
+  /// 1명당 심부름료 (물건값과 별도). 0이면 받지 않거나 정하지 않음
+  final int fee;
+
   /// 이동하는 날
   final DateTime day;
 
@@ -56,6 +59,7 @@ class Proposal {
     required this.item,
     this.spec,
     required this.price,
+    this.fee = 0,
     required this.day,
     required this.max,
     this.joined = 0,
@@ -68,6 +72,9 @@ class Proposal {
   });
 
   bool get unlimited => max == 0;
+
+  /// 1명이 내는 돈 = 물건값 + 심부름료
+  int get total => price + fee;
 
   int countWith(bool meJoined) => joined + (meJoined ? 1 : 0);
 
@@ -108,6 +115,7 @@ class Proposal {
     'item': item,
     'spec': spec,
     'price': price,
+    'fee': fee,
     'day': day.toIso8601String(),
     'max': max,
     'who': who,
@@ -128,6 +136,7 @@ class Proposal {
       item: j['item'] as String,
       spec: j['spec'] is String ? j['spec'] as String : null,
       price: j['price'] as int,
+      fee: j['fee'] is int ? j['fee'] as int : 0,
       day: day,
       max: j['max'] is int ? j['max'] as int : 0,
       who: '${j['who'] ?? '나'}',

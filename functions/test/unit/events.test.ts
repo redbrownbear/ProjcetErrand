@@ -62,3 +62,13 @@ test('긴 제목은 줄인다', () => {
   const [ev] = applicationEvents('1', undefined, app('pending', { requestTitle: '가'.repeat(40) }));
   assert.match(ev.body, /"가{20}…"/);
 });
+
+test('가는 김에(going) 신청은 지원이 아니라 부탁으로 알린다', () => {
+  const [ev] = applicationEvents('1', undefined, app('pending', { requestMode: 'going', requestTitle: '내일 오사카 가요' }));
+  assert.equal(ev.to, 'r');
+  assert.equal(ev.title, '새 부탁이 왔어요');
+  assert.match(ev.body, /부탁을 보냈어요/);
+  const [acc] = applicationEvents('1', app('pending', { requestMode: 'going' }), app('accepted', { requestMode: 'going', tradeId: 't' }));
+  assert.equal(acc.to, 'h');
+  assert.equal(acc.title, '부탁이 수락됐어요');
+});

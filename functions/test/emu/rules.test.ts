@@ -212,31 +212,14 @@ describe('신고', () => {
   });
 });
 
-describe('가는 김에', () => {
-  const post = (uid: string, extra: Record<string, unknown> = {}) => ({
-    ownerUid: uid,
-    author: '민지',
-    area: '반포동',
-    type: 'going',
-    where: '오사카',
-    title: '오사카 가요',
-    when: '내일',
-    quote: '필요한 거 있으면 댓글 주세요',
-    commentCount: 0,
-    createdAt: serverTimestamp(),
-    ...extra,
-  });
-
-  test('본인 이름으로만 올리고, 누구나 읽고, 댓글 수·댓글은 앱이 못 쓴다', async () => {
-    await assertSucceeds(setDoc(doc(db(OWNER), 'tripPosts', 'p1'), post(OWNER)));
-    await assertFails(setDoc(doc(db(OWNER), 'tripPosts', 'p2'), post(STRANGER)));
-    await assertFails(setDoc(doc(db(OWNER), 'tripPosts', 'p3'), post(OWNER, { commentCount: 5 })));
-    await assertFails(setDoc(doc(db(OWNER), 'tripPosts', 'p4'), post(OWNER, { lat: 37.5 })));
-    await assertFails(setDoc(doc(db(), 'tripPosts', 'p5'), post(OWNER)));
-    await assertSucceeds(getDoc(doc(db(), 'tripPosts', 'p1')));
-    await assertFails(updateDoc(doc(db(OWNER), 'tripPosts', 'p1'), { commentCount: 3 }));
-    await assertFails(setDoc(doc(db(STRANGER), 'tripPosts', 'p1', 'comments', 'c1'), { uid: STRANGER, text: '안녕' }));
-    await assertFails(deleteDoc(doc(db(STRANGER), 'tripPosts', 'p1')));
-    await assertSucceeds(deleteDoc(doc(db(OWNER), 'tripPosts', 'p1')));
+describe('가는 김에 · 댓글', () => {
+  test('제가 가요(going)·가는 분 찾아요(extra: trip) 글을 올리고, 댓글·댓글 수는 앱이 못 쓴다', async () => {
+    await assertSucceeds(setDoc(doc(db(OWNER), 'requests', '1760000000009'), newRequest({ mode: 'going', title: '내일 오사카 가요' })));
+    await assertSucceeds(setDoc(doc(db(OWNER), 'requests', '1760000000010'), newRequest({ extra: 'trip' })));
+    await assertFails(setDoc(doc(db(OWNER), 'requests', '1760000000011'), newRequest({ mode: 'teleport' })));
+    await assertFails(setDoc(doc(db(OWNER), 'requests', '1760000000012'), newRequest({ extra: 'hack' })));
+    await assertFails(setDoc(doc(db(OWNER), 'requests', '1760000000013'), newRequest({ commentCount: 3 })));
+    await assertFails(setDoc(doc(db(STRANGER), 'requests', RID, 'comments', 'c1'), { uid: STRANGER, text: '안녕' }));
+    await assertSucceeds(getDoc(doc(db(), 'requests', RID, 'comments', 'c1')));
   });
 });

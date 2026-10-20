@@ -2,7 +2,8 @@ import 'comment.dart';
 
 class TaskItem {
   final int id;
-  final String mode; // ask | sea | together
+  /// ask | sea | together | going('가는 김에 · 제가 가요' — 글쓴이가 도와주는 쪽)
+  final String mode;
   final String cat;
   final String? tcat; // together 카테고리
   final String title;
@@ -25,7 +26,11 @@ class TaskItem {
   final double x, y;
   final String desc;
   final bool hot;
+  /// 덧붙은 갈래: used(중고 전달) · trip('가는 김에 · 가는 분 찾아요')
   final String? extra;
+
+  /// 서버에 달린 댓글 수
+  final int commentCount;
   final String? ago;
   final int likes;
   final int joinCur;
@@ -85,6 +90,7 @@ class TaskItem {
     required this.desc,
     this.hot = false,
     this.extra,
+    this.commentCount = 0,
     this.ago,
     this.likes = 0,
     this.joinCur = 0,
@@ -109,15 +115,15 @@ class TaskItem {
   /// 시점으로만 그려지므로 여기 한 곳에 둔다.
   static String? currentUid;
 
-  /// 주인 표시만 바꾼 사본. 다른 값은 그대로 둔다.
-  TaskItem copyWith({String? ownerUid, bool? mine}) => TaskItem(
+  /// 주인 표시(또는 수락된 뒤 받은 정확한 장소)만 바꾼 사본. 다른 값은 그대로 둔다.
+  TaskItem copyWith({String? ownerUid, bool? mine, String? place, String? deliveryPlace}) => TaskItem(
     id: id,
     mode: mode,
     cat: cat,
     tcat: tcat,
     title: title,
     region: region,
-    place: place,
+    place: place ?? this.place,
     country: country,
     cc: cc,
     city: city,
@@ -137,6 +143,7 @@ class TaskItem {
     desc: desc,
     hot: hot,
     extra: extra,
+    commentCount: commentCount,
     ago: ago,
     likes: likes,
     joinCur: joinCur,
@@ -145,7 +152,7 @@ class TaskItem {
     lat: lat,
     lng: lng,
     deadline: deadline,
-    deliveryPlace: deliveryPlace,
+    deliveryPlace: deliveryPlace ?? this.deliveryPlace,
     budget: budget,
     payment: payment,
     completion: completion,
@@ -171,6 +178,12 @@ class TaskItem {
   /// 마감 시각이 지났는지. 마감 시각과 정확히 같은 순간부터 마감으로 본다.
   bool isExpiredAt(DateTime now) => deadline != null && !deadline!.isAfter(now);
   bool get isExpired => isExpiredAt(DateTime.now());
+
+  /// '가는 김에 · 제가 가요' — 글쓴이가 가는 길에 부탁을 받아 준다(보는 사람은 '부탁할게요')
+  bool get isGoing => mode == 'going';
+
+  /// '가는 김에'에 보이는 글 — 제가 가요 + 가는 분 찾아요
+  bool get isTrip => isGoing || extra == 'trip';
 
   /// 이 기기에 보관하는 내가 올린 부탁용. 같이해요 댓글·지도 좌표는 담지 않는다.
   Map<String, dynamic> toJson() => {

@@ -17,6 +17,7 @@ import '../features/benefits/models/reward_ledger.dart';
 import '../features/benefits/models/reward_product.dart';
 import '../features/benefits/services/mission_tracker.dart';
 import '../features/errand/models/application.dart';
+import '../features/errand/models/going_deal.dart';
 import '../features/errand/models/new_request_data.dart';
 import '../features/errand/models/offer.dart';
 import '../features/errand/models/task_item.dart';
@@ -93,6 +94,9 @@ class AppSession extends ChangeNotifier {
   /// 내가 요청자인 부탁도 거래가 시작되면 여기 들어온다.
   Map<int, Trade> trades = {};
 
+  /// '가는 김에 · 제가 가요' 글에서 생긴 부탁들(보낸 것·맡은 것). 글 하나에 여러 건이라 따로 둔다
+  List<GoingDeal> goingDeals = [];
+
   /// 내 부탁에 들어와 답을 기다리는 지원 (요청자 쪽 '받은 지원')
   List<Application> received = [];
 
@@ -117,6 +121,10 @@ class AppSession extends ChangeNotifier {
 
   /// 모집이 끝나 공개 목록(open)에서 빠졌지만 내 지원·거래와 이어진 부탁
   final Map<int, TaskItem> _related = {};
+
+  /// 수락된 수행자가 받은 정확한 장소(`private/detail`). 공개 글에는 동네 이름만 있다.
+  final Map<int, Map<String, dynamic>> _private = {};
+  final Set<int> _privateLoading = {};
   final Set<int> _relatedLoading = {};
 
   /// 보낸 가격 제안
@@ -188,7 +196,15 @@ class AppSession extends ChangeNotifier {
     for (final it in [...created, ..._server, ..._related.values, ..._seed]) {
       if (!seen.add(it.id)) continue;
       if (it.ownerUid != null && blocked.contains(it.ownerUid)) continue; // 차단한 사람의 글
-      out.add(!it.mine && mineIds.contains(it.id) ? it.copyWith(mine: true) : it);
+      var x = !it.mine && mineIds.contains(it.id) ? it.copyWith(mine: true) : it;
+      final p = _private[it.id];
+      if (p != null) {
+        x = x.copyWith(
+          place: p['place'] is String ? p['place'] as String : null,
+          deliveryPlace: p['deliveryPlace'] is String ? p['deliveryPlace'] as String : null,
+        );
+      }
+      out.add(x);
     }
     return out;
   }
@@ -526,6 +542,68 @@ class AppSession extends ChangeNotifier {
     return true;
   }
 
+  /// '가는 김에 · 제가 가요' 글에 부탁 보내기. 무엇을 부탁할지([msg])는 꼭 적는다.
+  Future<bool> askGoing(TaskItem it, String msg, int price) async {
+    if (it.isMine || it.isExpired || it.sample) {
+      flash(it.isMine ? '내가 올린 글이에요' : (it.sample ? '예시 글이라 부탁할 수 없어요' : '마감된 글이에요'));
+      return false;
+    }
+    if (!_serverMode) {
+      flash(serverIssue ?? '로그인 후 부탁할 수 있어요');
+      return false;
+    }
+    try {
+      await TradeRepository.apply(it.id, offerPrice: price, msg: msg);
+    } on ServerException catch (e) {
+      flash(e.message);
+      return false;
+    }
+    flash('부탁을 보냈어요 · 글쓴이가 수락하면 채팅이 열려요');
+    return true;
+  }
+
+  /// 이 '가는 김에' 글에 내가 보낸 부탁(가장 최근). 없으면 null
+  GoingDeal? myGoingAsk(int requestId) {
+    for (final d in goingDeals) {
+      if (d.requestId == requestId && d.requester) return d;
+    }
+    return null;
+  }
+
+  /// '가는 김에' 부탁의 단계 진행. 대기 중인 부탁의 cancel은 부탁 철회다.
+  Future<void> advanceDeal(GoingDeal d, String action) async {
+    if (!_serverMode) {
+      flash(serverIssue ?? '로그인 후 진행할 수 있어요');
+      return;
+    }
+    try {
+      if (d.status == 'pending') {
+        if (action != 'cancel') return;
+        await TradeRepository.withdraw(d.requestId);
+      } else if (d.tradeId != null) {
+        await TradeRepository.advance(d.tradeId!, action);
+      }
+    } on ServerException catch (e) {
+      flash(e.message);
+      return;
+    }
+    flash(switch (action) {
+      'start' => '부탁을 시작했어요',
+      'finish' => '완료 확인을 요청했어요',
+      'confirm' => '완료를 확인했어요',
+      'revise' => '보완을 요청했어요',
+      'cancel' => d.status == 'pending' ? '부탁을 취소했어요' : '거래를 취소했어요',
+      _ => '처리했어요',
+    });
+  }
+
+  ServerTrade? tradeById(String id) {
+    for (final t in [..._requesterTrades, ..._helperTrades]) {
+      if (t.id == id) return t;
+    }
+    return null;
+  }
+
   /// 거래 단계 진행. 누가 어떤 단계를 누를 수 있는지는 서버가 확인한다
   /// (수행자: start·finish / 요청자: confirm·revise / 시작 전 취소: 양쪽).
   /// 대기 중인 지원의 cancel은 지원 철회다.
@@ -566,7 +644,7 @@ class AppSession extends ChangeNotifier {
   Future<void> acceptApplication(Application a) async {
     try {
       await TradeRepository.accept(a.requestId, a.helperUid);
-      flash('${a.helperName}님의 지원을 수락했어요');
+      flash(a.isGoing ? '${a.helperName}님의 부탁을 맡았어요 · 채팅으로 이야기해 보세요' : '${a.helperName}님의 지원을 수락했어요');
     } on ServerException catch (e) {
       flash(e.message);
     }
@@ -575,7 +653,7 @@ class AppSession extends ChangeNotifier {
   Future<void> rejectApplication(Application a) async {
     try {
       await TradeRepository.reject(a.requestId, a.helperUid);
-      flash('지원을 거절했어요');
+      flash(a.isGoing ? '부탁을 거절했어요' : '지원을 거절했어요');
     } on ServerException catch (e) {
       flash(e.message);
     }
@@ -632,6 +710,10 @@ class AppSession extends ChangeNotifier {
     _helperTrades = [];
     _requesterTrades = [];
     _tradeIds.clear();
+    goingDeals = [];
+    // 다른 계정으로 바뀌면 앞사람이 받은 정확한 장소를 지운다
+    _private.clear();
+    _privateLoading.clear();
   }
 
   /// 서버의 지원서·거래 문서를 화면용 [trades] 하나로 합친다.
@@ -640,10 +722,33 @@ class AppSession extends ChangeNotifier {
     final ids = <int, String>{};
     final byId = {for (final t in [..._helperTrades, ..._requesterTrades]) t.id: t};
 
+    final going = <GoingDeal>[];
+
     // 내가 수행자: 지원서 상태 + 수락 뒤에는 거래 문서의 단계
     for (final a in _myApps) {
       final rid = a.requestIdInt;
       if (rid == null) continue;
+      if (a.isGoing) {
+        // '가는 김에' 글에 보낸 부탁 — 나는 부탁하는 쪽
+        final t = a.tradeId == null ? null : byId[a.tradeId];
+        going.add(
+          GoingDeal(
+            requestId: rid,
+            title: a.requestTitle,
+            ask: a.msg ?? '',
+            price: t?.price ?? a.offerPrice ?? 0,
+            status: switch (a.status) {
+              'pending' => 'pending',
+              'accepted' => t?.status ?? 'matched',
+              _ => 'cancelled',
+            },
+            requester: true,
+            tradeId: a.status == 'accepted' ? a.tradeId : null,
+            updatedAt: t?.updatedAt ?? a.updatedAt,
+          ),
+        );
+        continue;
+      }
       final t = a.tradeId == null ? null : byId[a.tradeId];
       final status = switch (a.status) {
         'pending' => 'pending',
@@ -658,12 +763,33 @@ class AppSession extends ChangeNotifier {
     final mine = [..._requesterTrades]..sort((a, b) => a.updatedAt.compareTo(b.updatedAt));
     for (final t in mine) {
       final rid = int.tryParse(t.requestId);
-      if (rid == null) continue;
+      if (rid == null || t.isGoing) continue;
       next[rid] = Trade(t.status, t.updatedAt);
       ids[rid] = t.id;
     }
 
+    // 내 '가는 김에' 글에서 맡은 부탁 — 나는 맡아 주는 쪽(수행자)
+    for (final t in _helperTrades) {
+      final rid = int.tryParse(t.requestId);
+      if (rid == null || !t.isGoing) continue;
+      going.add(
+        GoingDeal(
+          requestId: rid,
+          title: t.title,
+          ask: t.ask ?? '',
+          price: t.price,
+          status: t.status,
+          requester: false,
+          counterpart: t.applicantName,
+          tradeId: t.id,
+          updatedAt: t.updatedAt,
+        ),
+      );
+    }
+    going.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+
     _update(() {
+      goingDeals = going;
       trades = next;
       _tradeIds
         ..clear()
@@ -674,7 +800,12 @@ class AppSession extends ChangeNotifier {
       ]..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
     });
     _store.saveTrades(trades);
-    _loadRelated(next.keys);
+    _loadRelated({...next.keys, for (final d in going) d.requestId});
+    // 수락된 수행자(나)는 정확한 장소를 받는다
+    _loadPrivate([
+      for (final a in _myApps)
+        if (a.status == 'accepted' && !a.isGoing && a.requestIdInt != null) a.requestIdInt!,
+    ]);
   }
 
   // ── 채팅 (결정 5: 최소 채팅) ────────────────────────────────────────────
@@ -768,6 +899,17 @@ class AppSession extends ChangeNotifier {
   }
 
   /// 내 지원·거래와 이어진 부탁 중 목록에 없는 것(모집이 끝나 공개 목록에서 빠진 것)을 한 번씩 불러온다.
+  Future<void> _loadPrivate(Iterable<int> ids) async {
+    final missing = [
+      for (final id in ids)
+        if (!_private.containsKey(id) && _privateLoading.add(id)) id,
+    ];
+    for (final id in missing) {
+      final m = await _requests.getPrivate(id);
+      if (m != null) _update(() => _private[id] = m);
+    }
+  }
+
   Future<void> _loadRelated(Iterable<int> ids) async {
     final known = {for (final it in items) it.id};
     final missing = [
@@ -784,46 +926,25 @@ class AppSession extends ChangeNotifier {
 
   void addRequest(NewRequestData data) {
     final uid = AuthService().currentUser?.uid;
-    final sea = data.mode == 'sea';
-    final it = TaskItem(
+    // 글쓰기 화면의 미리보기와 같은 함수로 만든다 — 쓰는 칸과 보이는 칸이 어긋나지 않게
+    final it = data.toItem(
       id: DateTime.now().millisecondsSinceEpoch,
-      mode: data.mode,
-      cat: data.cat,
-      title: data.title,
-      desc: data.desc,
-      place: data.place.isEmpty ? null : data.place,
-      cc: data.cc,
-      city: data.city,
-      country: data.country,
-      region: sea ? null : (scope == '전국' ? '우리 동네' : scope),
-      // 새 부탁은 실제 거리를 알 수 없어 임의의 거리를 붙이지 않는다.
-      distM: sea ? 9e9 : null,
-      mins: sea ? 0 : data.mins,
-      price: data.price,
+      scope: scope,
       who: profile?.nickname ?? '나',
-      // 방금 올린 글에 별점·본인인증을 자동으로 붙이지 않는다.
-      rating: 0,
-      reviews: 0,
-      deals: 0,
-      resp: 0,
-      verified: false,
-      hot: data.hot,
-      deadline: data.deadline,
-      deliveryPlace: data.deliveryPlace,
-      budget: data.budget,
-      payment: data.payment,
-      completion: data.completion,
-      sample: false,
       ownerUid: uid,
-      // 로그인이 풀리거나 서버가 없어도 내 글임을 알 수 있게 표시를 남긴다.
-      mine: true,
     );
     _update(() => created = [it, ...created]);
     _store.saveRequests(created);
     MissionTracker.bump(MissionTracker.postTask, unique: it.id);
     onTicket?.call(TicketRules.firstPost);
     if (uid != null) _requests.add(it);
-    flash(uid == null ? '부탁을 올렸어요 · 로그인하면 계정에 저장돼요' : (it.hot ? '급해요로 목록 맨 위에 올렸어요' : '부탁을 올렸어요'));
+    flash(
+      uid == null
+          ? '글을 올렸어요 · 로그인하면 계정에 저장돼요'
+          : it.isGoing
+          ? '가는 김에 글을 올렸어요 · 이웃이 부탁을 보내면 알려 드려요'
+          : (it.hot ? '급해요로 목록 맨 위에 올렸어요' : '부탁을 올렸어요'),
+    );
   }
 
   /// 중고 물건 전달 부탁 (v77). 전달비만 정해 올리면 돈벌기 목록에 '중고'로 보인다.

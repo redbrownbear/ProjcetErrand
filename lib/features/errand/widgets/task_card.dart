@@ -35,14 +35,19 @@ class TaskCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final going = it.isGoing;
     final sea = it.mode == 'sea';
+    // 국기 타일을 쓰는 글: 해외 대행 · 해외로 가는 김에
+    final abroad = sea || (going && it.cc != null);
     final paid = it.mode != 'together';
 
     // 위치 · 거리 · 시간. 예시 데이터는 목록에서부터 예시라고 밝힌다.
+    // 가는 김에(제가 가요)는 '가는 곳'이 위치다. 거리·소요시간은 받는 부탁마다 달라 적지 않는다.
     final meta = [
-      if (sea) (it.country ?? '해외') else (it.place ?? it.region ?? ''),
-      if (!sea) distLabel(it),
-      if (!sea) '약 ${it.mins > 0 ? it.mins : 10}분',
+      if (abroad) (it.country ?? '해외') else (it.place ?? it.region ?? ''),
+      if (going) '가는 김에 부탁 받아요',
+      if (!abroad && !going) distLabel(it),
+      if (!abroad && !going) '약 ${it.mins > 0 ? it.mins : 10}분',
       if (it.sample) '예시',
     ].where((s) => s.isNotEmpty).join(' · ');
 
@@ -54,6 +59,10 @@ class TaskCard extends StatelessWidget {
         ? const StatusBadge.gray('마감')
         : it.hot
         ? const StatusBadge.red('급해요')
+        : going
+        ? const StatusBadge.blue('제가 가요')
+        : it.extra == 'trip'
+        ? const StatusBadge.yellow('가는 분 찾아요')
         : null;
 
     return InkWell(
@@ -81,7 +90,7 @@ class TaskCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                sea ? _flag(it.cc) : CatEmblem(cat: it.cat),
+                abroad ? _flag(it.cc) : CatEmblem(cat: it.cat),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -102,7 +111,7 @@ class TaskCard extends StatelessWidget {
                           padding: const EdgeInsets.only(top: 1),
                           child: Text(
                             [
-                              it.isExpired ? '마감됨' : deadlineLabel(it),
+                              it.isExpired ? '마감됨' : (going ? '${dateTimeLabel(it.deadline!)}까지 부탁 받아요' : deadlineLabel(it)),
                               if (it.deliveryPlace != null) '전달: ${it.deliveryPlace}',
                             ].join(' · '),
                             maxLines: 1,
@@ -121,8 +130,13 @@ class TaskCard extends StatelessWidget {
                     Text.rich(
                       TextSpan(
                         children: [
-                          TextSpan(text: paid ? nf(it.price) : '무료'),
-                          if (paid)
+                          if (going && it.price > 0)
+                            const TextSpan(
+                              text: '건당 ',
+                              style: TextStyle(fontSize: 12, fontWeight: AppType.w600, color: AppColors.sub),
+                            ),
+                          TextSpan(text: !paid ? '무료' : (going && it.price == 0 ? '사례비 협의' : nf(it.price))),
+                          if (paid && !(going && it.price == 0))
                             const TextSpan(
                               text: '원',
                               style: TextStyle(fontSize: 13, fontWeight: AppType.w600, color: AppColors.ink2),
@@ -145,11 +159,16 @@ class TaskCard extends StatelessWidget {
                         TextSpan(
                           style: AppType.caption,
                           children: [
-                            TextSpan(
-                              text: '★ ${it.rating.toStringAsFixed(1)}',
-                              style: AppType.caption.copyWith(color: AppColors.ink, fontWeight: AppType.w600),
-                            ),
-                            TextSpan(text: ' · 거래 ${it.deals}회'),
+                            // 기록이 없는 새 글에 '★ 0.0'을 보여 주지 않는다
+                            if (it.deals == 0 && it.reviews == 0)
+                              const TextSpan(text: '거래 기록 없음')
+                            else ...[
+                              TextSpan(
+                                text: '★ ${it.rating.toStringAsFixed(1)}',
+                                style: AppType.caption.copyWith(color: AppColors.ink, fontWeight: AppType.w600),
+                              ),
+                              TextSpan(text: ' · 거래 ${it.deals}회'),
+                            ],
                             if (it.verified)
                               TextSpan(
                                 text: ' · 본인인증',

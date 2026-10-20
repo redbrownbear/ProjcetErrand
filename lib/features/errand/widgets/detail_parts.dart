@@ -191,6 +191,9 @@ class DetailActionBar extends StatelessWidget {
   final VoidCallback onOffer;
   final VoidCallback onGrab;
 
+  /// 큰 버튼 문구를 바꿀 때 (가는 김에: '부탁할게요' · '도와줄게요')
+  final String? grabLabel;
+
   const DetailActionBar({
     super.key,
     required this.sea,
@@ -199,6 +202,7 @@ class DetailActionBar extends StatelessWidget {
     required this.blocked,
     required this.onOffer,
     required this.onGrab,
+    this.grabLabel,
   });
 
   @override
@@ -261,11 +265,12 @@ class DetailActionBar extends StatelessWidget {
               elevation: 0,
             ),
             child: Text(
-              sea
+              grabLabel ??
+              (sea
                   ? '내가 사다줄게요'
                   : paid
                   ? '지원하기'
-                  : '같이 신청하기',
+                  : '같이 신청하기'),
               style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
             ),
           ),

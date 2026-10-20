@@ -6,6 +6,7 @@ import '../../../core/widgets/app_icon.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/chip_widget.dart';
 import '../../errand/models/application.dart';
+import '../../errand/models/going_deal.dart';
 import '../../errand/models/task_item.dart';
 import '../../errand/models/trade.dart';
 
@@ -28,6 +29,12 @@ class ActivityView extends StatefulWidget {
   final void Function(int requestId)? openChat;
   final bool Function(int requestId)? canChat;
 
+  /// '가는 김에 · 제가 가요'에서 생긴 부탁들(보낸 것·맡은 것). 글 하나에 여러 건이라 따로 보여 준다.
+  final List<GoingDeal> goingDeals;
+  final void Function(GoingDeal deal, String action)? onDeal;
+  final void Function(String tradeId)? openDealChat;
+  final void Function(int requestId)? openRequest;
+
   /// 전체화면으로 띄울 때는 바깥 [ScreenFrame]이 제목을 그리므로 false를 준다.
   final bool showHeader;
   const ActivityView({
@@ -41,6 +48,10 @@ class ActivityView extends StatefulWidget {
     this.onReject = _noop,
     this.openChat,
     this.canChat,
+    this.goingDeals = const [],
+    this.onDeal,
+    this.openDealChat,
+    this.openRequest,
     this.showHeader = true,
   });
   static void _noop(Application _) {}
@@ -75,6 +86,10 @@ class _ActivityViewState extends State<ActivityView> {
       ..sort((a, b) => widget.trades[b.id]!.updatedAt.compareTo(widget.trades[a.id]!.updatedAt));
     final visible = entries.where((i) {
       final t = widget.trades[i.id]!;
+      return filter == 'all' || (filter == 'finished' ? t.isFinished : t.isActive);
+    }).toList();
+    final deals = widget.goingDeals.where((d) {
+      final t = d.trade;
       return filter == 'all' || (filter == 'finished' ? t.isFinished : t.isActive);
     }).toList();
 
@@ -115,14 +130,22 @@ class _ActivityViewState extends State<ActivityView> {
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
             child: Text(
-              '받은 지원 ${widget.received.length}',
+              '받은 지원·부탁 ${widget.received.length}',
               style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.ink),
             ),
           ),
           for (final a in widget.received) _receivedCard(a),
           const SizedBox(height: 6),
         ],
-        if (visible.isEmpty)
+        if (deals.isNotEmpty) ...[
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 8, 20, 4),
+            child: Text('가는 김에', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.ink)),
+          ),
+          for (final d in deals) _dealCard(d),
+          const SizedBox(height: 6),
+        ],
+        if (visible.isEmpty && deals.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 30, vertical: 50),
             child: Column(
@@ -161,13 +184,13 @@ class _ActivityViewState extends State<ActivityView> {
         Text(a.requestTitle, style: const TextStyle(fontSize: 13, color: AppColors.sub)),
         const SizedBox(height: 4),
         Text(
-          '${a.helperName}님이 지원했어요',
+          a.isGoing ? '${a.helperName}님이 부탁을 보냈어요' : '${a.helperName}님이 지원했어요',
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink),
         ),
         if (a.offerPrice != null || (a.msg?.isNotEmpty ?? false)) ...[
           const SizedBox(height: 6),
           Text(
-            [if (a.offerPrice != null) '제안 ${won(a.offerPrice!)}', if (a.msg?.isNotEmpty ?? false) a.msg!].join(' · '),
+            [if (a.offerPrice != null) (a.isGoing ? '사례비 ${won(a.offerPrice!)}' : '제안 ${won(a.offerPrice!)}'), if (a.msg?.isNotEmpty ?? false) a.msg!].join(' · '),
             style: const TextStyle(fontSize: 13, color: AppColors.ink, height: 1.5),
           ),
         ],
@@ -186,7 +209,7 @@ class _ActivityViewState extends State<ActivityView> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   elevation: 0,
                 ),
-                child: const Text('수락하기', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5)),
+                child: Text(a.isGoing ? '맡을게요' : '수락하기', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5)),
               ),
             ),
           ],
@@ -357,6 +380,130 @@ class _ActivityViewState extends State<ActivityView> {
                     ),
                   )
                 : _link(trade.status == 'pending' ? '지원 취소' : '거래 취소', () => setState(() => cancelId = it.id)),
+        ],
+      ),
+    );
+  }
+
+  /// '가는 김에' 부탁 한 건. 내가 부탁한 쪽이면 요청자 단계, 글쓴이(맡은 쪽)면 수행자 단계
+  Widget _dealCard(GoingDeal d) {
+    final t = d.trade;
+    final step = (d.requester ? _requesterNext : _helperNext)[t.status];
+    final next = step != null && step[0].isNotEmpty ? step : null;
+    final current = _steps.indexOf(t.status);
+    final guide = t.status == 'pending'
+        ? '글쓴이가 확인하고 맡아 주면 채팅이 열려요.'
+        : step != null
+        ? step[2]
+        : (t.status == 'completed' ? '부탁이 끝났어요. 앱 안의 결제·정산은 아직 없어요.' : '취소되거나 거절됐어요.');
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        border: Border.all(color: AppColors.line),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                decoration: BoxDecoration(color: AppColors.blueSoft, borderRadius: BorderRadius.circular(99)),
+                child: Text(
+                  d.requester ? '내가 부탁함' : '내가 맡음',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.blue),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                t.status == 'pending' ? '글쓴이 확인 대기' : t.label,
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.sub),
+              ),
+            ],
+          ),
+          InkWell(
+            onTap: widget.openRequest == null ? null : () => widget.openRequest!(d.requestId),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      d.ask.isEmpty ? d.title : d.ask,
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink),
+                    ),
+                  ),
+                  const Text('›', style: TextStyle(fontSize: 20, color: AppColors.faint)),
+                ],
+              ),
+            ),
+          ),
+          Text(
+            [d.title, if (d.counterpart != null) '${d.counterpart}님의 부탁', '사례비 ${won(d.price)}'].join(' · '),
+            style: const TextStyle(fontSize: 13, color: AppColors.sub),
+          ),
+          if (t.status != 'cancelled' && current > 0) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                for (int i = 1; i < _steps.length; i++)
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 22,
+                          height: 22,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: i < current
+                                ? AppColors.ink
+                                : i == current
+                                ? AppColors.yellow
+                                : AppColors.page,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Text(
+                            i < current ? '✓' : '$i',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: i < current ? Colors.white : AppColors.ink),
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(_stepLabels[i], style: const TextStyle(fontSize: 11, color: AppColors.sub)),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 10),
+          Text(guide, style: const TextStyle(fontSize: 13, color: AppColors.ink, height: 1.5)),
+          if (next != null && widget.onDeal != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => widget.onDeal!(d, next[0]),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.black,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
+                  ),
+                  child: Text(next[1], style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5)),
+                ),
+              ),
+            ),
+          if (d.tradeId != null && t.status != 'cancelled' && widget.openDealChat != null)
+            _link('상대방과 채팅하기', () => widget.openDealChat!(d.tradeId!)),
+          if (d.requester && t.status == 'confirmation' && widget.onDeal != null)
+            _link('보완 요청 · 진행 중으로 돌아가기', () => widget.onDeal!(d, 'revise')),
+          if (t.canCancel && widget.onDeal != null)
+            _link(t.status == 'pending' ? '부탁 취소' : '거래 취소 (시작 전)', () => widget.onDeal!(d, 'cancel')),
         ],
       ),
     );

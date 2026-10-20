@@ -7,6 +7,12 @@
  *
  * 모든 상태 변경은 트랜잭션 안에서 "지금 상태를 다시 읽고 → 허용되는지 확인 → 쓴다".
  * 같은 요청이 두 번 와도 두 번째는 상태가 이미 바뀌어 있어 거부된다.
+ *
+ * 부탁 종류(mode)
+ *  - ask · sea · together : 글쓴이가 **도움을 요청**한다. 지원한 사람이 수행자(helper), 한 명만 수락하면 모집이 닫힌다.
+ *  - going('가는 김에 · 제가 가요') : 글쓴이가 **도움을 준다**. 신청한 사람이 요청자(requester)가 되고, 글쓴이가 수행자다.
+ *    가는 길에 여러 명 부탁을 받을 수 있어 수락해도 모집이 열려 있고, 거래마다 따로 진행·완료된다.
+ *  지원서 문서 id는 언제나 **신청한 사람 uid**다(필드 이름 helperUid는 예전 그대로 = 신청자). 거래에는 applicantUid로 남긴다.
  */
 import { FieldValue, Firestore, Timestamp, Transaction } from 'firebase-admin/firestore';
 import { HttpsError } from 'firebase-functions/v2/https';
@@ -74,6 +80,11 @@ async function assertNotBlocked(tx: Transaction, db: Firestore, a: string, b: st
   if (ab.exists || ba.exists) throw new HttpsError('permission-denied', '차단 관계인 사용자와는 거래할 수 없어요.');
 }
 
+/** 글쓴이가 도움을 주는 글인가(신청자가 요청자가 된다) */
+export function isGiving(mode: unknown): boolean {
+  return mode === 'going';
+}
+
 function deadlinePassed(deadline: unknown, now: Timestamp): boolean {
   return deadline instanceof Timestamp && deadline.toMillis() < now.toMillis();
 }
@@ -93,7 +104,9 @@ export async function applyToRequest(db: Firestore, uid: string, data: unknown) 
     const [req, app] = await Promise.all([tx.get(reqRef), tx.get(appRef)]);
     if (!req.exists) throw new HttpsError('not-found', '부탁을 찾을 수 없어요.');
     const owner = req.get('ownerUid') as string;
-    if (owner === uid) throw new HttpsError('failed-precondition', '내가 올린 부탁에는 지원할 수 없어요.');
+    if (owner === uid) throw new HttpsError('failed-precondition', '내가 올린 글에는 신청할 수 없어요.');
+    const giving = isGiving(req.get('mode'));
+    if (giving && !msg) throw new HttpsError('invalid-argument', '무엇을 부탁할지 적어 주세요.');
     if (req.get('status') !== 'open' || deadlinePassed(req.get('deadline'), now)) {
       throw new HttpsError('failed-precondition', '모집이 끝난 부탁이에요.');
     }
@@ -102,8 +115,8 @@ export async function applyToRequest(db: Firestore, uid: string, data: unknown) 
     await assertNotBlocked(tx, db, uid, owner);
 
     const prev = app.exists ? (app.get('status') as ApplicationStatus) : null;
-    if (prev === 'pending' || prev === 'accepted') throw new HttpsError('already-exists', '이미 지원한 부탁이에요.');
-    if (prev === 'rejected') throw new HttpsError('failed-precondition', '이 부탁에는 다시 지원할 수 없어요.');
+    if (prev === 'pending' || prev === 'accepted') throw new HttpsError('already-exists', giving ? '이미 부탁을 보냈어요.' : '이미 지원한 부탁이에요.');
+    if (prev === 'rejected') throw new HttpsError('failed-precondition', giving ? '이 글에는 다시 부탁할 수 없어요.' : '이 부탁에는 다시 지원할 수 없어요.');
 
     const nickname = me.get('nickname');
     tx.set(appRef, {
@@ -113,6 +126,7 @@ export async function applyToRequest(db: Firestore, uid: string, data: unknown) 
       helperName: typeof nickname === 'string' && nickname.trim() ? nickname.trim().slice(0, 20) : '이웃',
       requestTitle: req.get('title') ?? '',
       requestId: rid,
+      requestMode: req.get('mode') ?? 'ask',
       offerPrice: offerPrice ?? null,
       msg: msg ?? null,
       status: 'pending',
@@ -153,31 +167,44 @@ export async function acceptApplication(db: Firestore, uid: string, data: unknow
     const [req, app] = await Promise.all([tx.get(reqRef), tx.get(appRef)]);
     if (!req.exists) throw new HttpsError('not-found', '부탁을 찾을 수 없어요.');
     if (req.get('ownerUid') !== uid) throw new HttpsError('permission-denied', '내가 올린 부탁만 수락할 수 있어요.');
-    if (req.get('status') !== 'open') throw new HttpsError('failed-precondition', '모집 중인 부탁이 아니에요.');
-    if (!app.exists || app.get('status') !== 'pending') throw new HttpsError('failed-precondition', '수락할 수 있는 지원이 아니에요.');
+    if (req.get('status') !== 'open') throw new HttpsError('failed-precondition', '모집 중인 글이 아니에요.');
+    if (!app.exists || app.get('status') !== 'pending') throw new HttpsError('failed-precondition', '수락할 수 있는 신청이 아니에요.');
+    const applicant = helperUid; // 지원서 id = 신청자
     await assertActive(tx, db, uid);
-    await assertActive(tx, db, helperUid, '상대방');
-    await assertNotBlocked(tx, db, uid, helperUid);
-    const others = await tx.get(reqRef.collection('applications').where('status', '==', 'pending'));
+    await assertActive(tx, db, applicant, '상대방');
+    await assertNotBlocked(tx, db, uid, applicant);
+    const giving = isGiving(req.get('mode'));
+    const others = giving ? null : await tx.get(reqRef.collection('applications').where('status', '==', 'pending'));
 
     const tradeRef = db.collection('trades').doc();
     const offer = app.get('offerPrice');
+    const msg = app.get('msg');
     tx.set(tradeRef, {
       requestId: rid,
-      requesterUid: uid,
-      helperUid,
+      mode: req.get('mode') ?? 'ask',
+      // 도움을 주는 글(going)은 신청자가 요청자, 글쓴이가 수행자
+      requesterUid: giving ? applicant : uid,
+      helperUid: giving ? uid : applicant,
+      applicantUid: applicant,
+      applicantName: app.get('helperName') ?? '이웃',
       title: req.get('title') ?? '',
+      ...(giving && typeof msg === 'string' && msg ? { ask: msg } : {}),
       price: typeof offer === 'number' ? offer : (req.get('price') ?? 0),
       status: 'matched' satisfies TradeStatus,
       history: [{ status: 'matched', by: uid, at: now }],
       createdAt: now,
       updatedAt: now,
     });
-    tx.update(reqRef, { status: 'matched', helperUid, tradeId: tradeRef.id, applicantCount: 0, updatedAt: now });
-    tx.update(appRef, { status: 'accepted', tradeId: tradeRef.id, updatedAt: now });
-    for (const d of others.docs) {
-      if (d.id !== helperUid) tx.update(d.ref, { status: 'rejected', updatedAt: now });
+    if (giving) {
+      // 가는 길에 여러 부탁을 받는다: 모집은 그대로 열어 둔다
+      tx.update(reqRef, { applicantCount: FieldValue.increment(-1), updatedAt: now });
+    } else {
+      tx.update(reqRef, { status: 'matched', helperUid: applicant, tradeId: tradeRef.id, applicantCount: 0, updatedAt: now });
+      for (const d of others!.docs) {
+        if (d.id !== applicant) tx.update(d.ref, { status: 'rejected', updatedAt: now });
+      }
     }
+    tx.update(appRef, { status: 'accepted', tradeId: tradeRef.id, updatedAt: now });
     return { tradeId: tradeRef.id };
   });
 }
@@ -193,7 +220,7 @@ export async function rejectApplication(db: Firestore, uid: string, data: unknow
     const [req, app] = await Promise.all([tx.get(reqRef), tx.get(appRef)]);
     if (!req.exists) throw new HttpsError('not-found', '부탁을 찾을 수 없어요.');
     if (req.get('ownerUid') !== uid) throw new HttpsError('permission-denied', '내가 올린 부탁만 처리할 수 있어요.');
-    if (!app.exists || app.get('status') !== 'pending') throw new HttpsError('failed-precondition', '거절할 수 있는 지원이 아니에요.');
+    if (!app.exists || app.get('status') !== 'pending') throw new HttpsError('failed-precondition', '거절할 수 있는 신청이 아니에요.');
     tx.update(appRef, { status: 'rejected', updatedAt: now });
     tx.update(reqRef, { applicantCount: FieldValue.increment(-1), updatedAt: now });
     return { status: 'rejected' as const };
@@ -246,7 +273,10 @@ export async function advanceTrade(db: Firestore, uid: string, data: unknown) {
     const next = res.next;
     const rid = trade.get('requestId') as string;
     const reqRef = paths.request(db, rid);
-    const req = isFinished(next) ? await tx.get(reqRef) : null;
+    const giving = isGiving(trade.get('mode'));
+    const applicant = (trade.get('applicantUid') as string | undefined) ?? helperUid;
+    // 도움을 주는 글은 거래 하나가 끝나도 글(모집)은 그대로 둔다
+    const req = isFinished(next) && !giving ? await tx.get(reqRef) : null;
 
     tx.update(tradeRef, {
       status: next,
@@ -263,7 +293,9 @@ export async function advanceTrade(db: Firestore, uid: string, data: unknown) {
       // 시작 전 취소: 부탁을 다시 모집 중으로 돌린다(마감이 지났으면 만료). 정책은 1차 기본값.
       const reopened: RequestStatus = deadlinePassed(req.get('deadline'), now) ? 'expired' : 'open';
       tx.update(reqRef, { status: reopened, helperUid: FieldValue.delete(), tradeId: FieldValue.delete(), updatedAt: now });
-      tx.update(paths.application(db, rid, helperUid), { status: 'cancelled', updatedAt: now });
+    }
+    if (next === 'cancelled') {
+      tx.update(paths.application(db, rid, applicant), { status: 'cancelled', updatedAt: now });
     }
     return { status: next };
   });

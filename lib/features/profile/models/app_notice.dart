@@ -7,9 +7,6 @@ class AppNotice {
   final String title;
   final String body;
   final String? requestId;
-
-  /// '가는 김에' 댓글 알림이면 그 글 id
-  final String? tripId;
   final DateTime createdAt;
   final bool read;
 
@@ -21,7 +18,6 @@ class AppNotice {
     required this.createdAt,
     required this.read,
     this.requestId,
-    this.tripId,
   });
 
   static AppNotice? fromDoc(String id, Map<String, dynamic> m) {
@@ -33,7 +29,6 @@ class AppNotice {
       title: title,
       body: m['body'] is String ? m['body'] as String : '',
       requestId: m['requestId'] is String ? m['requestId'] as String : null,
-      tripId: m['tripId'] is String ? m['tripId'] as String : null,
       createdAt: at is Timestamp ? at.toDate() : DateTime.now(),
       read: m['readAt'] != null,
     );

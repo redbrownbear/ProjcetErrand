@@ -16,7 +16,7 @@ export type NotifyKind =
   | 'trade.completed'
   | 'trade.cancelled'
   | 'chat.message'
-  | 'trip.comment';
+  | 'request.comment';
 
 export interface NotifyEvent {
   to: string;
@@ -25,8 +25,6 @@ export interface NotifyEvent {
   body: string;
   requestId: string;
   tradeId?: string;
-  /** '가는 김에' 글 id (trip.comment) */
-  tripId?: string;
 }
 
 type Doc = Record<string, unknown> | undefined;
@@ -44,30 +42,33 @@ export function applicationEvents(requestId: string, before: Doc, after: Doc): N
   const requester = str(after, 'requesterUid');
   const title = quote(str(after, 'requestTitle'));
   const name = str(after, 'helperName', '이웃');
+  // '가는 김에 · 제가 가요' 글에 온 신청은 지원이 아니라 부탁이다(신청자가 부탁하는 쪽)
+  const giving = str(after, 'requestMode') === 'going';
+  const w = giving ? '부탁' : '지원';
 
   switch (next) {
     case 'pending':
       return requester
-        ? [{ to: requester, kind: 'application.new', title: '새 지원이 왔어요', body: `${name}님이 ${title}에 지원했어요`, requestId }]
+        ? [{ to: requester, kind: 'application.new', title: `새 ${w}이 왔어요`, body: giving ? `${name}님이 ${title} 글에 부탁을 보냈어요` : `${name}님이 ${title}에 지원했어요`, requestId }]
         : [];
     case 'withdrawn':
       return requester && prev === 'pending'
-        ? [{ to: requester, kind: 'application.withdrawn', title: '지원이 취소됐어요', body: `${name}님이 ${title} 지원을 취소했어요`, requestId }]
+        ? [{ to: requester, kind: 'application.withdrawn', title: `${w}이 취소됐어요`, body: `${name}님이 ${title} ${w}을 취소했어요`, requestId }]
         : [];
     case 'accepted':
       return [
         {
           to: helper,
           kind: 'application.accepted',
-          title: '지원이 수락됐어요',
-          body: `${title} 부탁을 시작할 수 있어요`,
+          title: `${w}이 수락됐어요`,
+          body: giving ? `${title} 글쓴이가 부탁을 맡아 줘요. 채팅으로 이야기해 보세요` : `${title} 부탁을 시작할 수 있어요`,
           requestId,
           tradeId: str(after, 'tradeId') || undefined,
         },
       ];
     case 'rejected':
       return prev === 'pending'
-        ? [{ to: helper, kind: 'application.rejected', title: '지원 결과를 알려 드려요', body: `${title} 부탁은 이번에 함께하지 못하게 됐어요`, requestId }]
+        ? [{ to: helper, kind: 'application.rejected', title: `${w} 결과를 알려 드려요`, body: `${title} ${giving ? '글의 부탁' : '부탁'}은 이번에 함께하지 못하게 됐어요`, requestId }]
         : [];
     default:
       return []; // cancelled(수락 뒤 취소)는 거래 쪽 알림이 보낸다

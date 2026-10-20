@@ -92,7 +92,7 @@ class OverseasTabState extends State<OverseasTab> {
           'earn' => _earn(),
           _ => [LocalNeighbors(nav: widget.social)],
         },
-        FootNote(mode == 'local' ? '예시는 체험용이며 실제 제안은 현지 거주 인증 후 공개돼요' : '해외 사다주기는 안전결제로만 진행돼요'),
+        FootNote(mode == 'local' ? '예시는 체험용이며 실제 제안은 현지 거주 인증 후 공개돼요' : '앱 안의 결제·보관은 아직 없어요 · 물건값·사례비는 직접 주고받아요'),
       ],
     );
   }

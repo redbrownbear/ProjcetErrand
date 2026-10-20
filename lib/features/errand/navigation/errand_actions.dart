@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../benefits/services/mission_tracker.dart';
 import '../../community/screens/community_post_screen.dart';
+import '../models/going_deal.dart';
 import '../models/offer.dart';
 import '../models/task_item.dart';
 import '../screens/detail_page.dart';
@@ -20,6 +21,13 @@ class ErrandActions {
   final Future<bool> Function(TaskItem it, String reason, String detail)? onReport;
   final void Function(TaskItem it)? onBlock;
 
+  /// '가는 김에 · 제가 가요' 글에 부탁 보내기, 그 글에 내가 보낸 부탁
+  final Future<bool> Function(TaskItem it, String msg, int price)? onAskGoing;
+  final GoingDeal? Function(int id)? goingAsk;
+
+  /// 지금 로그인한 내 uid (댓글의 '나' 표시)
+  final String? myUid;
+
   /// 값이 바뀌면 알려 주는 곳과, 그때의 최신 묶음.
   ///
   /// 이 묶음은 만든 순간의 지원 목록·제안을 들고 있다. 상세 화면은 열린 채로
@@ -36,6 +44,9 @@ class ErrandActions {
     required this.toggleSave,
     this.onReport,
     this.onBlock,
+    this.onAskGoing,
+    this.goingAsk,
+    this.myUid,
     this.changes,
     this.latest,
   });
@@ -67,5 +78,8 @@ class ErrandActions {
           toggleSave: toggleSave,
           onReport: onReport,
           onBlock: onBlock,
+          onAskGoing: onAskGoing,
+          goingAsk: goingAsk?.call(it.id),
+          myUid: myUid,
         );
 }

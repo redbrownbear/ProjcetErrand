@@ -16,6 +16,9 @@ class Application {
   final String? tradeId;
   final DateTime updatedAt;
 
+  /// 신청한 글의 종류. going이면 지원이 아니라 '부탁'이다(신청자가 부탁하는 쪽)
+  final String requestMode;
+
   const Application({
     required this.requestId,
     required this.helperUid,
@@ -27,7 +30,10 @@ class Application {
     this.offerPrice,
     this.msg,
     this.tradeId,
+    this.requestMode = 'ask',
   });
+
+  bool get isGoing => requestMode == 'going';
 
   bool get isPending => status == 'pending';
 
@@ -51,6 +57,7 @@ class Application {
       msg: m['msg'] is String ? m['msg'] as String : null,
       tradeId: m['tradeId'] is String ? m['tradeId'] as String : null,
       updatedAt: at is Timestamp ? at.toDate() : DateTime.now(),
+      requestMode: text('requestMode', 'ask'),
     );
   }
 }
@@ -73,6 +80,16 @@ class ServerTrade {
   /// 사람별 안 읽은 메시지 수 (uid → 개수)
   final Map<String, int> unread;
 
+  /// 글 종류. going이면 신청자가 요청자, 글쓴이가 수행자
+  final String mode;
+
+  /// 신청한 사람(이름은 서버가 남긴 사본)
+  final String applicantUid;
+  final String applicantName;
+
+  /// '가는 김에' 신청 때 적은 부탁 내용
+  final String? ask;
+
   const ServerTrade({
     required this.id,
     required this.requestId,
@@ -85,7 +102,13 @@ class ServerTrade {
     this.lastMessage,
     this.lastMessageAt,
     this.unread = const {},
+    this.mode = 'ask',
+    this.applicantUid = '',
+    this.applicantName = '이웃',
+    this.ask,
   });
+
+  bool get isGoing => mode == 'going';
 
   bool get isOpenForChat => status != 'cancelled';
   int unreadFor(String uid) => unread[uid] ?? 0;
@@ -111,6 +134,10 @@ class ServerTrade {
           for (final e in (m['unread'] as Map).entries)
             if (e.value is int) '${e.key}': e.value as int,
       },
+      mode: m['mode'] is String ? m['mode'] as String : 'ask',
+      applicantUid: m['applicantUid'] is String ? m['applicantUid'] as String : (m['helperUid'] is String ? m['helperUid'] as String : ''),
+      applicantName: m['applicantName'] is String ? m['applicantName'] as String : '이웃',
+      ask: m['ask'] is String ? m['ask'] as String : null,
     );
   }
 }

@@ -56,6 +56,12 @@ class RequestRepository {
     return m == null ? null : fromDoc(d.id, m);
   }, null);
 
+  /// 정확한 장소(`private/detail`). 글쓴이와 수락된 수행자만 읽을 수 있다(보안 규칙 v2). 없거나 못 읽으면 null.
+  Future<Map<String, dynamic>?> getPrivate(int id) => Backend.guard<Map<String, dynamic>?>(() async {
+    final d = await Backend.requests.doc('$id').collection('private').doc('detail').get();
+    return d.data();
+  }, null);
+
   // 모집 취소·마감은 앱이 직접 쓰지 않는다 → 서버 함수 cancelRequest · expireRequests
 
   // ── 변환 ────────────────────────────────────────────────────────────────
@@ -79,6 +85,7 @@ class RequestRepository {
     'payment': it.payment,
     'completion': it.completion,
     'hot': it.hot,
+    'extra': it.extra,
     'deadline': it.deadline == null ? null : Timestamp.fromDate(it.deadline!),
   };
 
@@ -128,6 +135,8 @@ class RequestRepository {
       resp: 0,
       verified: false,
       hot: m['hot'] == true,
+      extra: str('extra'),
+      commentCount: whole('commentCount'),
       deadline: deadline is Timestamp ? deadline.toDate() : DateTime.tryParse('$deadline'),
       sample: false,
       ownerUid: str('ownerUid'),
