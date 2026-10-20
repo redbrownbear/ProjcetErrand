@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 import '../core/backend/backend.dart';
+import '../core/backend/push_service.dart';
 import '../core/backend/server_api.dart';
 import '../core/backend/user_repository.dart';
 import '../core/utils/formatters.dart';
@@ -28,8 +29,10 @@ import '../features/errand/repositories/trade_repository.dart';
 import '../features/pay/models/pay_entry.dart';
 import '../features/pay/pay_config.dart';
 import '../features/pay/repositories/pay_repository.dart';
+import '../features/profile/models/app_notice.dart';
 import '../features/profile/models/trust_level.dart';
 import '../features/profile/models/user_profile.dart';
+import '../features/profile/repositories/safety_repository.dart';
 import 'session_store.dart';
 
 /// 앱이 들고 있는 내 자료와, 그 자료를 바꾸는 행동.
@@ -101,6 +104,17 @@ class AppSession extends ChangeNotifier {
   List<ServerTrade> _helperTrades = [];
   List<ServerTrade> _requesterTrades = [];
 
+  /// 알림함(최근 30개). 서버가 지원·수락·단계 변경 때 만든다.
+  List<AppNotice> notices = [];
+
+  /// 내가 차단한 사용자 uid. 이 사람들의 부탁은 목록에서 숨긴다.
+  Set<String> blocked = {};
+
+  final PushService _push = PushService();
+  SafetyRepository? _safety;
+  StreamSubscription<List<AppNotice>>? _noticeSub;
+  StreamSubscription<Set<String>>? _blockSub;
+
   /// 모집이 끝나 공개 목록(open)에서 빠졌지만 내 지원·거래와 이어진 부탁
   final Map<int, TaskItem> _related = {};
   final Set<int> _relatedLoading = {};
@@ -133,6 +147,7 @@ class AppSession extends ChangeNotifier {
 
     _requestSub = _requests.watchOpen().listen((list) => _update(() => _server = list));
     _authSub = AuthService().authStateChanges.listen(_bindUser);
+    AuthService.beforeSignOut = _push.detach;
   }
 
   @override
@@ -141,6 +156,8 @@ class AppSession extends ChangeNotifier {
     _authSub?.cancel();
     _requestSub?.cancel();
     _stopTradeWatch();
+    _stopSafetyWatch();
+    if (AuthService.beforeSignOut == _push.detach) AuthService.beforeSignOut = null;
     super.dispose();
   }
 
@@ -170,6 +187,7 @@ class AppSession extends ChangeNotifier {
     // 내 글은 이 기기 사본이 먼저다. 공개 문서에는 정확한 장소가 없어서(보안 규칙 v2) 서버 쪽을 쓰면 장소가 비어 보인다.
     for (final it in [...created, ..._server, ..._related.values, ..._seed]) {
       if (!seen.add(it.id)) continue;
+      if (it.ownerUid != null && blocked.contains(it.ownerUid)) continue; // 차단한 사람의 글
       out.add(!it.mine && mineIds.contains(it.id) ? it.copyWith(mine: true) : it);
     }
     return out;
@@ -285,6 +303,7 @@ class AppSession extends ChangeNotifier {
       // 서버에 못 붙어서 로그인 여부를 모르는 경우(오프라인 실행)는 그 사본이 유일한 자료라 남긴다.
       if (Backend.ready && owner != null) _resetAccount();
       _stopTradeWatch();
+      _stopSafetyWatch();
       _update(() {
         _user = null;
         _pay = null;
@@ -313,6 +332,8 @@ class AppSession extends ChangeNotifier {
     await _pullServer(repo, user);
     if (!_stillBound(user)) return;
     _watchTrades(user.uid);
+    _watchSafety(user.uid);
+    _push.attach(user.uid, onForeground: (title, body) => flash(body.isEmpty ? title : '$title · $body'));
     _update(() => syncing = false);
     _markBound(user.uid);
   }
@@ -654,6 +675,63 @@ class AppSession extends ChangeNotifier {
     });
     _store.saveTrades(trades);
     _loadRelated(next.keys);
+  }
+
+  // ── 알림함 · 신고 · 차단 (W4·W5) ────────────────────────────────────────
+
+  int get unreadNotices => notices.where((n) => !n.read).length;
+
+  void markNoticesRead() {
+    final ids = [
+      for (final n in notices)
+        if (!n.read) n.id,
+    ];
+    if (ids.isNotEmpty) _safety?.markRead(ids);
+  }
+
+  /// 신고 접수. 운영자가 확인한다(functions/src/admin). 접수됐으면 true.
+  Future<bool> report(TaskItem it, String reason, String detail) async {
+    final target = it.ownerUid;
+    final safety = _safety;
+    if (target == null || safety == null) {
+      flash('로그인 후 신고할 수 있어요');
+      return false;
+    }
+    final ok = await safety.report(targetUid: target, requestId: '${it.id}', reason: reason, detail: detail);
+    flash(ok ? '신고를 접수했어요 · 운영자가 확인할게요' : '신고를 보내지 못했어요. 잠시 후 다시 시도해 주세요');
+    return ok;
+  }
+
+  /// 글쓴이 차단. 서로 지원·수락할 수 없고, 그 사람의 글이 목록에서 사라진다.
+  void block(TaskItem it) {
+    final target = it.ownerUid;
+    final safety = _safety;
+    if (target == null || safety == null) {
+      flash('로그인 후 차단할 수 있어요');
+      return;
+    }
+    _update(() => blocked = {...blocked, target});
+    safety.setBlocked(target, true);
+    flash('차단했어요 · 이 사용자의 부탁은 더 이상 보이지 않아요');
+  }
+
+  void _watchSafety(String uid) {
+    _stopSafetyWatch();
+    if (!Backend.ready) return;
+    final repo = SafetyRepository(uid);
+    _safety = repo;
+    _noticeSub = repo.watchNotices().listen((v) => _update(() => notices = v));
+    _blockSub = repo.watchBlocked().listen((v) => _update(() => blocked = v));
+  }
+
+  void _stopSafetyWatch() {
+    _noticeSub?.cancel();
+    _blockSub?.cancel();
+    _noticeSub = null;
+    _blockSub = null;
+    _safety = null;
+    notices = [];
+    blocked = {};
   }
 
   /// 내 지원·거래와 이어진 부탁 중 목록에 없는 것(모집이 끝나 공개 목록에서 빠진 것)을 한 번씩 불러온다.

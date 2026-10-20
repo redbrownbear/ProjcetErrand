@@ -81,7 +81,17 @@ class AuthService {
     await user.reload();
   }
 
-  Future<void> signOut() async => _auth?.signOut();
+  /// 로그아웃 직전에 할 일(이 기기의 알림 토큰을 계정에서 지우기 등). 로그아웃한 뒤에는 권한이 없어 지울 수 없다.
+  static Future<void> Function()? beforeSignOut;
+
+  Future<void> signOut() async {
+    try {
+      await beforeSignOut?.call();
+    } catch (e) {
+      debugPrint('로그아웃 전 정리 실패: $e');
+    }
+    await _auth?.signOut();
+  }
 
   /// Firebase가 내려주는 영어 에러 코드를 화면에 보여줄 한국어 메시지로 변환.
   static String messageFor(FirebaseAuthException e) {

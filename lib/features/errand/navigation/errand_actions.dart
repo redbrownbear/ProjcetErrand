@@ -16,6 +16,10 @@ class ErrandActions {
   final bool Function(int id) isSaved;
   final void Function(int id) toggleSave;
 
+  /// 신고·차단 (W5). 없으면 상세에 신고 링크를 보여 주지 않는다.
+  final Future<bool> Function(TaskItem it, String reason, String detail)? onReport;
+  final void Function(TaskItem it)? onBlock;
+
   /// 값이 바뀌면 알려 주는 곳과, 그때의 최신 묶음.
   ///
   /// 이 묶음은 만든 순간의 지원 목록·제안을 들고 있다. 상세 화면은 열린 채로
@@ -30,6 +34,8 @@ class ErrandActions {
     required this.offers,
     required this.isSaved,
     required this.toggleSave,
+    this.onReport,
+    this.onBlock,
     this.changes,
     this.latest,
   });
@@ -59,5 +65,7 @@ class ErrandActions {
           onOffer: onOffer,
           isSaved: isSaved,
           toggleSave: toggleSave,
+          onReport: onReport,
+          onBlock: onBlock,
         );
 }

@@ -8,6 +8,7 @@ import '../models/offer.dart';
 import '../models/task_item.dart';
 import '../widgets/detail_parts.dart';
 import '../widgets/offer_sheet.dart';
+import '../widgets/report_sheet.dart';
 import '../widgets/request_facts.dart';
 
 class DetailPage extends StatefulWidget {
@@ -18,6 +19,8 @@ class DetailPage extends StatefulWidget {
   final void Function(TaskItem, int, String) onOffer;
   final bool Function(int id) isSaved;
   final void Function(int id) toggleSave;
+  final Future<bool> Function(TaskItem it, String reason, String detail)? onReport;
+  final void Function(TaskItem it)? onBlock;
   const DetailPage({
     super.key,
     required this.it,
@@ -27,6 +30,8 @@ class DetailPage extends StatefulWidget {
     required this.onOffer,
     required this.isSaved,
     required this.toggleSave,
+    this.onReport,
+    this.onBlock,
   });
   @override
   State<DetailPage> createState() => _DetailPageState();
@@ -99,6 +104,18 @@ class _DetailPageState extends State<DetailPage> {
                         const SizedBox(height: 18),
                         if (widget.myOffers.isNotEmpty) DetailMyOffers(offers: widget.myOffers),
                         DetailSafetyNote(sea: sea),
+                        if (_canReport(it))
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton(
+                              onPressed: () => openReportSheet(context, it, onReport: widget.onReport!, onBlock: widget.onBlock!),
+                              style: TextButton.styleFrom(foregroundColor: AppColors.sub, padding: EdgeInsets.zero),
+                              child: const Text(
+                                '이 부탁 신고 · 글쓴이 차단',
+                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, decoration: TextDecoration.underline),
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -127,6 +144,10 @@ class _DetailPageState extends State<DetailPage> {
       ),
     );
   }
+
+  /// 남이 올린 실제 부탁만 신고·차단할 수 있다(예시 글·내 글 제외)
+  bool _canReport(TaskItem it) =>
+      widget.onReport != null && widget.onBlock != null && !it.isMine && !it.sample && it.ownerUid != null;
 
   Widget _topBar(TaskItem it, {required bool sea, required bool paid}) {
     return Container(

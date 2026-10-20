@@ -40,7 +40,9 @@
 - [ ] 예산 알림 설정(Google Cloud 콘솔 › 결제 › 예산 및 알림, 50·90·100%)
 - [ ] 출시 전 운영 프로젝트 새로 만들기 → `.firebaserc`에 `prod` 추가, 앱 `google-services.json` 교체
 - [ ] 수락된 수행자에게 정확한 장소 보여 주기 — 지금은 `private/detail`에 저장만 하고 수행자 화면에서 읽지 않는다
-- [ ] W4 알림(FCM) · W5 신고·차단·운영 · 최소 채팅(결정 5) · W6 동선 구조화 · W7 추천 v0
+- [ ] W4·W5 배포·실기기 확인 — 알림 권한 허용 → 지원·수락·단계 변경마다 상대 기기에 푸시와 알림함, 신고 접수, 차단 후 목록에서 사라짐.
+      운영자 지정은 [1차_백엔드_설계.md › W5 운영 방법](1차_백엔드_설계.md)
+- [ ] 최소 채팅(결정 5) · W6 동선 구조화 · W7 추천 v0 · 운영자용 신고 처리 화면
 - [ ] 포인트·미션·출석·응모권을 1차 출시 빌드에서 숨기기(결정 6). 포인트 서버 이전(W8)은 그다음 업데이트
 
 - [ ] v77 이웃 활동(제안·이야기·중고·응모권) 서버 저장 — 지금은 이 기기에만 남는다
@@ -135,6 +137,18 @@
   바꾼 뒤엔 Android Studio를 완전히 종료 후 재시작.
 
 ## 기록
+
+### 2026-10-20 · 미커밋 · Claude (W4 알림 · W5 신고·차단·운영)
+- 추가(서버): `functions/src/notify/` — 지원서·거래 문서 변경 트리거(`onApplicationWrite`·`onTradeWrite`) → 알림함
+  `users/{uid}/notifications` 기록 + FCM 푸시(만료 토큰 정리, 같은 이벤트는 한 번만). `functions/src/admin/` — 운영자 함수
+  `adminSetSuspended`·`adminResolveReport`(custom claim `role=admin`, `adminLog` 기록), `functions/scripts/set-admin.js`(운영자 지정)
+- 추가(앱): `core/backend/push_service.dart`(알림 권한·토큰 등록·앱 켜져 있을 때 토스트), `profile/models/app_notice.dart`,
+  `profile/repositories/safety_repository.dart`(알림함·차단·신고), 부탁 상세 '이 부탁 신고 · 글쓴이 차단' 시트(`report_sheet.dart`),
+  헤더 알림 시트에 최근 알림 10개(열면 읽음 처리), `firebase_messaging` 패키지, `POST_NOTIFICATIONS` 권한, `test/server_models_test.dart`
+- 변경: 차단한 사용자의 부탁은 목록에서 숨긴다. 로그아웃 **전에** 이 기기의 알림 토큰을 계정에서 지운다(`AuthService.beforeSignOut`) —
+  안 지우면 다음 사람이 앞사람의 알림을 받는다
+- 변경(문구): 해외 부탁 상세·해외 화면의 "앱이 물건값·사례비를 안전하게 보관/정산·중재" 안내 → "앱 안의 결제·보관은 아직 없어요"
+  (실제로 보관·정산 기능이 없어 사실과 달랐다)
 
 ### 2026-10-20 · be4478e · Claude (W3 앱 연결 · W2 위치 분리)
 - 추가: `core/backend/server_api.dart`(서버 함수 호출, 실패를 화면 문구로), `errand/models/application.dart`(지원서·거래 문서 모델),

@@ -171,7 +171,9 @@ class DetailSafetyNote extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            sea ? '물건값·사례비는 앱이 안전하게 보관 후 완료 시 정산돼요 · 분쟁 시 중재해요' : '공개된 장소에서 만나요 · 위치공유는 동의할 때만 · 언제든 신고·차단할 수 있어요',
+            sea
+                ? '앱 안의 결제·보관은 아직 없어요 · 물건값은 영수증으로 확인하고 직접 정산해요 · 문제가 생기면 신고해 주세요'
+                : '공개된 장소에서 만나요 · 위치공유는 동의할 때만 · 아래에서 신고·차단할 수 있어요',
             style: const TextStyle(fontSize: 12.5, color: AppColors.ink, height: 1.6),
           ),
         ],

@@ -38,6 +38,7 @@ dependencies:
   firebase_auth: ^6.6.1
   cloud_firestore: ^6.9.0
   cloud_functions: ^6.5.0
+  firebase_messaging: ^16.7.0
   flutter_naver_map: ^1.4.4
   geolocator: ^14.0.3
   shared_preferences: ^2.5.5

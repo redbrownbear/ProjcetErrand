@@ -129,7 +129,7 @@ class _OverseasScreenState extends State<OverseasScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
             decoration: BoxDecoration(color: AppColors.purpleSoft, borderRadius: BorderRadius.circular(12)),
             child: const Text(
-              '물건값은 영수증으로 정산, 사례비는 별도예요. 완료 확인 전까지 앱이 안전하게 보관해요.',
+              '물건값은 영수증으로 정산, 사례비는 별도예요. 앱 안의 결제·보관은 아직 없어요.',
               style: TextStyle(fontSize: 11.5, color: AppColors.purple, fontWeight: FontWeight.w500, height: 1.55),
             ),
           ),

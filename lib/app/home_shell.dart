@@ -181,6 +181,8 @@ class _HomeShellState extends State<HomeShell> {
     // 목록이 새로 바뀌어도 상세 화면의 관심 표시가 옛 값을 본다.
     isSaved: (id) => session.bookmarks.contains(id),
     toggleSave: session.toggleSave,
+    onReport: session.report,
+    onBlock: session.block,
     changes: session,
     latest: _buildActions,
   );
@@ -260,12 +262,31 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   void _openNotifications() {
+    final notices = session.notices;
+    session.markNoticesRead();
     showSheet(
       context,
       (ctx) => SheetFrame(
         title: '알림',
         child: Column(
           children: [
+            // 서버가 보낸 거래 알림(지원·수락·단계 변경). 누르면 진행 중인 부탁으로 간다
+            for (final n in notices.take(10))
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.circle, size: 8, color: n.read ? Colors.transparent : AppColors.red),
+                minLeadingWidth: 8,
+                title: Text(n.title, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800)),
+                subtitle: Text(
+                  '${n.body}\n${dateTimeLabel(n.createdAt)}',
+                  style: const TextStyle(fontSize: 12.5, color: AppColors.sub, height: 1.5),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  goActivity();
+                },
+              ),
+            if (notices.isNotEmpty) const Divider(height: 20),
             for (final (title, sub, go) in [
               ('부탁 진행 상황', '지원·진행 중·완료 내역을 확인하세요', goActivity),
               ('미션 참여 상황', '참여 중·검수 대기·적립 완료', goPointsHub),
@@ -479,7 +500,7 @@ class _HomeShellState extends State<HomeShell> {
                     onBell: _openNotifications,
                     tickets: store.wallet.have,
                     onTickets: () => social.openLucky(context),
-                    hasNews: session.activeCount > 0,
+                    hasNews: session.unreadNotices > 0 || session.activeCount > 0,
                   ),
                   Expanded(child: _body()),
                   ShellBottomNav(current: tab, onSelect: (next) => next == ShellTab.side ? goSideTab(sideSub) : _switchTab(next)),
