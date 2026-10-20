@@ -41,11 +41,11 @@ class RequestFacts extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.only(bottom: 8),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
             child: Text(
               it.isGoing ? '부탁 전에 확인하세요' : '지원 전에 확인하세요',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.ink),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.ink),
             ),
           ),
           for (final r in rows)

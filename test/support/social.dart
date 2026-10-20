@@ -22,6 +22,7 @@ AppNav testSocial({NeighborStore? store, List<String>? toasts}) {
     flash: (m) => toasts?.add(m),
     openAskForm: () {},
     openSeaForm: () {},
+    openTripPost: ({going = true}) {},
     goCommunity: (_, {place}) {},
     requestDelivery: (_) {},
   );
