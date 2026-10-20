@@ -193,7 +193,9 @@ class AppSession extends ChangeNotifier {
     final seen = <int>{};
     final out = <TaskItem>[];
     // 내 글은 이 기기 사본이 먼저다. 공개 문서에는 정확한 장소가 없어서(보안 규칙 v2) 서버 쪽을 쓰면 장소가 비어 보인다.
-    for (final it in [...created, ..._server, ..._related.values, ..._seed]) {
+    // 단, 가는 김에(제가 가요) 글은 숨길 장소가 없고 수락 건수·접수 마감을 서버가 바꾸므로 서버 쪽을 쓴다
+    final serverGoing = {for (final s in _server) if (s.isGoing) s.id: s};
+    for (final it in [for (final c in created) serverGoing[c.id] ?? c, ..._server, ..._related.values, ..._seed]) {
       if (!seen.add(it.id)) continue;
       if (it.ownerUid != null && blocked.contains(it.ownerUid)) continue; // 차단한 사람의 글
       // 이 기기 사본에 같은 글이 있으면 내 글 표시를 옮긴다. 단, 주인이 다른 계정이면 옮기지 않는다
@@ -550,9 +552,13 @@ class AppSession extends ChangeNotifier {
   }
 
   /// '가는 김에 · 제가 가요' 글에 부탁 보내기. 무엇을 부탁할지([msg])는 꼭 적는다.
-  Future<bool> askGoing(TaskItem it, String msg, int price) async {
+  Future<bool> askGoing(TaskItem it, String msg, int price, {int? est, String? spot}) async {
     if (it.isMine || it.isExpired || it.sample) {
       flash(it.isMine ? '내가 올린 글이에요' : (it.sample ? '예시 글이라 부탁할 수 없어요' : '마감된 글이에요'));
+      return false;
+    }
+    if (it.closed || it.seatsLeft == 0) {
+      flash(it.closed ? '부탁 접수가 마감됐어요' : '자리가 다 찼어요');
       return false;
     }
     if (!_serverMode) {
@@ -560,13 +566,111 @@ class AppSession extends ChangeNotifier {
       return false;
     }
     try {
-      await TradeRepository.apply(it.id, offerPrice: price, msg: msg);
+      await TradeRepository.apply(it.id, offerPrice: price, msg: msg, est: est, spot: spot);
     } on ServerException catch (e) {
       flash(e.message);
       return false;
     }
-    flash('부탁을 보냈어요 · 글쓴이가 수락하면 채팅이 열려요');
+    flash('어! 나도, 보냈어요 · ${it.who}님이 수락하면 채팅이 열려요');
     return true;
+  }
+
+  // ── 가는 김에 일정 (v78 '어! 나도!') ──────────────────────────────────────
+
+  /// '나 여기 가요' — 가는 곳·시각·받을 부탁 종류·건수를 올린다. 부탁은 가는 시각 + 1시간까지 받는다.
+  void addTrip({
+    required String place,
+    required DateTime goAt,
+    required String note,
+    required List<String> kinds,
+    required int capacity,
+    double? lat,
+    double? lng,
+  }) {
+    final uid = AuthService().currentUser?.uid;
+    final it = TaskItem(
+      id: DateTime.now().millisecondsSinceEpoch,
+      mode: 'going',
+      cat: 'buy',
+      title: place,
+      desc: note,
+      region: place,
+      place: place,
+      lat: lat,
+      lng: lng,
+      distM: null,
+      price: 0,
+      who: profile?.nickname ?? '나',
+      rating: 0,
+      reviews: 0,
+      deals: 0,
+      resp: 0,
+      verified: false,
+      helpCnt: 0,
+      reqCnt: 0,
+      goAt: goAt,
+      deadline: goAt.add(const Duration(hours: 1)),
+      kinds: kinds,
+      capacity: capacity,
+      sample: false,
+      ownerUid: uid,
+      mine: true,
+    );
+    _update(() => created = [it, ...created]);
+    _store.saveRequests(created);
+    if (uid != null) _requests.add(it);
+  }
+
+  /// 접수 마감 켜기·끄기
+  Future<void> setTripClosed(TaskItem it, bool closed) async {
+    _update(() => created = [for (final c in created) c.id == it.id ? c.copyWith(closed: closed) : c]);
+    _store.saveRequests(created);
+    try {
+      await _requests.setClosed(it.id, closed);
+      flash(closed ? '부탁 접수를 마감했어요' : '부탁 접수를 다시 열었어요');
+    } catch (e) {
+      flash('바꾸지 못했어요. 네트워크를 확인해 주세요');
+    }
+  }
+
+  /// 일정 취소 — 답을 기다리던 부탁은 서버가 거절 처리한다. 이미 수락한 부탁은 진행 중에서 따로 취소한다
+  Future<bool> cancelTrip(TaskItem it) async {
+    try {
+      await TradeRepository.cancelRequest(it.id);
+    } on ServerException catch (e) {
+      flash(e.message);
+      return false;
+    }
+    _update(() => created = [for (final c in created) if (c.id != it.id) c]);
+    _store.saveRequests(created);
+    flash('일정을 취소했어요 · 답을 기다리던 이웃에게 알렸어요');
+    return true;
+  }
+
+  /// 내 일정에 들어온 부탁 — 답을 기다리는 것(신청서)과 수락한 것(거래)
+  List<Application> receivedFor(int requestId) => [
+    for (final a in received)
+      if (a.requestIdInt == requestId) a,
+  ];
+  List<GoingDeal> takenFor(int requestId) => [
+    for (final d in goingDeals)
+      if (!d.requester && d.requestId == requestId) d,
+  ];
+
+  /// 가는 김에 탭 배지 — 내 일정에 답을 기다리는 부탁 수
+  int get tripBadge => received.where((a) => a.isGoing).length;
+
+  /// 수락한 부탁을 사서 '구매 완료' — 서버 단계로는 시작 → 완료 확인 요청
+  Future<void> markBought(GoingDeal d) async {
+    final id = d.tradeId;
+    if (id == null) return;
+    try {
+      if (d.status == 'matched') await TradeRepository.advance(id, 'start');
+      await TradeRepository.advance(id, 'finish');
+      flash('구매 완료로 알렸어요 · 영수증은 채팅으로 보여 주세요');
+    } on ServerException catch (e) {
+      flash(e.message);
+    }
   }
 
   /// 이 '가는 김에' 글에 내가 보낸 부탁(가장 최근). 없으면 null
@@ -744,6 +848,8 @@ class AppSession extends ChangeNotifier {
             title: a.requestTitle,
             ask: a.msg ?? '',
             price: t?.price ?? a.offerPrice ?? 0,
+            est: a.est,
+            spot: a.spot,
             status: switch (a.status) {
               'pending' => 'pending',
               'accepted' => t?.status ?? 'matched',
@@ -785,6 +891,8 @@ class AppSession extends ChangeNotifier {
           title: t.title,
           ask: t.ask ?? '',
           price: t.price,
+          est: t.est,
+          spot: t.spot,
           status: t.status,
           requester: false,
           counterpart: t.applicantName,

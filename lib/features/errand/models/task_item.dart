@@ -31,6 +31,20 @@ class TaskItem {
 
   /// 서버에 달린 댓글 수
   final int commentCount;
+
+  // ── 가는 김에(제가 가요) 일정 — v78 '어! 나도!' ──
+  /// 가는 시각. 부탁은 이 시각 + 1시간([deadline])까지 받는다
+  final DateTime? goAt;
+
+  /// 받을 부탁 건수(1~5)와 지금까지 수락한 건수(서버가 센다)
+  final int capacity;
+  final int acceptedCount;
+
+  /// 받을 부탁 종류 — 사다주기 · 물건 전달 · 줄서기·예약 · 사진·재고 확인
+  final List<String> kinds;
+
+  /// 글쓴이가 접수를 마감했다
+  final bool closed;
   final String? ago;
   final int likes;
   final int joinCur;
@@ -91,6 +105,11 @@ class TaskItem {
     this.hot = false,
     this.extra,
     this.commentCount = 0,
+    this.goAt,
+    this.capacity = 0,
+    this.acceptedCount = 0,
+    this.kinds = const [],
+    this.closed = false,
     this.ago,
     this.likes = 0,
     this.joinCur = 0,
@@ -116,7 +135,7 @@ class TaskItem {
   static String? currentUid;
 
   /// 주인 표시(또는 수락된 뒤 받은 정확한 장소)만 바꾼 사본. 다른 값은 그대로 둔다.
-  TaskItem copyWith({String? ownerUid, bool? mine, String? place, String? deliveryPlace}) => TaskItem(
+  TaskItem copyWith({String? ownerUid, bool? mine, String? place, String? deliveryPlace, bool? closed}) => TaskItem(
     id: id,
     mode: mode,
     cat: cat,
@@ -144,6 +163,11 @@ class TaskItem {
     hot: hot,
     extra: extra,
     commentCount: commentCount,
+    goAt: goAt,
+    capacity: capacity,
+    acceptedCount: acceptedCount,
+    kinds: kinds,
+    closed: closed ?? this.closed,
     ago: ago,
     likes: likes,
     joinCur: joinCur,
@@ -199,6 +223,12 @@ class TaskItem {
   /// '가는 김에'에 보이는 글 — 제가 가요 + 가는 분 찾아요
   bool get isTrip => isGoing || extra == 'trip';
 
+  /// 남은 자리. 정원이 없으면(예전 글) 제한 없음으로 본다
+  int get seatsLeft => capacity <= 0 ? 99 : (capacity - acceptedCount).clamp(0, capacity);
+
+  /// '어! 나도'를 받을 수 있는가 — 마감·접수 마감·자리 없음이 아니어야 한다
+  bool get takesAsks => isGoing && !isExpired && !closed && seatsLeft > 0;
+
   /// 이 기기에 보관하는 내가 올린 부탁용. 같이해요 댓글·지도 좌표는 담지 않는다.
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -224,6 +254,12 @@ class TaskItem {
     'desc': desc,
     'hot': hot,
     'extra': extra,
+    'goAt': goAt?.toIso8601String(),
+    'capacity': capacity,
+    'kinds': kinds,
+    'closed': closed,
+    'lat': lat,
+    'lng': lng,
     'deadline': deadline?.toIso8601String(),
     'deliveryPlace': deliveryPlace,
     'budget': budget,
@@ -264,6 +300,12 @@ class TaskItem {
       desc: desc,
       hot: json['hot'] == true,
       extra: s('extra'),
+      goAt: DateTime.tryParse(s('goAt') ?? ''),
+      capacity: n('capacity'),
+      kinds: [if (json['kinds'] is List) ...(json['kinds'] as List).whereType<String>()],
+      closed: json['closed'] == true,
+      lat: json['lat'] is num ? (json['lat'] as num).toDouble() : null,
+      lng: json['lng'] is num ? (json['lng'] as num).toDouble() : null,
       deadline: DateTime.tryParse(s('deadline') ?? ''),
       deliveryPlace: s('deliveryPlace'),
       budget: n('budget'),

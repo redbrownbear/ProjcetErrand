@@ -14,6 +14,8 @@ import '../features/benefits/screens/attendance_screen.dart';
 import '../features/benefits/screens/side_job_view.dart';
 import '../features/chat/screens/chat_screen.dart';
 import '../features/chat/screens/chat_view.dart';
+import '../features/trip/screens/trip_screens.dart';
+import '../features/trip/screens/trip_tab.dart';
 import '../features/errand/models/application.dart';
 import '../features/community/screens/community_view.dart';
 import '../features/dayjob/screens/job_post_screen.dart';
@@ -71,6 +73,13 @@ class _HomeShellState extends State<HomeShell> {
     openAskForm: () => requireLogin(() => _openRequestForm('ask')),
     openSeaForm: openPostSea,
     openTripPost: openTripPost,
+    session: session,
+    openChat: (tradeId) {
+      final t = session.tradeById(tradeId);
+      if (t != null) openChat(t);
+    },
+    requireLogin: requireLogin,
+    goTripTab: () => _switchTab(ShellTab.trip),
     goCommunity: goCommunity,
     requestDelivery: _requestDelivery,
   );
@@ -405,8 +414,9 @@ class _HomeShellState extends State<HomeShell> {
   );
 
   /// 가는 김에 글쓰기 — [going]이면 제가 가요(도움 주기), 아니면 가는 분 찾아요(도움 요청)
+  /// 제가 가요는 시안 v78의 '나 여기 가요'(장소·시각·받을 부탁) 화면으로 연다
   void openTripPost({bool going = true}) =>
-      requireLogin(() => _openRequestForm(going ? 'going' : 'ask', extra: going ? null : 'trip'));
+      going ? openTripRegister(context, social) : requireLogin(() => _openRequestForm('ask', extra: 'trip'));
 
   /// 오른쪽 위 '글쓰기' — 가는 김에 · 제안 · 부탁 · 해외 부탁 · 중고 · 커뮤니티 중에서 고른다 (v77).
   /// 단기알바 모집은 홈 바로가기 '전체'에 있다.
@@ -493,6 +503,7 @@ class _HomeShellState extends State<HomeShell> {
         social: social,
       ),
       ShellTab.community => CommunityView(key: _communityKey, nav: social, goOverseasAsk: goOverseasTab),
+      ShellTab.trip => TripTab(nav: social),
       ShellTab.chat => ChatView(
         onGoActivity: goActivity,
         onBrowse: () => _openFilteredList('지금 내 주변 부탁', (i) => i.mode == 'ask'),
@@ -555,7 +566,11 @@ class _HomeShellState extends State<HomeShell> {
                     hasNews: session.unreadNotices > 0 || session.activeCount > 0,
                   ),
                   Expanded(child: _body()),
-                  ShellBottomNav(current: tab, onSelect: (next) => next == ShellTab.side ? goSideTab(sideSub) : _switchTab(next)),
+                  ShellBottomNav(
+                    current: tab,
+                    onSelect: (next) => next == ShellTab.side ? goSideTab(sideSub) : _switchTab(next),
+                    badges: {ShellTab.trip: session.tripBadge},
+                  ),
                 ],
               ),
             ),

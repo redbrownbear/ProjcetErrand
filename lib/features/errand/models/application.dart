@@ -19,6 +19,10 @@ class Application {
   /// 신청한 글의 종류. going이면 지원이 아니라 '부탁'이다(신청자가 부탁하는 쪽)
   final String requestMode;
 
+  /// 가는 김에 '어! 나도': 예상 물건값·받는 곳
+  final int? est;
+  final String? spot;
+
   const Application({
     required this.requestId,
     required this.helperUid,
@@ -31,6 +35,8 @@ class Application {
     this.msg,
     this.tradeId,
     this.requestMode = 'ask',
+    this.est,
+    this.spot,
   });
 
   bool get isGoing => requestMode == 'going';
@@ -58,6 +64,8 @@ class Application {
       tradeId: m['tradeId'] is String ? m['tradeId'] as String : null,
       updatedAt: at is Timestamp ? at.toDate() : DateTime.now(),
       requestMode: text('requestMode', 'ask'),
+      est: m['est'] is int ? m['est'] as int : null,
+      spot: m['spot'] is String ? m['spot'] as String : null,
     );
   }
 }
@@ -87,8 +95,10 @@ class ServerTrade {
   final String applicantUid;
   final String applicantName;
 
-  /// '가는 김에' 신청 때 적은 부탁 내용
+  /// '가는 김에' 신청 때 적은 부탁 내용 · 예상 물건값 · 받는 곳
   final String? ask;
+  final int? est;
+  final String? spot;
 
   const ServerTrade({
     required this.id,
@@ -106,6 +116,8 @@ class ServerTrade {
     this.applicantUid = '',
     this.applicantName = '이웃',
     this.ask,
+    this.est,
+    this.spot,
   });
 
   bool get isGoing => mode == 'going';
@@ -138,6 +150,8 @@ class ServerTrade {
       applicantUid: m['applicantUid'] is String ? m['applicantUid'] as String : (m['helperUid'] is String ? m['helperUid'] as String : ''),
       applicantName: m['applicantName'] is String ? m['applicantName'] as String : '이웃',
       ask: m['ask'] is String ? m['ask'] as String : null,
+      est: m['est'] is int ? m['est'] as int : null,
+      spot: m['spot'] is String ? m['spot'] as String : null,
     );
   }
 }

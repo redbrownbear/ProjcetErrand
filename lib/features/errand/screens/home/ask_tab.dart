@@ -81,7 +81,7 @@ class HomeAskTab extends StatelessWidget {
         _services(),
         _quickRow(context),
         _PartnerShops(onOpen: nav.saveHub),
-        TripFeedSection(nav: home.social, onAll: () => home.social.openTripFeed(context)),
+        TripSection(nav: home.social, onAll: () => home.social.openTripFeed(context)),
         const FootNote('이웃에게 직접 부탁하려면 마이 › 지원한 부탁에서 이어서 진행해요'),
       ],
     );

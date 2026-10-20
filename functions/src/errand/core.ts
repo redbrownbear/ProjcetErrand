@@ -25,7 +25,13 @@ export type ApplicationStatus = 'pending' | 'accepted' | 'rejected' | 'withdrawn
 export const LIMITS = {
   maxOfferPrice: 10_000_000,
   maxMsg: 300,
+  /** 가는 김에 '어! 나도' — 건당 물건값 상한(시안 v78) */
+  maxGoingItemPrice: 50_000,
+  maxSpot: 20,
 } as const;
+
+/** 가는 김에로 부탁할 수 없는 물건 — 주류·담배·의약품(처방·수면제 등) */
+export const BLOCKED_ITEMS = /(술|소주|맥주|와인|막걸리|양주|주류|담배|전자담배|처방|마약|수면제|의약품)/;
 
 // ── 입력 검사 ─────────────────────────────────────────────────────────────
 
@@ -96,6 +102,9 @@ export async function applyToRequest(db: Firestore, uid: string, data: unknown) 
   const rid = id(input.requestId, 'requestId');
   const offerPrice = optPrice(input.offerPrice);
   const msg = optMsg(input.msg);
+  // 가는 김에 '어! 나도': 예상 물건값·받는 곳 (일반 지원에는 없다)
+  const est = input.est === undefined || input.est === null ? undefined : optPrice(input.est);
+  const spot = typeof input.spot === 'string' && input.spot.trim() ? input.spot.trim().slice(0, LIMITS.maxSpot) : undefined;
 
   return db.runTransaction(async (tx) => {
     const now = Timestamp.now();
@@ -106,7 +115,18 @@ export async function applyToRequest(db: Firestore, uid: string, data: unknown) 
     const owner = req.get('ownerUid') as string;
     if (owner === uid) throw new HttpsError('failed-precondition', '내가 올린 글에는 신청할 수 없어요.');
     const giving = isGiving(req.get('mode'));
-    if (giving && !msg) throw new HttpsError('invalid-argument', '무엇을 부탁할지 적어 주세요.');
+    if (giving) {
+      if (!msg || msg.length < 2) throw new HttpsError('invalid-argument', '무엇을 부탁할지 적어 주세요.');
+      if (BLOCKED_ITEMS.test(msg)) throw new HttpsError('invalid-argument', '주류·담배·의약품 같은 물건은 부탁할 수 없어요.');
+      if (est !== undefined && est > LIMITS.maxGoingItemPrice) {
+        throw new HttpsError('invalid-argument', `물건값은 건당 ${LIMITS.maxGoingItemPrice.toLocaleString('ko-KR')}원까지 부탁할 수 있어요.`);
+      }
+      if (req.get('closed') === true) throw new HttpsError('failed-precondition', '부탁 접수가 마감됐어요.');
+      const cap = req.get('capacity');
+      if (typeof cap === 'number' && (req.get('acceptedCount') ?? 0) >= cap) {
+        throw new HttpsError('failed-precondition', '자리가 다 찼어요.');
+      }
+    }
     if (req.get('status') !== 'open' || deadlinePassed(req.get('deadline'), now)) {
       throw new HttpsError('failed-precondition', '모집이 끝난 부탁이에요.');
     }
@@ -129,6 +149,7 @@ export async function applyToRequest(db: Firestore, uid: string, data: unknown) 
       requestMode: req.get('mode') ?? 'ask',
       offerPrice: offerPrice ?? null,
       msg: msg ?? null,
+      ...(giving ? { est: est ?? null, spot: spot ?? null } : {}),
       status: 'pending',
       createdAt: app.exists ? app.get('createdAt') : now,
       updatedAt: now,
@@ -174,6 +195,12 @@ export async function acceptApplication(db: Firestore, uid: string, data: unknow
     await assertActive(tx, db, applicant, '상대방');
     await assertNotBlocked(tx, db, uid, applicant);
     const giving = isGiving(req.get('mode'));
+    if (giving) {
+      const cap = req.get('capacity');
+      if (typeof cap === 'number' && (req.get('acceptedCount') ?? 0) >= cap) {
+        throw new HttpsError('failed-precondition', '받기로 한 건수가 다 찼어요.');
+      }
+    }
     const others = giving ? null : await tx.get(reqRef.collection('applications').where('status', '==', 'pending'));
 
     const tradeRef = db.collection('trades').doc();
@@ -189,6 +216,7 @@ export async function acceptApplication(db: Firestore, uid: string, data: unknow
       applicantName: app.get('helperName') ?? '이웃',
       title: req.get('title') ?? '',
       ...(giving && typeof msg === 'string' && msg ? { ask: msg } : {}),
+      ...(giving ? { est: app.get('est') ?? null, spot: app.get('spot') ?? null } : {}),
       price: typeof offer === 'number' ? offer : (req.get('price') ?? 0),
       status: 'matched' satisfies TradeStatus,
       history: [{ status: 'matched', by: uid, at: now }],
@@ -197,7 +225,7 @@ export async function acceptApplication(db: Firestore, uid: string, data: unknow
     });
     if (giving) {
       // 가는 길에 여러 부탁을 받는다: 모집은 그대로 열어 둔다
-      tx.update(reqRef, { applicantCount: FieldValue.increment(-1), updatedAt: now });
+      tx.update(reqRef, { applicantCount: FieldValue.increment(-1), acceptedCount: FieldValue.increment(1), updatedAt: now });
     } else {
       tx.update(reqRef, { status: 'matched', helperUid: applicant, tradeId: tradeRef.id, applicantCount: 0, updatedAt: now });
       for (const d of others!.docs) {
@@ -296,6 +324,8 @@ export async function advanceTrade(db: Firestore, uid: string, data: unknown) {
     }
     if (next === 'cancelled') {
       tx.update(paths.application(db, rid, applicant), { status: 'cancelled', updatedAt: now });
+      // 가는 김에: 자리 하나를 돌려준다
+      if (giving) tx.update(reqRef, { acceptedCount: FieldValue.increment(-1), updatedAt: now });
     }
     return { status: next };
   });

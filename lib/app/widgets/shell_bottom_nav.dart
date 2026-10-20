@@ -4,13 +4,20 @@ import '../../core/theme/app_theme.dart';
 import '../../core/theme/colors.dart';
 import '../../core/widgets/app_icon.dart';
 
-/// 하단 1차 메뉴의 탭 (시안 v77). 해외는 하단 탭이 아니라 홈 맨 위 국내/해외 전환으로 옮겼다.
+/// 하단 1차 메뉴의 탭. 해외는 하단 탭이 아니라 홈 맨 위 국내/해외 전환으로 옮겼다.
+///
+/// 시안 v79(v78 '어! 나도!'): 하단 메뉴에서 '마켓'을 빼고 커뮤니티 뒤에 '가는 김에'를 둔다.
+/// 마켓(미션·공구·중고·나눔) 화면은 그대로 있고 홈·글쓰기·마이에서 들어간다([ShellTab.side]).
 enum ShellTab {
   home('홈', 'home'),
   side('마켓', 'gift'),
   community('커뮤니티', 'users'),
+  trip('가는 김에', 'pin'),
   chat('채팅', 'chat'),
   me('마이', 'user');
+
+  /// 하단 메뉴에 보이는 탭 — 홈 · 커뮤니티 · 가는 김에 · 채팅 · 마이
+  static const nav = [home, community, trip, chat, me];
 
   final String label;
   final String icon;
@@ -23,11 +30,14 @@ enum ShellTab {
   };
 }
 
-/// 하단 1차 메뉴 — 홈 · 마켓 · 커뮤니티 · 채팅 · 마이
+/// 하단 1차 메뉴 — 홈 · 커뮤니티 · 가는 김에 · 채팅 · 마이
 class ShellBottomNav extends StatelessWidget {
   final ShellTab current;
   final ValueChanged<ShellTab> onSelect;
-  const ShellBottomNav({super.key, required this.current, required this.onSelect});
+
+  /// 탭 위 빨간 숫자 (가는 김에: 답을 기다리는 부탁)
+  final Map<ShellTab, int> badges;
+  const ShellBottomNav({super.key, required this.current, required this.onSelect, this.badges = const {}});
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +49,7 @@ class ShellBottomNav extends StatelessWidget {
       padding: EdgeInsets.fromLTRB(4, 8, 4, 8 + MediaQuery.paddingOf(context).bottom),
       child: Row(
         children: [
-          for (final tab in ShellTab.values)
+          for (final tab in ShellTab.nav)
             Expanded(
               child: InkWell(
                 onTap: () => onSelect(tab),
@@ -54,10 +64,17 @@ class ShellBottomNav extends StatelessWidget {
 
   Widget _item(ShellTab tab) {
     final color = tab == current ? AppColors.navActive : AppColors.navIdle;
+    final n = badges[tab] ?? 0;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(AppIcon.data(tab.icon), size: 24, color: color),
+        Badge(
+          isLabelVisible: n > 0,
+          label: Text('$n'),
+          backgroundColor: AppColors.red,
+          offset: const Offset(8, -4),
+          child: Icon(AppIcon.data(tab.icon), size: 24, color: color),
+        ),
         const SizedBox(height: 3),
         Text(
           tab.label,

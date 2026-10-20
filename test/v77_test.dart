@@ -17,6 +17,7 @@ import 'package:gyeomsa/features/proposal/widgets/live_board.dart';
 import 'package:gyeomsa/features/benefits/models/point_wallet.dart';
 
 import 'support/social.dart';
+import 'package:gyeomsa/features/trip/screens/trip_tab.dart';
 
 /// 시안 v77 — 응모권 · 제안 규칙과, v77에서 붙은 부분이 기준 폰 폭에서 넘치지 않는지 본다.
 final _items = LocalErrandRepository().fetchSeedItems();
@@ -159,12 +160,27 @@ void main() {
       expect(find.text('이동하는 길에, 필요한 분?'), findsOneWidget);
       expect(find.textContaining('LUCKY DRAW'), findsOneWidget);
       expect(find.text('여행 어디 갈까?'), findsOneWidget);
-      expect(find.text('내일 오사카 가요'), findsOneWidget, reason: '가는 김에 글');
+      expect(find.text('누가 가면, 나도 하나! 눌러서 어! 나도'), findsOneWidget, reason: '가는 김에 칸 (v78)');
+      expect(find.text('동네 치킨집'), findsOneWidget, reason: '가장 가까운 이웃 일정 한 줄');
       expect(tester.takeException(), isNull);
 
       await tester.tap(find.text('돈벌기'));
       await tester.pump(const Duration(milliseconds: 300));
       expect(find.text('이동하는 길에, 필요한 분?'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await _unmount(tester);
+    });
+
+    testWidgets('가는 김에 탭 (v78) — 지도·일정 목록, 예시 일정은 부탁할 수 없다', (tester) async {
+      await _phone(tester, TripTab(nav: testSocial()), height: 2400);
+      expect(find.text('누가 가면,\n나도 하나!'), findsOneWidget);
+      expect(find.text('나 여기 가요'), findsOneWidget);
+      expect(find.text('서초역 올리브영'), findsOneWidget);
+      expect(find.text('어! 나도!'), findsWidgets);
+      await tester.tap(find.text('서초역 올리브영'));
+      await tester.pumpAndSettle();
+      expect(find.text('서초역 올리브영에 가요'), findsOneWidget);
+      expect(find.textContaining('예시 일정이라 부탁할 수 없어요'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await _unmount(tester);
     });

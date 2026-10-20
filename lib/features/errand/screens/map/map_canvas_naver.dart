@@ -19,6 +19,9 @@ class MapCanvas extends StatefulWidget {
   final double centerLat, centerLng, zoom;
   final void Function(TaskItem) onPinTap;
 
+  /// 지도를 눌렀을 때 (가는 김에 '지도에 콕 찍기'). 없으면 눌러도 아무 일 없다
+  final void Function(double lat, double lng)? onMapTap;
+
   const MapCanvas({
     super.key,
     required this.pins,
@@ -27,6 +30,7 @@ class MapCanvas extends StatefulWidget {
     required this.centerLng,
     required this.zoom,
     required this.onPinTap,
+    this.onMapTap,
   });
 
   @override
@@ -175,6 +179,7 @@ class _MapCanvasState extends State<MapCanvas> {
               _syncMarkers();
             },
             onCameraIdle: _syncFollowingState,
+            onMapTapped: widget.onMapTap == null ? null : (_, latLng) => widget.onMapTap!(latLng.latitude, latLng.longitude),
           ),
         ),
         Positioned(

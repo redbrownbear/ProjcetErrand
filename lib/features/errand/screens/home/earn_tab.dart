@@ -83,8 +83,9 @@ class HomeEarnTab extends StatelessWidget {
           onOpenAllJobs: nav.dayJobs,
         ),
         AdBanner(ads: homeAds, onTap: nav.openAd),
+        // 시안 v78: 가는 김에(어! 나도)를 '이동하는 길에'(제안 LIVE 보드) 위에
+        TripSection(nav: home.social, onAll: () => home.social.openTripFeed(context)),
         LiveSection(nav: home.social),
-        TripFeedSection(nav: home.social, onAll: () => home.social.openTripFeed(context)),
         _LocalBenefit(onOpen: nav.saveHub),
         _OverseasStrip(
           items: home.items.where((i) => i.mode == 'sea').toList(),

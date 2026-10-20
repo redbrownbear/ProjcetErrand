@@ -250,3 +250,35 @@ describe('가는 김에 · 제가 가요(going) — 글쓴이가 도와주는 �
     assert.equal((await db.collection('requests').doc(GID).get()).get('status'), 'open');
   });
 });
+
+describe('가는 김에 v78 — 정원·접수 마감·금지 품목', () => {
+  const GID = '1760000000007';
+  beforeEach(async () => {
+    await seedRequest(db, GID, OWNER, { mode: 'going', title: '죽전역 이마트', price: 0, capacity: 1, kinds: ['사다주기'] });
+  });
+
+  test('받기로 한 건수가 차면 더 신청·수락할 수 없고, 시작 전 취소하면 자리가 돌아온다', async () => {
+    await core.applyToRequest(db, HELPER, { requestId: GID, msg: '우유 1L', offerPrice: 1500, est: 3000, spot: '문 앞' });
+    await core.applyToRequest(db, OTHER, { requestId: GID, msg: '식빵 1봉', offerPrice: 1500 });
+    const a = (await db.collection('requests').doc(GID).collection('applications').doc(HELPER).get()).data()!;
+    assert.equal(a.est, 3000);
+    assert.equal(a.spot, '문 앞');
+
+    const { tradeId } = await core.acceptApplication(db, OWNER, { requestId: GID, helperUid: HELPER });
+    assert.equal((await db.collection('requests').doc(GID).get()).get('acceptedCount'), 1);
+    assert.equal((await trade(tradeId)).est, 3000);
+    await rejectsWith(core.acceptApplication(db, OWNER, { requestId: GID, helperUid: OTHER }), 'failed-precondition');
+    await rejectsWith(core.applyToRequest(db, 'helper-3', { requestId: GID, msg: '휴지' }), 'failed-precondition');
+
+    await core.advanceTrade(db, HELPER, { tradeId, action: 'cancel' });
+    assert.equal((await db.collection('requests').doc(GID).get()).get('acceptedCount'), 0);
+    await core.acceptApplication(db, OWNER, { requestId: GID, helperUid: OTHER });
+  });
+
+  test('접수 마감·금지 품목·물건값 한도 → 거부', async () => {
+    await rejectsWith(core.applyToRequest(db, HELPER, { requestId: GID, msg: '소주 2병' }), 'invalid-argument');
+    await rejectsWith(core.applyToRequest(db, HELPER, { requestId: GID, msg: '우유', est: 50001 }), 'invalid-argument');
+    await db.collection('requests').doc(GID).update({ closed: true });
+    await rejectsWith(core.applyToRequest(db, HELPER, { requestId: GID, msg: '우유' }), 'failed-precondition');
+  });
+});

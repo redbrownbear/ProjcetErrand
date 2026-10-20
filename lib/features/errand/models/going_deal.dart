@@ -11,7 +11,11 @@ class GoingDeal {
 
   /// 부탁 내용(신청할 때 적은 것)
   final String ask;
+
+  /// 부탁 비용(사례비)과 예상 물건값·받는 곳
   final int price;
+  final int? est;
+  final String? spot;
 
   /// pending | matched | working | confirmation | completed | cancelled
   final String status;
@@ -34,7 +38,28 @@ class GoingDeal {
     required this.updatedAt,
     this.counterpart,
     this.tradeId,
+    this.est,
+    this.spot,
   });
+
+  /// 시안 v78의 네 단계 — 부탁 → 수락 → 구매 → 전달.
+  /// 서버 단계(matched·working·confirmation·completed)를 이 말로 보여 준다
+  String get stage => switch (status) {
+    'pending' => '답을 기다려요',
+    'matched' => '수락했어요',
+    'working' || 'confirmation' => '구매했어요',
+    'completed' => '전달 완료',
+    _ => '취소·거절됐어요',
+  };
+
+  /// 0 부탁 · 1 수락 · 2 구매 · 3 전달 (취소는 -1)
+  int get stageIndex => switch (status) {
+    'pending' => 0,
+    'matched' => 1,
+    'working' || 'confirmation' => 2,
+    'completed' => 3,
+    _ => -1,
+  };
 
   String get key => tradeId ?? 'app:$requestId';
   Trade get trade => Trade(status, updatedAt);

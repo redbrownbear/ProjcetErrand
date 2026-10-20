@@ -42,8 +42,11 @@ class TradeRepository {
 
   // ── 서버 함수 ───────────────────────────────────────────────────────────
 
-  static Future<void> apply(int requestId, {int? offerPrice, String? msg}) =>
-      ServerApi.call('applyToRequest', {'requestId': '$requestId', 'offerPrice': ?offerPrice, 'msg': ?msg});
+  /// [est]·[spot]은 가는 김에 '어! 나도'에만 쓴다(예상 물건값·받는 곳)
+  static Future<void> apply(int requestId, {int? offerPrice, String? msg, int? est, String? spot}) => ServerApi.call(
+    'applyToRequest',
+    {'requestId': '$requestId', 'offerPrice': ?offerPrice, 'msg': ?msg, 'est': ?est, 'spot': ?spot},
+  );
 
   static Future<void> withdraw(int requestId) => ServerApi.call('withdrawApplication', {'requestId': '$requestId'});
 

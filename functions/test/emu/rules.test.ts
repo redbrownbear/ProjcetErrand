@@ -219,6 +219,15 @@ describe('가는 김에 · 댓글', () => {
     await assertFails(setDoc(doc(db(OWNER), 'requests', '1760000000011'), newRequest({ mode: 'teleport' })));
     await assertFails(setDoc(doc(db(OWNER), 'requests', '1760000000012'), newRequest({ extra: 'hack' })));
     await assertFails(setDoc(doc(db(OWNER), 'requests', '1760000000013'), newRequest({ commentCount: 3 })));
+    // 가는 김에 일정: 가는 시각·정원·종류·핀은 going 글에만, 정원 1~5
+    await assertSucceeds(
+      setDoc(doc(db(OWNER), 'requests', '1760000000014'), newRequest({ mode: 'going', goAt: Timestamp.now(), capacity: 3, kinds: ['사다주기'], pinLat: 37.48, pinLng: 127.03 })),
+    );
+    await assertFails(setDoc(doc(db(OWNER), 'requests', '1760000000015'), newRequest({ pinLat: 37.48, pinLng: 127.03 })));
+    await assertFails(setDoc(doc(db(OWNER), 'requests', '1760000000016'), newRequest({ mode: 'going', capacity: 9 })));
+    await assertFails(setDoc(doc(db(OWNER), 'requests', '1760000000017'), newRequest({ mode: 'going', acceptedCount: 3 })));
+    // 글쓴이는 접수 마감을 켜고 끌 수 있다
+    await assertSucceeds(updateDoc(doc(db(OWNER), 'requests', '1760000000014'), { closed: true, updatedAt: serverTimestamp() }));
     await assertFails(setDoc(doc(db(STRANGER), 'requests', RID, 'comments', 'c1'), { uid: STRANGER, text: '안녕' }));
     await assertSucceeds(getDoc(doc(db(), 'requests', RID, 'comments', 'c1')));
   });

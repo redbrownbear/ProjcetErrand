@@ -16,8 +16,9 @@ import '../features/proposal/screens/propose_form.dart';
 import '../features/proposal/screens/proposal_list_screen.dart';
 import '../features/proposal/screens/world_map_screen.dart';
 import '../features/proposal/widgets/proposal_sheet.dart';
-import '../features/trip/screens/trip_feed_screen.dart';
+import '../features/trip/screens/trip_tab.dart';
 import '../features/trip/widgets/dart_sheet.dart';
+import 'app_session.dart';
 import 'neighbor_store.dart';
 
 /// 탭 어디서나 같은 화면을 여는 길목.
@@ -39,6 +40,18 @@ class AppNav {
   /// 가는 김에 글쓰기 — going이면 제가 가요(도움 주기), 아니면 가는 분 찾아요(도움 요청). 부탁과 같은 글쓰기 화면이다
   final void Function({bool going}) openTripPost;
 
+  /// 가는 김에 일정·부탁(서버)을 들고 있는 세션. 화면 테스트처럼 없으면 예시 일정만 보여 준다
+  final AppSession? session;
+
+  /// 거래 채팅 열기 (거래 id)
+  final void Function(String tradeId)? openChat;
+
+  /// 로그인이 필요한 행동을 로그인 뒤로 미룬다
+  final void Function(VoidCallback)? requireLogin;
+
+  /// 하단 '가는 김에' 탭으로 옮긴다
+  final VoidCallback? goTripTab;
+
   /// 커뮤니티 탭으로 옮겨 [scope](local · travel · abroad)와 [place]로 거른다
   final void Function(String scope, {String? place}) goCommunity;
 
@@ -55,6 +68,10 @@ class AppNav {
     required this.openAskForm,
     required this.openSeaForm,
     required this.openTripPost,
+    this.session,
+    this.openChat,
+    this.requireLogin,
+    this.goTripTab,
     required this.goCommunity,
     required this.requestDelivery,
   });
@@ -116,8 +133,8 @@ class AppNav {
               'pencil',
               AppColors.blueSoft,
               AppColors.blue,
-              '가는 김에 글쓰기',
-              '가는 길에 부탁 받기 · 가는 분에게 부탁하기',
+              '나 여기 가요',
+              '가는 김에 — 갈 곳과 시간을 올리면 이웃이 "어! 나도!" 해요',
               () => openTripPost(going: true),
             ),
             item(
@@ -147,8 +164,15 @@ class AppNav {
     'users': Icons.groups_outlined,
   };
 
-  /// 가는 김에 — 전체보기
-  void openTripFeed(BuildContext context) => _push(context, TripFeedScreen(nav: this));
+  /// 가는 김에 — 전체보기 = 하단 '가는 김에' 탭으로
+  void openTripFeed(BuildContext context) {
+    final go = goTripTab;
+    if (go != null) {
+      go();
+    } else {
+      _push(context, PageFrame(title: '가는 김에', child: TripTab(nav: this)));
+    }
+  }
 
 
   void openUsedForm(BuildContext context, {bool share = false}) =>

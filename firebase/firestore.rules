@@ -69,7 +69,18 @@ service cloud.firestore {
     // 정확한 위치(place·deliveryPlace·lat·lng)는 여기 두지 않는다 → private/detail
     function requestEditable() {
       return ['who', 'cat', 'title', 'desc', 'region', 'area', 'cell', 'country', 'cc', 'city',
-              'mins', 'price', 'budget', 'payment', 'completion', 'hot', 'deadline', 'extra', 'updatedAt'];
+              'mins', 'price', 'budget', 'payment', 'completion', 'hot', 'deadline', 'extra',
+              'goAt', 'capacity', 'kinds', 'closed', 'pinLat', 'pinLng', 'updatedAt'];
+    }
+    // 가는 김에(제가 가요) 일정: 가는 시각·받을 건수(1~5)·부탁 종류·접수 마감·지도 핀.
+    // 핀은 '가는 곳'(가게·역)이라 공개해도 되는 위치다. 동네 부탁의 정확한 위치는 여전히 private/detail에만 둔다.
+    function goingFieldsValid(m) {
+      return (!('goAt' in m) || m.goAt == null || m.goAt is timestamp)
+          && (!('capacity' in m) || (m.capacity is int && m.capacity >= 1 && m.capacity <= 5))
+          && (!('kinds' in m) || (m.kinds is list && m.kinds.size() <= 4))
+          && (!('closed' in m) || m.closed is bool)
+          && (!('pinLat' in m) || m.pinLat == null || (m.pinLat is number && m.mode == 'going'))
+          && (!('pinLng' in m) || m.pinLng == null || (m.pinLng is number && m.mode == 'going'));
     }
     function requestFieldsValid(m) {
       return str(m.title, 1, 80)
@@ -81,7 +92,8 @@ service cloud.firestore {
           && optStr(m, 'cat', 30)
           && optStr(m, 'area', 40)
           && optStr(m, 'cell', 12)
-          && (!('deadline' in m) || m.deadline == null || m.deadline is timestamp);
+          && (!('deadline' in m) || m.deadline == null || m.deadline is timestamp)
+          && goingFieldsValid(m);
     }
 
     match /requests/{requestId} {

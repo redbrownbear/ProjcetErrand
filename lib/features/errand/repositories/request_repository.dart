@@ -56,6 +56,10 @@ class RequestRepository {
     return m == null ? null : fromDoc(d.id, m);
   }, null);
 
+  /// 가는 김에 접수 마감 켜기·끄기 (글쓴이만, 모집 중일 때 — 보안 규칙)
+  Future<void> setClosed(int id, bool closed) =>
+      Backend.requests.doc('$id').update({'closed': closed, 'updatedAt': FieldValue.serverTimestamp()}).timeout(Backend.timeout);
+
   /// 정확한 장소(`private/detail`). 글쓴이와 수락된 수행자만 읽을 수 있다(보안 규칙 v2). 없거나 못 읽으면 null.
   Future<Map<String, dynamic>?> getPrivate(int id) => Backend.guard<Map<String, dynamic>?>(() async {
     final d = await Backend.requests.doc('$id').collection('private').doc('detail').get();
@@ -86,6 +90,15 @@ class RequestRepository {
     'completion': it.completion,
     'hot': it.hot,
     'extra': it.extra,
+    // 가는 김에(제가 가요) 일정. 핀은 '가는 곳'이라 공개한다(동네 부탁 좌표는 private/detail)
+    if (it.isGoing) ...{
+      'goAt': it.goAt == null ? null : Timestamp.fromDate(it.goAt!),
+      'capacity': it.capacity > 0 ? it.capacity : 3,
+      'kinds': it.kinds,
+      'closed': it.closed,
+      'pinLat': it.lat,
+      'pinLng': it.lng,
+    },
     'deadline': it.deadline == null ? null : Timestamp.fromDate(it.deadline!),
   };
 
@@ -119,8 +132,8 @@ class RequestRepository {
       country: str('country'),
       cc: str('cc'),
       city: str('city'),
-      lat: dbl('lat'),
-      lng: dbl('lng'),
+      lat: dbl('lat') ?? dbl('pinLat'),
+      lng: dbl('lng') ?? dbl('pinLng'),
       distM: dbl('distM'),
       mins: whole('mins'),
       price: whole('price'),
@@ -137,6 +150,11 @@ class RequestRepository {
       hot: m['hot'] == true,
       extra: str('extra'),
       commentCount: whole('commentCount'),
+      goAt: m['goAt'] is Timestamp ? (m['goAt'] as Timestamp).toDate() : null,
+      capacity: whole('capacity'),
+      acceptedCount: whole('acceptedCount'),
+      kinds: [if (m['kinds'] is List) ...(m['kinds'] as List).whereType<String>()],
+      closed: m['closed'] == true,
       deadline: deadline is Timestamp ? deadline.toDate() : DateTime.tryParse('$deadline'),
       sample: false,
       ownerUid: str('ownerUid'),
