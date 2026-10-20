@@ -139,6 +139,10 @@
 
 ## 기록
 
+### 2026-10-20 · 미커밋 · Claude (브랜치 정리)
+- 변경: 작업 브랜치(feat/w1-w2 ~ feat/chat)를 모두 main에 합침(fast-forward). 앞으로 main에 바로 커밋 — `CLAUDE.md`에 규칙 추가
+- 제거: PR #2·#3 닫음(내용은 main에 들어감). 원격 feat 브랜치 3개는 GitHub에서 지우면 됨
+
 ### 2026-10-20 · ce03543 · Claude (최소 채팅 — 결정 5)
 - 추가(서버): `functions/src/chat/` — `sendMessage`(거래 당사자만, 1000자, 전화번호·계좌번호·이메일·외부 링크를 가려 `trades/{id}/messages`에 저장,
   거래 문서에 마지막 메시지·사람별 안 읽은 수, 상대에게 푸시 — 알림함에는 쌓지 않음)·`markChatRead`. 규칙: 메시지는 당사자만 읽고 앱은 못 씀
