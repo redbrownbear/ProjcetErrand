@@ -139,7 +139,7 @@
 
 ## 기록
 
-### 2026-10-20 · 미커밋 · Claude (최소 채팅 — 결정 5)
+### 2026-10-20 · ce03543 · Claude (최소 채팅 — 결정 5)
 - 추가(서버): `functions/src/chat/` — `sendMessage`(거래 당사자만, 1000자, 전화번호·계좌번호·이메일·외부 링크를 가려 `trades/{id}/messages`에 저장,
   거래 문서에 마지막 메시지·사람별 안 읽은 수, 상대에게 푸시 — 알림함에는 쌓지 않음)·`markChatRead`. 규칙: 메시지는 당사자만 읽고 앱은 못 씀
 - 추가(앱): `chat/screens/chat_screen.dart`(채팅방), `chat/models/chat_message.dart`, `chat/repositories/chat_repository.dart`,
