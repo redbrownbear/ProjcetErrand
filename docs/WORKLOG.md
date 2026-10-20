@@ -141,7 +141,7 @@
 
 ## 기록
 
-### 2026-10-20 · 미커밋 · Claude (가는 김에 서버 저장 · 댓글)
+### 2026-10-20 · a108b0d · Claude (가는 김에 서버 저장 · 댓글)
 - 추가(서버): `tripPosts` 규칙(본인 이름으로만 올림·누구나 읽음·글쓴이만 지움, 댓글 수·댓글은 앱이 못 씀),
   `functions/src/trip/` — `addTripComment`(300자, 연락처 가리기, 정지·차단 확인, 글쓴이에게 알림함+푸시 `trip.comment`). 알림 문서에 `tripId`
 - 추가(앱): `trip/repositories/trip_repository.dart`, 글 상세 `trip/screens/trip_detail_screen.dart`(댓글 목록·쓰기, 내 글 지우기,
