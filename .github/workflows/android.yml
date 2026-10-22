@@ -1,0 +1,38 @@
+# 안드로이드 디버그 빌드 확인 — 네이티브 패키지를 더하거나 android/를 고쳤을 때 PC 빌드가 깨지는지 미리 본다
+# (이 작업 환경엔 Flutter가 없어서, 패키지 추가는 여기서 빌드가 되는지로 확인한다)
+name: android
+
+on:
+  push:
+    branches: [main]
+    paths: ['pubspec.yaml', 'pubspec.lock', 'android/**', '.github/workflows/android.yml']
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: flutter build apk --debug
+        run: |
+          set +e
+          flutter build apk --debug > build.txt 2>&1
+          code=$?
+          # 실패 원인을 주석으로 남긴다(로그를 못 여는 곳에서도 보이게)
+          if [ $code -ne 0 ]; then
+            grep -E "error:|Error:|FAILURE|What went wrong|e: |> " build.txt | head -25 | while IFS= read -r l; do
+              echo "::error title=android build::${l//%/%25}"
+            done
+          fi
+          tail -40 build.txt
+          exit $code
