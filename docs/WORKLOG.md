@@ -141,7 +141,7 @@
 
 ## 기록
 
-### 2026-10-22 · 미커밋 · Claude (A13 동선 기반 추천 v0 — W7)
+### 2026-10-22 · f012f56 · Claude (A13 동선 기반 추천 v0 — W7)
 - 추가(서버): `functions/src/route/match.ts` · 트리거 `onRequestPlaced` — 부탁의 정확한 위치(`private/detail`)가 처음 저장될 때 **한 번만** 계산.
   매칭 격자에 부탁 칸이 든 동선(collectionGroup `routes`, `cells` array-contains — 색인 추가) → 켜짐 · 글쓴이 아님 · 차단 관계 없음 ·
   요일/시간대가 지금~마감 사이 · 추가 소요(동선 선분까지 직선거리 × 2 ÷ 이동수단 평균 속도) ≤ 15분.
