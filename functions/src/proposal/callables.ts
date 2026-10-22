@@ -16,3 +16,5 @@ export const createProposal = callable((uid, data) => core.createProposal(getFir
 export const joinProposal = callable((uid, data) => core.joinProposal(getFirestore(), uid, data, fcm));
 export const leaveProposal = callable((uid, data) => core.leaveProposal(getFirestore(), uid, data, fcm));
 export const decideProposal = callable((uid, data) => core.decideProposal(getFirestore(), uid, data, fcm));
+export const askProposer = callable((uid, data) => core.askProposer(getFirestore(), uid, data, fcm));
+export const answerProposerAsk = callable((uid, data) => core.answerProposerAsk(getFirestore(), uid, data, fcm));

@@ -13,6 +13,10 @@
  *                   max(0 = 제한 없음), joinedCount, delivery, meetPlace, meetTime, note, area, status, createdAt, updatedAt }
  *   status: open(모집 중) · proceeding(진행 — 새 신청 받지 않음) · cancelled
  * proposals/{id}/joins/{uid}  { uid, name, proposalId, status: joined | left | cancelled, createdAt, updatedAt }
+ *
+ * 다른 걸 부탁(A29): 제안 목록에 없는 물건을 그 제안자에게 따로 부탁한다(askProposer, 한 사람당 한 건 — 다시 보내면 고침).
+ * 제안자가 수락하면(answerProposerAsk) 두 사람의 거래(mode 'proposal', 채팅 · 사진 · 단계)가 생기고, 거절하면 끝.
+ * proposals/{id}/asks/{uid}  { uid, name, proposalId, item, est, note, status: pending | accepted | rejected, tradeId, createdAt, updatedAt }
  */
 import { FieldValue, Firestore, Timestamp, Transaction } from 'firebase-admin/firestore';
 import { HttpsError } from 'firebase-functions/v2/https';
@@ -56,6 +60,7 @@ function pid(v: unknown): string {
 
 const proposalRef = (db: Firestore, id: string) => db.collection('proposals').doc(id);
 const joinRef = (db: Firestore, id: string, uid: string) => proposalRef(db, id).collection('joins').doc(uid);
+const askRef = (db: Firestore, id: string, uid: string) => proposalRef(db, id).collection('asks').doc(uid);
 
 async function nickname(tx: Transaction, db: Firestore, uid: string): Promise<string> {
   const me = await tx.get(db.collection('users').doc(uid));
@@ -239,4 +244,112 @@ export async function decideProposal(db: Firestore, uid: string, data: unknown, 
     );
   }
   return { proposalId: id, status: action === 'cancel' ? 'cancelled' : 'proceeding' };
+}
+
+/** 거래 문서의 requestId 자리 — 제안에서 생긴 거래는 부탁 글이 없어서 'proposal:{id}'로 둔다 */
+export const proposalTradeKey = (id: string) => `proposal:${id}`;
+
+/**
+ * 다른 걸 부탁(A29) — 제안자에게 제안 목록에 없는 물건을 따로 부탁한다. 취소되지 않은 제안이면 모집이 끝나도 된다.
+ * 한 사람당 한 건: 기다리는 중이면 내용을 고치고, 거절된 뒤엔 다시 보낼 수 있다. 수락된 뒤엔 채팅으로.
+ */
+export async function askProposer(db: Firestore, uid: string, data: unknown, push?: PushSender, now = Date.now()) {
+  const input = (data ?? {}) as Record<string, unknown>;
+  const id = pid(input.proposalId);
+  const item = str(input.item, '부탁할 물건', 1, 40);
+  const note = str(input.note ?? '', '메모', 0, 200);
+  const est = input.est === undefined || input.est === null ? null : int(input.est, '예상 물건값', 0, 10_000_000);
+  const policy = await loadPolicy(db);
+  const hit = findBlocked(`${item} ${note}`, policy);
+  if (hit) throw new HttpsError('invalid-argument', blockedMessage(hit));
+  const ref = proposalRef(db, id);
+  const res = await db.runTransaction(async (tx) => {
+    const p = await tx.get(ref);
+    if (!p.exists) throw new HttpsError('not-found', '제안을 찾을 수 없어요.');
+    const owner = p.get('ownerUid') as string;
+    if (owner === uid) throw new HttpsError('failed-precondition', '내가 올린 제안이에요.');
+    if (p.get('status') === 'cancelled') throw new HttpsError('failed-precondition', '취소된 제안이에요.');
+    const end = p.get('dayEnd');
+    if (end instanceof Timestamp && end.toMillis() < now) throw new HttpsError('failed-precondition', '날짜가 지난 제안이에요.');
+    const cap = p.get('abroad') === true ? policy.maxItemPriceSea : policy.maxItemPrice;
+    if (est !== null && est > cap) throw new HttpsError('invalid-argument', `물건값은 ${cap.toLocaleString('ko-KR')}원까지예요.`);
+    const [ab, ba] = await Promise.all([
+      tx.get(db.collection('users').doc(owner).collection('blocks').doc(uid)),
+      tx.get(db.collection('users').doc(uid).collection('blocks').doc(owner)),
+    ]);
+    if (ab.exists || ba.exists) throw new HttpsError('permission-denied', '차단 관계인 사용자와는 거래할 수 없어요.');
+    const ar = askRef(db, id, uid);
+    const a = await tx.get(ar);
+    if (a.exists && a.get('status') === 'accepted') throw new HttpsError('failed-precondition', '이미 수락된 부탁이 있어요. 채팅으로 이야기해 주세요.');
+    const name = await nickname(tx, db, uid);
+    const at = Timestamp.fromMillis(now);
+    tx.set(ar, { uid, name, proposalId: id, item, est, note, status: 'pending', tradeId: null, createdAt: a.exists ? a.get('createdAt') : at, updatedAt: at });
+    return { owner, name, fresh: !a.exists || a.get('status') !== 'pending', from: p.get('from') as string };
+  });
+  if (push && res.fresh) {
+    await deliver(
+      db,
+      push,
+      { to: res.owner, kind: 'proposal.ask', title: '따로 부탁이 왔어요', body: `${res.name}님이 ${quote(item)}도 사다 줄 수 있는지 물어요`, requestId: '', proposalId: id },
+      `pask_${id}_${uid}_${now}`,
+    );
+  }
+  return { proposalId: id, status: 'pending' };
+}
+
+/** 제안자가 따로 온 부탁을 수락(→ 두 사람의 거래 · 채팅)하거나 거절한다 */
+export async function answerProposerAsk(db: Firestore, uid: string, data: unknown, push?: PushSender, now = Date.now()) {
+  const input = (data ?? {}) as Record<string, unknown>;
+  const id = pid(input.proposalId);
+  const asker = input.askerUid;
+  if (typeof asker !== 'string' || !asker || asker.includes('/') || asker.length > 128) throw new HttpsError('invalid-argument', 'askerUid 값이 올바르지 않아요.');
+  if (typeof input.accept !== 'boolean') throw new HttpsError('invalid-argument', 'accept 값이 올바르지 않아요.');
+  const accept = input.accept;
+  const ref = proposalRef(db, id);
+  const res = await db.runTransaction(async (tx) => {
+    const [p, a] = await Promise.all([tx.get(ref), tx.get(askRef(db, id, asker))]);
+    if (!p.exists) throw new HttpsError('not-found', '제안을 찾을 수 없어요.');
+    if (p.get('ownerUid') !== uid) throw new HttpsError('permission-denied', '제안한 사람만 할 수 있어요.');
+    if (!a.exists || a.get('status') !== 'pending') throw new HttpsError('failed-precondition', '이미 답한 부탁이에요.');
+    const at = Timestamp.fromMillis(now);
+    const item = a.get('item') as string;
+    if (!accept) {
+      tx.update(a.ref, { status: 'rejected', updatedAt: at });
+      return { item, tradeId: null as string | null };
+    }
+    await nickname(tx, db, uid); // 정지된 제안자는 수락하지 못한다
+    const tradeRef = db.collection('trades').doc();
+    const note = a.get('note') as string;
+    tx.set(tradeRef, {
+      requestId: proposalTradeKey(id),
+      proposalId: id,
+      mode: 'proposal',
+      // 부탁한 사람이 요청자, 제안자가 사다 주는 사람(수행자)
+      requesterUid: asker,
+      helperUid: uid,
+      applicantUid: asker,
+      applicantName: a.get('name') ?? '이웃',
+      title: item,
+      ...(note ? { ask: note } : {}),
+      est: a.get('est') ?? null,
+      price: 0,
+      status: 'matched',
+      history: [{ status: 'matched', by: uid, at }],
+      createdAt: at,
+      updatedAt: at,
+    });
+    tx.update(a.ref, { status: 'accepted', tradeId: tradeRef.id, updatedAt: at });
+    return { item, tradeId: tradeRef.id as string | null };
+  });
+  if (push) {
+    await deliver(
+      db,
+      push,
+      res.tradeId
+        ? { to: asker, kind: 'proposal.askAccepted', title: '따로 부탁이 수락됐어요', body: `${quote(res.item)} 부탁을 제안자가 맡았어요. 채팅으로 정해 보세요`, requestId: '', proposalId: id, tradeId: res.tradeId }
+        : { to: asker, kind: 'proposal.askRejected', title: '따로 부탁이 어렵대요', body: `제안자가 이번엔 ${quote(res.item)}을 사 오기 어렵다고 했어요`, requestId: '', proposalId: id },
+      `panswer_${id}_${asker}_${now}`,
+    );
+  }
+  return { proposalId: id, status: res.tradeId ? 'accepted' : 'rejected', tradeId: res.tradeId };
 }

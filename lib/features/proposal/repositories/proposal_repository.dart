@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../core/backend/backend.dart';
@@ -9,6 +10,46 @@ class ProposalJoiner {
   final String uid;
   final String name;
   const ProposalJoiner(this.uid, this.name);
+}
+
+/// 제안자에게 따로 한 부탁 (`proposals/{id}/asks/{uid}` — 부탁한 사람과 제안자만 읽는다, A29)
+class ProposalAsk {
+  final String uid;
+  final String name;
+  final String item;
+  final int? est;
+  final String note;
+
+  /// pending · accepted · rejected
+  final String status;
+
+  /// 수락되면 생긴 거래 — 채팅은 이 거래로 연다
+  final String? tradeId;
+  const ProposalAsk({
+    required this.uid,
+    required this.name,
+    required this.item,
+    this.est,
+    this.note = '',
+    this.status = 'pending',
+    this.tradeId,
+  });
+
+  bool get pending => status == 'pending';
+  bool get accepted => status == 'accepted';
+
+  static ProposalAsk? fromDoc(String uid, Map<String, dynamic>? m) {
+    if (m == null || m['item'] is! String) return null;
+    return ProposalAsk(
+      uid: uid,
+      name: '${m['name'] ?? '이웃'}',
+      item: m['item'] as String,
+      est: m['est'] is num ? (m['est'] as num).toInt() : null,
+      note: m['note'] is String ? m['note'] as String : '',
+      status: m['status'] is String ? m['status'] as String : 'pending',
+      tradeId: m['tradeId'] is String ? m['tradeId'] as String : null,
+    );
+  }
 }
 
 /// 제안하기 서버 저장(A15). 읽기는 Firestore 구독, 쓰기는 모두 서버 함수(functions/src/proposal).
@@ -57,4 +98,31 @@ class ProposalRepository {
 
   /// proceed — 지금 인원으로 진행 · cancel — 제안 취소
   Future<void> decide(int id, String action) => ServerApi.call('decideProposal', {'proposalId': '$id', 'action': action});
+
+  /// 내 제안에 따로 온 부탁 — 답을 기다리는 것 · 수락한 것 (제안자만)
+  Stream<List<ProposalAsk>> watchAsks(int proposalId) => _asks(proposalId)
+      .where('status', whereIn: const ['pending', 'accepted'])
+      .snapshots()
+      .map((snap) => [
+            for (final d in snap.docs)
+              if (ProposalAsk.fromDoc(d.id, d.data()) case final a?) a,
+          ])
+      .handleError((Object e) => debugPrint('따로 온 부탁 구독 실패: $e'));
+
+  /// 이 제안에 내가 따로 한 부탁
+  Stream<ProposalAsk?> watchMyAsk(int proposalId) => _asks(proposalId)
+      .doc(uid)
+      .snapshots()
+      .map((d) => ProposalAsk.fromDoc(d.id, d.data()))
+      .handleError((Object e) => debugPrint('내 부탁 구독 실패: $e'));
+
+  CollectionReference<Map<String, dynamic>> _asks(int id) => Backend.db.collection('proposals').doc('$id').collection('asks');
+
+  /// 제안자에게 따로 부탁(A29). 다시 보내면 내용만 바뀐다
+  Future<void> ask(int id, {required String item, int? est, String note = ''}) =>
+      ServerApi.call('askProposer', {'proposalId': '$id', 'item': item, 'est': ?est, 'note': note});
+
+  /// 제안자의 답 — 수락하면 거래가 생기고 채팅이 열린다
+  Future<void> answerAsk(int id, String askerUid, bool accept) =>
+      ServerApi.call('answerProposerAsk', {'proposalId': '$id', 'askerUid': askerUid, 'accept': accept});
 }

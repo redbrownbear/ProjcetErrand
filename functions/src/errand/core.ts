@@ -302,9 +302,11 @@ export async function advanceTrade(db: Firestore, uid: string, data: unknown) {
     const rid = trade.get('requestId') as string;
     const reqRef = paths.request(db, rid);
     const giving = isGiving(trade.get('mode'));
+    // 제안에서 생긴 거래(A29)는 부탁 글 · 지원서가 없다 — 거래 문서만 바꾼다
+    const fromProposal = trade.get('mode') === 'proposal';
     const applicant = (trade.get('applicantUid') as string | undefined) ?? helperUid;
     // 도움을 주는 글은 거래 하나가 끝나도 글(모집)은 그대로 둔다
-    const req = (isFinished(next) && !giving) || next === 'completed' ? await tx.get(reqRef) : null;
+    const req = fromProposal ? null : (isFinished(next) && !giving) || next === 'completed' ? await tx.get(reqRef) : null;
 
     tx.update(tradeRef, {
       status: next,
@@ -326,7 +328,7 @@ export async function advanceTrade(db: Firestore, uid: string, data: unknown) {
       const reopened: RequestStatus = deadlinePassed(req.get('deadline'), now) ? 'expired' : 'open';
       tx.update(reqRef, { status: reopened, helperUid: FieldValue.delete(), tradeId: FieldValue.delete(), updatedAt: now });
     }
-    if (next === 'cancelled') {
+    if (next === 'cancelled' && !fromProposal) {
       tx.update(paths.application(db, rid, applicant), { status: 'cancelled', updatedAt: now });
       // 가는 김에: 자리 하나를 돌려준다
       if (giving) tx.update(reqRef, { acceptedCount: FieldValue.increment(-1), updatedAt: now });

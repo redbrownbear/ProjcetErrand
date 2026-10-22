@@ -25,7 +25,10 @@ export type NotifyKind =
   | 'proposal.join'
   | 'proposal.leave'
   | 'proposal.proceed'
-  | 'proposal.cancelled';
+  | 'proposal.cancelled'
+  | 'proposal.ask'
+  | 'proposal.askAccepted'
+  | 'proposal.askRejected';
 
 export interface NotifyEvent {
   to: string;

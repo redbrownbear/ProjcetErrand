@@ -358,8 +358,17 @@ class _HomeShellState extends State<HomeShell> {
                     _openRequestById(rid);
                   } else if (photoTrade != null) {
                     openPhotos(photoTrade);
+                  } else if (n.kind == 'proposal.askAccepted' && n.tradeId != null && session.tradeById(n.tradeId!) != null) {
+                    openChat(session.tradeById(n.tradeId!)!);
                   } else if (n.kind.startsWith('proposal.')) {
-                    social.openProposalList(context, abroad: false);
+                    // 그 제안이 목록에 있으면 바로 열고, 없으면 제안 목록으로
+                    final pid = int.tryParse(n.proposalId ?? '');
+                    final p = pid == null ? null : store.proposals.where((x) => x.id == pid).firstOrNull;
+                    if (p != null) {
+                      social.openProposal(context, p);
+                    } else {
+                      social.openProposalList(context, abroad: false);
+                    }
                   } else if (n.kind.startsWith('report.')) {
                     // 신고 경고 · 처리 알림은 알림 문구가 전부다
                   } else {
@@ -406,7 +415,9 @@ class _HomeShellState extends State<HomeShell> {
         tradeId: t.id,
         title: t.title,
         myUid: uid,
-        peerLabel: t.requesterUid == uid ? '수행자와 대화' : '요청자와 대화',
+        peerLabel: t.requestId.startsWith('proposal:')
+            ? (t.requesterUid == uid ? '제안자와 대화' : '부탁한 이웃과 대화')
+            : (t.requesterUid == uid ? '수행자와 대화' : '요청자와 대화'),
         closed: !t.isOpenForChat,
       ),
     );

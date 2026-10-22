@@ -385,4 +385,16 @@ describe('제안하기', () => {
     await assertSucceeds(getDocs(query(collectionGroup(db(HELPER), 'joins'), where('uid', '==', HELPER))));
     await assertFails(getDocs(query(collectionGroup(db(STRANGER), 'joins'), where('uid', '==', HELPER))));
   });
+
+  test('따로 부탁은 부탁한 본인과 제안자만 읽고, 앱은 못 쓴다', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const f = ctx.firestore();
+      await setDoc(doc(f, 'proposals', '9'), { ownerUid: OWNER, item: '갓김치', status: 'open' });
+      await setDoc(doc(f, 'proposals', '9', 'asks', HELPER), { uid: HELPER, item: '갓', status: 'pending' });
+    });
+    await assertSucceeds(getDoc(doc(db(HELPER), 'proposals', '9', 'asks', HELPER)));
+    await assertSucceeds(getDocs(collection(db(OWNER), 'proposals', '9', 'asks')));
+    await assertFails(getDoc(doc(db(STRANGER), 'proposals', '9', 'asks', HELPER)));
+    await assertFails(setDoc(doc(db(STRANGER), 'proposals', '9', 'asks', STRANGER), { uid: STRANGER, item: 'x' }));
+  });
 });

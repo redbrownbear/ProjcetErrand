@@ -10,6 +10,9 @@ class AppNotice {
 
   /// 거래 알림이면 거래 id(사진 알림을 누르면 그 거래 사진으로)
   final String? tradeId;
+
+  /// 제안 알림이면 제안 id
+  final String? proposalId;
   final DateTime createdAt;
   final bool read;
 
@@ -22,6 +25,7 @@ class AppNotice {
     required this.read,
     this.requestId,
     this.tradeId,
+    this.proposalId,
   });
 
   static AppNotice? fromDoc(String id, Map<String, dynamic> m) {
@@ -34,6 +38,7 @@ class AppNotice {
       body: m['body'] is String ? m['body'] as String : '',
       requestId: m['requestId'] is String ? m['requestId'] as String : null,
       tradeId: m['tradeId'] is String ? m['tradeId'] as String : null,
+      proposalId: m['proposalId'] is String ? m['proposalId'] as String : null,
       createdAt: at is Timestamp ? at.toDate() : DateTime.now(),
       read: m['readAt'] != null,
     );

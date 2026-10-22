@@ -23,4 +23,4 @@ export { adminResolveReport, adminSetRequestHidden, adminSetSuspended } from './
 export { markChatRead, sendMessage } from './chat/callables';
 export { addComment } from './comment/callables';
 export { addTradePhoto } from './photo/callables';
-export { createProposal, decideProposal, joinProposal, leaveProposal } from './proposal/callables';
+export { answerProposerAsk, askProposer, createProposal, decideProposal, joinProposal, leaveProposal } from './proposal/callables';

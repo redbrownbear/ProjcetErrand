@@ -210,6 +210,27 @@ class NeighborStore extends ChangeNotifier {
     await _server(() => r.decide(p.id, action), action == 'cancel' ? '제안을 취소했어요 · 신청한 이웃에게 알렸어요' : '진행하기로 했어요 · 신청한 이웃에게 알렸어요');
   }
 
+  /// 제안자에게 따로 부탁(A29) — 제안에 없는 물건도 사다 줄 수 있는지 묻는다. 보냈으면 true
+  Future<bool> askProposer(Proposal p, {required String item, int? est, String note = ''}) async {
+    final r = proposalRepo;
+    if (r == null || !p.onServer || p.mine) return false;
+    try {
+      await r.ask(p.id, item: item, est: est, note: note);
+      toast?.call('제안자에게 부탁을 보냈어요 · 수락하면 채팅이 열려요');
+      return true;
+    } on ServerException catch (e) {
+      toast?.call(e.message);
+      return false;
+    }
+  }
+
+  /// 따로 온 부탁에 답하기 — 수락하면 거래가 생기고 채팅이 열린다
+  Future<void> answerAsk(Proposal p, String askerUid, bool accept) async {
+    final r = proposalRepo;
+    if (r == null || !p.onServer) return;
+    await _server(() => r.answerAsk(p.id, askerUid, accept), accept ? '부탁을 맡았어요 · 채팅 탭에서 이야기해 보세요' : '어렵다고 알렸어요');
+  }
+
   /// '저 구매할래요!' 누르기 / 취소하기
   void toggleJoin(Proposal p) => _run(() {
     final on = joined.contains(p.id);

@@ -194,6 +194,7 @@ class AppNav {
     onMoreStories: () => goCommunity(p.abroad ? 'abroad' : 'travel', place: p.abroad ? p.cc : p.from),
     onReview: (x) => review(context, x),
     onOtherAsk: openAskForm,
+    onOpenChat: openChat,
   );
 
   void openProposalList(BuildContext context, {required bool abroad}) => _push(

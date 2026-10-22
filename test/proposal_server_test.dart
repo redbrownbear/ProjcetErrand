@@ -28,6 +28,18 @@ class _FakeRepo implements ProposalRepository {
   Future<void> leave(int id) async => calls.add('leave:$id');
   @override
   Future<void> decide(int id, String action) async => calls.add('decide:$id:$action');
+  @override
+  Stream<List<ProposalAsk>> watchAsks(int proposalId) => Stream.value(const [
+    ProposalAsk(uid: 'c', name: '씨', item: '고들빼기', est: 12000),
+    ProposalAsk(uid: 'd', name: '디', item: '돌산 갓', status: 'accepted', tradeId: 't1'),
+  ]);
+  ProposalAsk? myAsk;
+  @override
+  Stream<ProposalAsk?> watchMyAsk(int proposalId) => Stream.value(myAsk);
+  @override
+  Future<void> ask(int id, {required String item, int? est, String note = ''}) async => calls.add('ask:$id:$item:$est');
+  @override
+  Future<void> answerAsk(int id, String askerUid, bool accept) async => calls.add('answer:$id:$askerUid:$accept');
 }
 
 Map<String, dynamic> _doc({String owner = 'owner', String status = 'open', int count = 2}) => {
@@ -128,6 +140,85 @@ void main() {
     await tester.tap(find.byKey(const Key('proposal-proceed')));
     await tester.pump();
     expect(repo.calls, contains('decide:${mine.id}:proceed'));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('제안자에게 따로 부탁(A29): 시트로 보내고, 수락되면 채팅하기', (tester) async {
+    tester.view.physicalSize = const Size(360 * 3, 1600 * 3);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final store = NeighborStore();
+    final other = Proposal.fromDoc('1792000000000123', _doc(owner: 'other'), myUid: 'me')!;
+    late _FakeRepo repo;
+    store.attachServer('me', repo: (uid) => repo = _FakeRepo(uid, [other]));
+    final chats = <String>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () => ProposalSheet.show(
+                context,
+                store: store,
+                p: other,
+                onOpenPost: (_) {},
+                onMoreStories: () {},
+                onReview: (_) {},
+                onOtherAsk: () => fail('서버 제안은 일반 부탁 쓰기로 가지 않는다'),
+                onOpenChat: chats.add,
+              ),
+              child: const Text('열기'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('열기'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('다른 부탁'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('ask-item')), '고들빼기');
+    await tester.enterText(find.byKey(const Key('ask-est')), '12000');
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('ask-send')));
+    await tester.pumpAndSettle();
+    expect(repo.calls, contains('ask:${other.id}:고들빼기:12000'));
+
+    // 수락된 부탁이 있으면 채팅하기
+    Navigator.of(tester.element(find.byType(ProposalSheet))).pop();
+    await tester.pumpAndSettle();
+    repo.myAsk = const ProposalAsk(uid: 'me', name: '나', item: '고들빼기', status: 'accepted', tradeId: 't9');
+    await tester.tap(find.text('열기'));
+    await tester.pumpAndSettle();
+    expect(find.text('맡아 줬어요'), findsOneWidget);
+    await tester.tap(find.text('채팅하기'));
+    await tester.pumpAndSettle();
+    expect(chats, ['t9']);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('내 제안에 따로 온 부탁: 맡을게요 · 어려워요', (tester) async {
+    tester.view.physicalSize = const Size(360 * 3, 1600 * 3);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final store = NeighborStore();
+    final mine = Proposal.fromDoc('1792000000000123', _doc(), myUid: 'owner')!;
+    late _FakeRepo repo;
+    store.attachServer('owner', repo: (uid) => repo = _FakeRepo(uid, [mine]));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ProposalSheet(store: store, p: mine, onOpenPost: (_) {}, onMoreStories: () {}, onReview: (_) {}, onOtherAsk: () {}),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(find.text('따로 온 부탁'), findsOneWidget);
+    expect(find.text('씨 · 고들빼기 · 예상 12,000원'), findsOneWidget);
+    await tester.ensureVisible(find.byKey(const Key('ask-accept-c')));
+    await tester.tap(find.byKey(const Key('ask-accept-c')));
+    await tester.pump();
+    expect(repo.calls, contains('answer:${mine.id}:c:true'));
     expect(tester.takeException(), isNull);
   });
 }

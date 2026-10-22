@@ -4,6 +4,8 @@
 import assert from 'node:assert/strict';
 import { beforeEach, describe, test } from 'node:test';
 
+import * as core from '../../src/errand/core';
+import * as chat from '../../src/chat/core';
 import * as p from '../../src/proposal/core';
 import { resetPolicyCache } from '../../src/safety/policy';
 import { adminDb, clearDb, rejectsWith } from './helpers';
@@ -109,5 +111,54 @@ describe('신청 · 취소 · 제안자 결정', () => {
     assert.deepEqual(joins.docs.map((d) => d.get('status')), ['cancelled', 'cancelled']);
     assert.deepEqual(await notices('b'), ['proposal.cancelled']);
     await rejectsWith(p.decideProposal(db, 'owner', { proposalId: id, action: 'cancel' }, send), 'failed-precondition');
+  });
+});
+
+describe('다른 걸 부탁(A29)', () => {
+  test('따로 부탁 → 수락하면 채팅되는 거래, 단계 · 취소는 거래만 바꾼다', async () => {
+    const { proposalId } = await p.createProposal(db, 'owner', input());
+    await p.askProposer(db, 'a', { proposalId, item: '여수 돌산 갓 2kg', est: 20000, note: '가능하면요' }, send);
+    // 기다리는 동안 다시 보내면 내용만 고친다(알림은 한 번)
+    await p.askProposer(db, 'a', { proposalId, item: '여수 돌산 갓 3kg', est: 25000 }, send);
+    const ask = (await db.collection('proposals').doc(proposalId).collection('asks').doc('a').get()).data()!;
+    assert.equal(ask.item, '여수 돌산 갓 3kg');
+    assert.equal(ask.status, 'pending');
+    assert.deepEqual(await notices('owner'), ['proposal.ask']);
+
+    await rejectsWith(p.answerProposerAsk(db, 'a', { proposalId, askerUid: 'a', accept: true }), 'permission-denied');
+    const r = await p.answerProposerAsk(db, 'owner', { proposalId, askerUid: 'a', accept: true }, send);
+    assert.equal(r.status, 'accepted');
+    const t = (await db.collection('trades').doc(r.tradeId!).get()).data()!;
+    assert.equal(t.mode, 'proposal');
+    assert.equal(t.requestId, `proposal:${proposalId}`);
+    assert.equal(t.requesterUid, 'a');
+    assert.equal(t.helperUid, 'owner');
+    assert.equal(t.status, 'matched');
+    assert.deepEqual(await notices('a'), ['proposal.askAccepted']);
+    await rejectsWith(p.answerProposerAsk(db, 'owner', { proposalId, askerUid: 'a', accept: false }), 'failed-precondition');
+    await rejectsWith(p.askProposer(db, 'a', { proposalId, item: '하나 더' }), 'failed-precondition');
+
+    // 채팅 · 단계 · 시작 전 취소가 부탁 글 없이도 된다
+    await chat.sendMessage(db, 'a', { tradeId: r.tradeId, text: '언제쯤 될까요?' });
+    await core.advanceTrade(db, 'owner', { tradeId: r.tradeId, action: 'cancel' });
+    assert.equal((await db.collection('trades').doc(r.tradeId!).get()).get('status'), 'cancelled');
+  });
+
+  test('거절 · 다시 보내기, 내 제안 · 금지 품목 · 상한 · 취소된 제안 · 차단은 거부', async () => {
+    const { proposalId } = await p.createProposal(db, 'owner', input());
+    await p.askProposer(db, 'b', { proposalId, item: '갓김치 2kg' }, send);
+    await p.answerProposerAsk(db, 'owner', { proposalId, askerUid: 'b', accept: false }, send);
+    assert.deepEqual(await notices('b'), ['proposal.askRejected']);
+    await p.askProposer(db, 'b', { proposalId, item: '갓김치 1kg' }, send);
+    assert.equal((await db.collection('proposals').doc(proposalId).collection('asks').doc('b').get()).get('status'), 'pending');
+
+    await rejectsWith(p.askProposer(db, 'owner', { proposalId, item: '무엇' }), 'failed-precondition');
+    await rejectsWith(p.askProposer(db, 'c', { proposalId, item: '안동 소주' }), 'invalid-argument');
+    await rejectsWith(p.askProposer(db, 'c', { proposalId, item: '갓', est: 60000 }), 'invalid-argument');
+    await rejectsWith(p.askProposer(db, 'c', { proposalId, item: '' }), 'invalid-argument');
+    await db.collection('users').doc('owner').collection('blocks').doc('c').set({});
+    await rejectsWith(p.askProposer(db, 'c', { proposalId, item: '갓' }), 'permission-denied');
+    await p.decideProposal(db, 'owner', { proposalId, action: 'cancel' });
+    await rejectsWith(p.askProposer(db, 'a', { proposalId, item: '갓' }), 'failed-precondition');
   });
 });

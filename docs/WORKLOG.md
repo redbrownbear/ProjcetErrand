@@ -141,6 +141,16 @@
 
 ## 기록
 
+### 2026-10-23 · 미커밋 · Claude (A29 제안자에게 따로 부탁)
+- 추가(서버): `askProposer` — 제안에 없는 물건을 제안자에게 1:1로 부탁(`proposals/{id}/asks/{uid}`: 물건 40자 · 예상 물건값(선택, 물건값 상한) · 한마디 200자,
+  금지 품목 · 차단 · 취소/지난 제안 거부, 다시 보내면 내용만 바뀜). `answerProposerAsk` — 제안자가 수락하면 거래(`trades`, `mode: 'proposal'`, requestId `proposal:{id}`,
+  부탁한 사람 = 요청자 · 제안자 = 수행자, 바로 `matched`)가 생겨 채팅이 열리고, 거절하면 알림만. 알림 `proposal.ask · askAccepted · askRejected`.
+  `advanceTrade`는 제안 거래면 부탁 글을 찾지 않는다. 규칙: asks는 본인과 제안자만 읽고 앱은 못 씀. 테스트 `test/emu/proposal.test.ts` · 규칙 테스트
+- 변경(앱): 서버 제안 상세의 '다른 부탁'이 일반 부탁 쓰기 대신 **제안자에게 따로 부탁** 시트(`proposal_ask_sheet.dart`)를 연다(서버 연결 전 · 예시 제안은 예전처럼 부탁 쓰기).
+  상세에 내 부탁 상태(답을 기다려요 · 맡아 줬어요 → 채팅하기 · 어렵대요 → 다시 부탁), 제안자에게는 **따로 온 부탁**(맡을게요 · 어려워요 · 채팅하기).
+  제안 알림을 누르면 그 제안을, 수락 알림은 채팅방을 연다(`AppNotice.proposalId`). 테스트 `test/proposal_server_test.dart`
+- 할 일: `firebase deploy --project dev --only functions,firestore` (새 함수 2개 · 규칙)
+
 ### 2026-10-23 · 36a9666 외 · Claude (A14 폰 캘린더 → 동선)
 - 추가(앱): 마이 › 내 동선 › **캘린더 일정에서 동선 찾기**(`route/screens/calendar_import_screen.dart`) — 안내(제목 · 참석자 · 메모는 읽지 않음, 캘린더 내용은 저장 안 함) →
   '캘린더 읽기 허용'(OS 권한) → 앞으로 2주 안 장소가 적힌 일정만(종일 일정 · 장소 없음 제외, 같은 일정 하나로) → 고르면 장소 검색(키가 있을 때)이나 장소 고르기로 좌표를 찾아
