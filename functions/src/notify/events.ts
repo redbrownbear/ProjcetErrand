@@ -22,6 +22,7 @@ export type NotifyKind =
   | 'match.route'
   | 'report.warned'
   | 'report.resolved'
+  | 'report.received'
   | 'proposal.join'
   | 'proposal.leave'
   | 'proposal.proceed'

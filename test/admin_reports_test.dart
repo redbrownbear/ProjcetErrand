@@ -42,14 +42,15 @@ class _FakeRepo implements AdminRepository {
   }
 }
 
-AdminReport _report(String id, {String target = 'b', String? status, String? resolution}) => AdminReport.fromDoc(id, {
+AdminReport _report(String id, {String target = 'b', String? status, String? resolution, String? priority, int hour = 14}) => AdminReport.fromDoc(id, {
   'reporterUid': 'a',
   'targetUid': target,
   'requestId': '7',
   'reason': '노쇼·약속 불이행',
   'detail': '약속 장소에 안 나왔어요',
-  'createdAt': Timestamp.fromDate(DateTime(2026, 10, 22, 14, 5)),
+  'createdAt': Timestamp.fromDate(DateTime(2026, 10, 22, hour, 5)),
   'status': ?status,
+  if (priority != null) ...{'category': 'abuse', 'priority': priority, 'signals': ['위험한 말: 협박']},
   'resolution': ?resolution,
 })!;
 
@@ -115,6 +116,23 @@ void main() {
     await tester.tap(find.byKey(const Key('admin-resolve-dismissed')));
     await tester.pump();
     expect(find.text('운영자만 할 수 있어요.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('자동 분류(A34): 급한 신고가 위로, 상세에 분류 근거', (tester) async {
+    final urgent = _report('u1', priority: 'urgent', hour: 9);
+    expect(urgent.category, ReportCategory.abuse);
+    expect(urgent.priority, ReportPriority.urgent);
+    expect(_report('n1').priority, ReportPriority.normal);
+    final repo = _FakeRepo([_report('n1', hour: 15), urgent, _report('h1', priority: 'high', hour: 10)]);
+    await phone(tester, AdminReportsScreen(repo: repo));
+    await tester.pump();
+    final ys = [for (final t in ['긴급', '높음', '노쇼·약속 불이행']) tester.getTopLeft(find.text(t).first).dy];
+    expect(ys[0] < ys[1] && ys[1] < ys[2], isTrue, reason: '긴급 → 높음 → 보통');
+
+    await phone(tester, AdminReportDetailScreen(report: urgent, repo: repo));
+    expect(find.text('자동 분류: 욕설 · 위협 · 긴급도 긴급'), findsOneWidget);
+    expect(find.text('· 위험한 말: 협박'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

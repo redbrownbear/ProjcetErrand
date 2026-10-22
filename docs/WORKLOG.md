@@ -141,6 +141,14 @@
 
 ## 기록
 
+### 2026-10-23 · 미커밋 · Claude (A34 신고 자동 분류 · 1차 자동 응대)
+- 추가(서버): 트리거 `onReportCreate`(`functions/src/admin/triage.ts`) — 신고 사유 · 내용으로 유형(금지 품목 · 사기 의심 · 노쇼 · 욕설/위협 · 외부 거래 유도 · 기타, '기타'는 내용으로 다시 분류)과
+  긴급도(위험한 말 → urgent, 사기 · 금지 품목 · 욕설이나 최근 7일 서로 다른 3명 이상이 같은 사람을 신고 → high)를 붙인다(`category` · `priority` · `signals` · `repeatCount`).
+  신고자에게 유형별 **1차 안내** 알림(`report.received` — 위험하면 112 · 차단, 사기면 앱 밖 송금 금지 등. 환불 · 처리 시한은 약속하지 않음), 신고마다 한 번.
+  경고 · 정지는 자동으로 하지 않는다(운영자가). 테스트 `test/unit/triage.test.ts` · `test/emu/notify_admin.test.ts`
+- 변경(앱): 운영 › 신고 처리 — 처리 전 목록을 급한 것부터(긴급 · 높음 표시), 카드 제목은 분류 유형, 한 건 화면에 자동 분류 · 근거. 설계 문서 W5 운영 방법 2
+- 할 일: `firebase deploy --project dev --only functions` (새 트리거 `onReportCreate`)
+
 ### 2026-10-23 · 2bfde2f 외 · Claude (A30 제안 자리 예약 · 정원 늘리기)
 - 추가(서버): 정원이 찬 제안에 **대기 예약**(`joinProposal`에 `wait: true` — join `status: 'waiting'` · `waitedAt`, 제안 `waitCount`, 대기 15명까지, 제안자 알림 `proposal.wait`).
   구매 요청을 취소하면 맨 앞 대기자가 자리를 이어받고, `raiseProposalMax`(제안자, 지금보다 많은 인원 · 0 = 제한 없음)로 정원을 늘리면 늘어난 만큼 먼저 온 순서로 자동 참여(`proposal.promoted`).

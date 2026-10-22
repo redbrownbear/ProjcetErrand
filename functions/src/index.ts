@@ -18,7 +18,7 @@ export {
   withdrawApplication,
 } from './errand/callables';
 
-export { onApplicationWrite, onRequestPlaced, onRequestWrite, onRouteWrite, onTradeWrite } from './notify/triggers';
+export { onApplicationWrite, onReportCreate, onRequestPlaced, onRequestWrite, onRouteWrite, onTradeWrite } from './notify/triggers';
 export { adminResolveReport, adminSetRequestHidden, adminSetSuspended } from './admin/callables';
 export { markChatRead, sendMessage } from './chat/callables';
 export { addComment } from './comment/callables';

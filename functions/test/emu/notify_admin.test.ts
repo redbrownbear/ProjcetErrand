@@ -7,6 +7,7 @@ import { beforeEach, describe, test } from 'node:test';
 import { Timestamp } from 'firebase-admin/firestore';
 
 import * as admin from '../../src/admin/core';
+import { triageReport } from '../../src/admin/triage';
 import * as core from '../../src/errand/core';
 import { deliver, PushMessage } from '../../src/notify/deliver';
 import { adminDb, clearDb, rejectsWith, seedRequest } from './helpers';
@@ -108,5 +109,39 @@ describe('운영자', () => {
     await rejectsWith(admin.setRequestHidden(db, 'ops', { requestId: '9', hidden: false }), 'failed-precondition');
     await rejectsWith(admin.setRequestHidden(db, 'ops', { requestId: 'none', hidden: true }), 'not-found');
     await rejectsWith(admin.setRequestHidden(db, 'ops', { requestId: '9' }), 'invalid-argument');
+  });
+});
+
+describe('신고 자동 분류 · 1차 안내(A34)', () => {
+  const send = async () => [];
+  const report = (id: string, reporter: string, extra: Record<string, unknown> = {}) =>
+    db.collection('reports').doc(id).set({ reporterUid: reporter, targetUid: 'bad', reason: '노쇼·약속 불이행', createdAt: Timestamp.now(), ...extra });
+
+  test('분류를 붙이고 신고자에게 한 번만 안내, 같은 사람에게 몰리면 high', async () => {
+    await report('r1', 'a');
+    const t = await triageReport(db, 'r1', send);
+    assert.equal(t?.category, 'noshow');
+    assert.equal(t?.priority, 'normal');
+    assert.equal(await triageReport(db, 'r1', send), null); // 두 번 돌아도 한 번
+    const n = await db.collection('users').doc('a').collection('notifications').get();
+    assert.deepEqual(n.docs.map((d) => d.get('kind')), ['report.received']);
+
+    await report('r2', 'b');
+    await report('r3', 'a'); // 같은 사람이 또 신고해도 한 명
+    await report('old', 'z', { createdAt: Timestamp.fromMillis(Date.now() - 10 * 86_400_000) });
+    await report('r4', 'c');
+    const t4 = await triageReport(db, 'r4', send);
+    assert.equal(t4?.repeatCount, 3);
+    assert.equal(t4?.priority, 'high');
+    const doc = (await db.collection('reports').doc('r4').get()).data()!;
+    assert.equal(doc.category, 'noshow');
+    assert.ok(doc.triagedAt);
+  });
+
+  test('내용의 금지 품목 · 위험한 말', async () => {
+    await report('p1', 'a', { reason: '기타', detail: '담배 사다 달래요' });
+    assert.equal((await triageReport(db, 'p1', send))?.category, 'prohibited');
+    await report('p2', 'b', { reason: '욕설·위협·불쾌한 행동', detail: '때리겠다고 했어요' });
+    assert.equal((await triageReport(db, 'p2', send))?.priority, 'urgent');
   });
 });

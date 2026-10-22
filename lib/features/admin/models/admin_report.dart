@@ -12,6 +12,33 @@ enum ReportResolution {
   static ReportResolution? parse(Object? v) => values.where((r) => r.name == v).firstOrNull;
 }
 
+/// 서버가 붙인 신고 유형 — `functions/src/admin/triage.ts`와 같은 값(A34)
+enum ReportCategory {
+  prohibited('금지 품목'),
+  fraud('사기 의심'),
+  noshow('노쇼 · 약속'),
+  abuse('욕설 · 위협'),
+  offplatform('외부 거래 유도'),
+  other('기타');
+
+  final String label;
+  const ReportCategory(this.label);
+
+  static ReportCategory? parse(Object? v) => values.where((c) => c.name == v).firstOrNull;
+}
+
+/// 긴급도 — 위험한 말이 있으면 urgent, 사기 · 금지 품목 · 욕설이나 같은 사람에게 몰린 신고는 high
+enum ReportPriority {
+  urgent('긴급'),
+  high('높음'),
+  normal('보통');
+
+  final String label;
+  const ReportPriority(this.label);
+
+  static ReportPriority parse(Object? v) => values.where((p) => p.name == v).firstOrNull ?? normal;
+}
+
 /// 신고 한 건 (`reports/{id}`). 앱이 접수하고(report_sheet), 운영자만 읽는다(보안 규칙).
 /// 처리 전에는 status가 없다 — 처리하면 서버가 status 'resolved' · resolution · memo를 쓴다.
 class AdminReport {
@@ -26,6 +53,11 @@ class AdminReport {
   final String? memo;
   final DateTime? resolvedAt;
 
+  /// 서버 자동 분류(A34). 분류 전이면 [category]가 null
+  final ReportCategory? category;
+  final ReportPriority priority;
+  final List<String> signals;
+
   const AdminReport({
     required this.id,
     required this.reporterUid,
@@ -37,9 +69,18 @@ class AdminReport {
     this.resolution,
     this.memo,
     this.resolvedAt,
+    this.category,
+    this.priority = ReportPriority.normal,
+    this.signals = const [],
   });
 
   bool get resolved => resolution != null;
+
+  /// 처리 전 목록 순서 — 급한 것 먼저, 같으면 최근 것 먼저
+  static int byUrgency(AdminReport a, AdminReport b) {
+    final p = a.priority.index.compareTo(b.priority.index);
+    return p != 0 ? p : b.createdAt.compareTo(a.createdAt);
+  }
 
   static AdminReport? fromDoc(String id, Map<String, dynamic> m) {
     final reason = m['reason'], target = m['targetUid'];
@@ -56,6 +97,9 @@ class AdminReport {
       resolution: m['status'] == 'resolved' ? ReportResolution.parse(m['resolution']) : null,
       memo: m['memo'] is String ? m['memo'] as String : null,
       resolvedAt: done is Timestamp ? done.toDate() : null,
+      category: ReportCategory.parse(m['category']),
+      priority: ReportPriority.parse(m['priority']),
+      signals: [for (final s in m['signals'] is List ? m['signals'] as List : const []) if (s is String) s],
     );
   }
 }

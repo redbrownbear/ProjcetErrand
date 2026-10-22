@@ -5,6 +5,7 @@ import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { getMessaging } from 'firebase-admin/messaging';
 import { onDocumentCreated, onDocumentWritten } from 'firebase-functions/v2/firestore';
 
+import { triageReport } from '../admin/triage';
 import { computeRouteCells } from '../route/core';
 import { matchRequest } from '../route/match';
 import { screenRequest } from '../safety/screen';
@@ -63,4 +64,9 @@ export const onRequestPlaced = onDocumentCreated('requests/{requestId}/private/d
   const d = event.data?.data();
   if (typeof d?.lat !== 'number' || typeof d?.lng !== 'number') return;
   await matchRequest(getFirestore(), event.params.requestId, d.lat, d.lng, fcm);
+});
+
+/** 신고가 접수되면 유형 · 긴급도를 붙이고 신고한 사람에게 1차 안내(A34). 처리는 운영자가 한다 */
+export const onReportCreate = onDocumentCreated('reports/{reportId}', async (event) => {
+  await triageReport(getFirestore(), event.params.reportId, fcm);
 });

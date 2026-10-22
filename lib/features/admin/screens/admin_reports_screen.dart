@@ -4,6 +4,7 @@ import '../../../core/backend/server_api.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/stable_sort.dart';
 import '../../../core/widgets/kit.dart';
 import '../models/admin_report.dart';
 import '../repositories/admin_repository.dart';
@@ -32,7 +33,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
       stream: reports,
       builder: (context, snap) {
         final all = snap.data ?? const <AdminReport>[];
-        final open = all.where((r) => !r.resolved).toList();
+        final open = all.where((r) => !r.resolved).toList()..sortStable(AdminReport.byUrgency);
         final done = all.where((r) => r.resolved).toList();
         final list = showResolved ? done : open;
         // 같은 사람이 받은 신고 수(불러온 범위 안에서)
@@ -129,7 +130,11 @@ class _ReportCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Expanded(child: Text(r.reason, style: AppType.sectionSmall)),
+                  if (!r.resolved && r.priority != ReportPriority.normal) ...[
+                    _Pill(r.priority.label, r.priority == ReportPriority.urgent ? AppColors.red : AppColors.orange),
+                    const SizedBox(width: 6),
+                  ],
+                  Expanded(child: Text(r.category?.label ?? r.reason, style: AppType.sectionSmall)),
                   if (r.resolution case final res?) _Pill(res.label, res == ReportResolution.dismissed ? AppColors.sub : AppColors.red),
                 ],
               ),
@@ -263,6 +268,15 @@ class _AdminReportDetailScreenState extends State<AdminReportDetailScreen> {
             children: [
               Text(r.reason, style: AppType.sectionSmall),
               if (r.detail != null) ...[const SizedBox(height: 6), Text(r.detail!, style: AppType.body.copyWith(height: 1.55))],
+              if (r.category case final c?) ...[
+                const SizedBox(height: 8),
+                Text(
+                  '자동 분류: ${c.label} · 긴급도 ${r.priority.label}',
+                  style: AppType.meta.copyWith(color: r.priority == ReportPriority.urgent ? AppColors.red : AppColors.ink2),
+                ),
+                for (final s in r.signals) Text('· $s', style: AppType.meta),
+                Text('신고한 사람에게는 유형에 맞는 1차 안내가 자동으로 갔어요', style: AppType.meta),
+              ],
               const SizedBox(height: 8),
               Text('접수 ${dateTimeLabel(r.createdAt)} · 신고 번호 ${r.id}', style: AppType.meta),
               if (r.resolution case final res?)
