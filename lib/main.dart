@@ -3,6 +3,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'core/backend/app_check.dart';
 import 'core/backend/backend.dart';
 import 'core/config/naver_map_init.dart';
 import 'core/storage/local_store.dart';
@@ -27,6 +28,7 @@ void main() async {
   try {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
     Backend.markReady();
+    await activateAppCheck();
     // 로그인 유지 설정 (웹에서만 의미가 있다 — AuthService.configurePersistence 참고)
     await AuthService().configurePersistence();
   } catch (e) {

@@ -39,6 +39,8 @@ dependencies:
   cloud_firestore: ^6.9.0
   cloud_functions: ^6.5.0
   firebase_messaging: ^16.7.0
+  # 버전은 CI의 pub get이 firebase_core에 맞춰 고른 뒤 고정한다(app.yml 'pubspec.lock' 알림)
+  firebase_app_check: any
   flutter_naver_map: ^1.4.4
   geolocator: ^14.0.3
   shared_preferences: ^2.5.5

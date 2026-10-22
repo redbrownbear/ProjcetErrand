@@ -20,6 +20,18 @@ jobs:
           cache: true
       - run: flutter --version
       - run: flutter pub get
+      # pubspec.lock이 커밋본과 다르면(새 패키지 · any 버전) 고른 버전을 주석으로 남긴다 — 그 버전으로 pubspec을 고정한다
+      - name: pubspec.lock 변경 알림
+        run: |
+          git diff --quiet pubspec.lock && exit 0
+          python3 - <<'PY'
+          import re, subprocess
+          diff = subprocess.run(['git', 'diff', '-U0', 'pubspec.lock'], capture_output=True, text=True).stdout
+          lock = open('pubspec.lock', encoding='utf-8').read()
+          for name, ver in re.findall(r'^  ([a-z0-9_]+):\n(?:    .*\n)*?    version: "([^"]+)"', lock, re.M):
+              if re.search(r'^\+.*' + re.escape(ver), diff, re.M) and name in diff:
+                  print(f'::notice title=pubspec.lock::{name} {ver}')
+          PY
       # 오류·경고를 주석(annotation)으로도 남긴다 — 로그를 못 여는 곳에서도 어디가 틀렸는지 보이게
       - name: flutter analyze
         run: |

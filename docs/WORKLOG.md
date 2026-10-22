@@ -27,7 +27,7 @@
 - 백엔드: Firebase(Auth·Firestore). 서버 연결이 안 되면 `LocalStore`(이 기기)에 저장 ([백엔드_연결.md](백엔드_연결.md)).
   1차 출시용 서버 설계·갈래(W1~W10)는 [1차_백엔드_설계.md](1차_백엔드_설계.md). 서버 함수는 `functions/`(TypeScript, 서울 리전),
   지원·수락·거래 단계는 **서버 함수로 처리**한다(`TradeRepository` → `functions/src/errand`). 앱은 결과를 Firestore 구독으로 받는다.
-  서버 함수는 dev(`projecterrand`)에 배포됨(2026-10-20). 규칙 v2는 아직 배포 전 — 앱 W3 반영본과 함께 올린다.
+  서버 함수 · 규칙 v2 · 색인은 dev(`projecterrand`)에 배포됨(2026-10-22, `onRequestWrite` 포함). 예전 앱 빌드는 지원 · 포인트 저장이 막히니 테스트 폰은 새로 빌드.
 - 지도: 네이버 지도(`flutter_naver_map`). 제휴 미션·퀴즈 API 연동 ([제휴_API_연동.md](제휴_API_연동.md)).
 - 동의: 가입 때 필수 3 · 선택 3(기본 꺼짐), 마이 › 동의 · 권한 관리. 위치 동의 없으면 위치를 읽지 않는다.
   금지 품목 · 물건값 상한은 서버가 `config/safety`로 판단(글 숨김 · 댓글/신청 거부). 실제 목록 · 금액은 법인 결정(C07 · C09) 뒤 그 문서만 고친다.
@@ -37,8 +37,6 @@
 
 ### 1차 출시 백엔드 ([1차_백엔드_설계.md](1차_백엔드_설계.md))
 
-- [ ] W3 앱 반영본 배포 — 저장소 폴더에서 `firebase deploy --project dev --only functions,firestore`(함수 갱신 + 규칙 v2 + 색인 + 새 트리거 `onRequestWrite`).
-      그 뒤 예전 앱 빌드는 지원·포인트 저장이 막히므로 테스트 기기 앱도 새로 설치
 - [ ] W3 실기기 확인 — 계정 두 개로 지원 → 받은 지원 수락 → 시작 → 완료 요청 → 완료 확인, 취소·거절
 - [ ] 예산 알림 설정(Google Cloud 콘솔 › 결제 › 예산 및 알림, 50·90·100%)
 - [ ] 출시 전 운영 프로젝트 새로 만들기 → `.firebaserc`에 `prod` 추가, 앱 `google-services.json` 교체
@@ -142,6 +140,13 @@
   바꾼 뒤엔 Android Studio를 완전히 종료 후 재시작.
 
 ## 기록
+
+### 2026-10-22 · 미커밋 · Claude (A35 App Check 앱 연결 · dev 배포)
+- 변경: dev에 함수 · 규칙 v2 · 색인 배포 완료(사용자, 2026-10-22). 다음 할 일의 'W3 앱 반영본 배포' 지움
+- 추가(A35): `firebase_app_check` 패키지, `core/backend/app_check.dart` — 출시 빌드 Play Integrity · App Attest, 디버그 빌드는 디버그 제공자.
+  웹 · 데스크톱은 건너뜀. **강제는 아직 끔**(서버 `ENFORCE_APP_CHECK`, 콘솔 Firestore 적용) — 디버그 토큰 등록 · 지표 확인 뒤 출시 직전에 켠다
+- 변경(CI): `app`이 pub get 뒤 pubspec.lock이 커밋본과 다르면 고른 패키지 버전을 주석으로 남긴다(이 작업 환경에서 pub.dev를 못 열어 버전을 CI로 확인).
+  `firebase_app_check`는 우선 `any` — 확인되면 그 버전으로 고정
 
 ### 2026-10-22 · 1ea73c0 외 · Claude (A21 동의 관리 · A20 금지 품목 서버 설정)
 - 추가(A21): 가입 화면에 약관 동의(필수 3 · 선택 3, 선택은 기본 꺼짐) — 이용약관 · 개인정보 수집·이용 · 만 14세 이상 / 위치 정보 · 혜택 알림 · 야간 혜택 알림.
