@@ -141,7 +141,7 @@
 
 ## 기록
 
-### 2026-10-23 · 미커밋 · Claude (A36 운영자 신고 처리 화면)
+### 2026-10-23 · 7474cb6 · Claude (A36 운영자 신고 처리 화면)
 - 추가(앱): 마이 › **운영 › 신고 처리**(`features/admin/` — `AdminReportsScreen` · `AdminReportDetailScreen` · `AdminRepository` · 모델 `admin_report.dart`).
   운영자 계정(custom claim `role=admin`, `AuthService.isAdmin`)에만 메뉴가 보인다. 처리 전/처리됨 목록(최근 200건, 같은 사람이 받은 신고 수),
   한 건 화면: 신고 내용 · 신고된 사람(정지 상태 · 정지 풀기) · 신고한 사람 · 신고된 부탁 글(글 보기 · 내리기 · 되돌리기) → 운영 메모 + 문제 없음 · 경고 · 이용 정지(확인 창).
