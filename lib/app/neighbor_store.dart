@@ -39,6 +39,9 @@ class NeighborStore extends ChangeNotifier {
   late final List<Proposal> _seedProposals = seedProposals();
   List<Proposal> myProposals = [];
   Set<int> joined = {};
+
+  /// 대기 예약한 서버 제안(A30)
+  Set<int> waiting = {};
   List<ComPost> myPosts = [];
   Map<int, List<Comment>> myComments = {};
   Set<int> likedPosts = {};
@@ -108,6 +111,7 @@ class NeighborStore extends ChangeNotifier {
   List<Proposal> serverProposals = [];
   StreamSubscription<List<Proposal>>? _proposalSub;
   StreamSubscription<Set<int>>? _joinSub;
+  StreamSubscription<Set<int>>? _waitSub;
 
   /// 최근 완료된 거래(A23, LIVE 보드 티커). 서버에 붙었을 때만
   List<DoneActivity> recentDone = [];
@@ -118,9 +122,12 @@ class NeighborStore extends ChangeNotifier {
     if (proposalRepo?.uid == uid) return;
     _proposalSub?.cancel();
     _joinSub?.cancel();
+    _waitSub?.cancel();
     _doneSub?.cancel();
     _proposalSub = null;
     _joinSub = null;
+    _waitSub = null;
+    waiting = {};
     _doneSub = null;
     serverProposals = [];
     recentDone = [];
@@ -138,6 +145,10 @@ class NeighborStore extends ChangeNotifier {
         joined = ids;
         notifyListeners();
       });
+      _waitSub = r.watchMyWaits().listen((ids) {
+        waiting = ids;
+        notifyListeners();
+      });
       _doneSub = (activity ?? const ActivityRepository()).watchRecent().listen((list) {
         recentDone = list;
         notifyListeners();
@@ -150,6 +161,7 @@ class NeighborStore extends ChangeNotifier {
   void dispose() {
     _proposalSub?.cancel();
     _joinSub?.cancel();
+    _waitSub?.cancel();
     _doneSub?.cancel();
     super.dispose();
   }
@@ -208,6 +220,21 @@ class NeighborStore extends ChangeNotifier {
     final r = proposalRepo;
     if (r == null || !p.onServer) return;
     await _server(() => r.decide(p.id, action), action == 'cancel' ? '제안을 취소했어요 · 신청한 이웃에게 알렸어요' : '진행하기로 했어요 · 신청한 이웃에게 알렸어요');
+  }
+
+  /// 정원이 찬 제안에 대기 예약 / 대기 취소(A30)
+  void toggleWait(Proposal p) => _run(() {
+    final r = proposalRepo;
+    if (r == null || !p.onServer || p.mine) return;
+    final on = waiting.contains(p.id);
+    _server(() => on ? r.leave(p.id) : r.wait(p.id), on ? '대기를 취소했어요' : '대기 예약했어요 · 자리가 나면 자동으로 구매 요청이 들어가요');
+  });
+
+  /// 제안자가 정원을 늘린다(0 = 제한 없음). 대기하던 이웃이 먼저 온 순서로 들어온다
+  Future<void> raiseMax(Proposal p, int max) async {
+    final r = proposalRepo;
+    if (r == null || !p.onServer || !p.mine) return;
+    await _server(() => r.raiseMax(p.id, max), p.waitCount > 0 ? '정원을 늘렸어요 · 대기하던 이웃이 먼저 들어와요' : '정원을 늘렸어요');
   }
 
   /// 제안자에게 따로 부탁(A29) — 제안에 없는 물건도 사다 줄 수 있는지 묻는다. 보냈으면 true

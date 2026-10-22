@@ -1,5 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+/// 제안 한 건의 최대 모집 인원 (서버 `MAX_PEOPLE`과 같다)
+const proposalMaxPeople = 15;
+
 /// 제안 — "가는 김에 사다 드려요".
 ///
 /// 부탁(요청자가 먼저 올림)과 반대 방향이다. 이동하는 이웃이 먼저
@@ -69,6 +72,9 @@ class Proposal {
   /// 서버가 센 신청 인원(나 포함). 서버 제안에만 있다 — 있으면 [joined] 대신 쓴다
   final int? serverCount;
 
+  /// 정원이 차서 자리를 기다리는 인원(A30, 서버 제안만)
+  final int waitCount;
+
   const Proposal({
     required this.id,
     required this.abroad,
@@ -94,6 +100,7 @@ class Proposal {
     this.meetTime,
     this.state = 'open',
     this.serverCount,
+    this.waitCount = 0,
   });
 
   /// 서버에 올라간 제안
@@ -126,6 +133,9 @@ class Proposal {
     final now = DateTime.now();
     return day.isBefore(DateTime(now.year, now.month, now.day));
   }
+
+  /// 정원만 찬 상태 — 대기 예약을 받을 수 있다(A30, 서버 제안만)
+  bool waitable(bool meJoined) => onServer && !cancelled && !proceeding && !expired && isFull(meJoined);
 
   /// 지금 신청할 수 있는가
   bool openFor(bool meJoined) => !cancelled && !proceeding && !expired && !isFull(meJoined);
@@ -223,6 +233,7 @@ class Proposal {
       meetTime: s('meetTime'),
       state: s('status') ?? 'open',
       serverCount: n('joinedCount'),
+      waitCount: n('waitCount'),
     );
   }
 

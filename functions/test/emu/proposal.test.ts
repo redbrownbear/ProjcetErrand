@@ -114,6 +114,64 @@ describe('신청 · 취소 · 제안자 결정', () => {
   });
 });
 
+describe('자리 예약(A30)', () => {
+  const doc = async (id: string) => (await db.collection('proposals').doc(id).get()).data()!;
+  const join = async (id: string, uid: string) => (await db.collection('proposals').doc(id).collection('joins').doc(uid).get()).get('status');
+
+  test('정원이 차면 대기 예약 · 취소하면 맨 앞 대기자가 이어받음', async () => {
+    const { proposalId: id } = await p.createProposal(db, 'owner', input({ max: 1 }));
+    await p.joinProposal(db, 'a', { proposalId: id }, send);
+    await rejectsWith(p.joinProposal(db, 'b', { proposalId: id }, send), 'failed-precondition');
+    const r = await p.joinProposal(db, 'b', { proposalId: id, wait: true }, send, Date.now());
+    assert.equal(r.waiting, true);
+    await p.joinProposal(db, 'b', { proposalId: id, wait: true }, send); // 두 번 눌러도 한 줄
+    await p.joinProposal(db, 'c', { proposalId: id, wait: true }, send, Date.now() + 1000);
+    assert.equal((await doc(id)).waitCount, 2);
+    assert.equal((await doc(id)).joinedCount, 1);
+
+    await p.leaveProposal(db, 'a', { proposalId: id }, send);
+    assert.equal(await join(id, 'b'), 'joined');
+    assert.equal(await join(id, 'c'), 'waiting');
+    assert.equal((await doc(id)).joinedCount, 1);
+    assert.equal((await doc(id)).waitCount, 1);
+    assert.deepEqual(await notices('b'), ['proposal.promoted']);
+
+    // 대기 취소는 자리와 상관없이
+    await p.leaveProposal(db, 'c', { proposalId: id }, send);
+    assert.equal((await doc(id)).waitCount, 0);
+    assert.ok((await notices('owner')).includes('proposal.wait'));
+  });
+
+  test('제안자가 정원을 늘리면 먼저 온 순서로 자동 참여', async () => {
+    const { proposalId: id } = await p.createProposal(db, 'owner', input({ max: 1 }));
+    await p.joinProposal(db, 'a', { proposalId: id }, send);
+    await p.joinProposal(db, 'c', { proposalId: id, wait: true }, send, Date.now());
+    await p.joinProposal(db, 'b', { proposalId: id, wait: true }, send, Date.now() + 1000);
+    await rejectsWith(p.raiseProposalMax(db, 'a', { proposalId: id, max: 3 }, send), 'permission-denied');
+    await rejectsWith(p.raiseProposalMax(db, 'owner', { proposalId: id, max: 1 }, send), 'invalid-argument');
+    const r = await p.raiseProposalMax(db, 'owner', { proposalId: id, max: 2 }, send);
+    assert.equal(r.promoted, 1);
+    assert.equal(await join(id, 'c'), 'joined');
+    assert.equal(await join(id, 'b'), 'waiting');
+    await p.raiseProposalMax(db, 'owner', { proposalId: id, max: 0 }, send); // 제한 없음 → 모두
+    const d = await doc(id);
+    assert.equal(d.max, 0);
+    assert.equal(d.joinedCount, 3);
+    assert.equal(d.waitCount, 0);
+  });
+
+  test('지금 인원으로 진행하면 대기는 끝나고 알림', async () => {
+    const { proposalId: id } = await p.createProposal(db, 'owner', input({ max: 1 }));
+    await p.joinProposal(db, 'a', { proposalId: id }, send);
+    await p.joinProposal(db, 'b', { proposalId: id, wait: true }, send);
+    await p.decideProposal(db, 'owner', { proposalId: id, action: 'proceed' }, send);
+    assert.equal(await join(id, 'b'), 'cancelled');
+    assert.equal((await doc(id)).waitCount, 0);
+    assert.deepEqual(await notices('b'), ['proposal.waitClosed']);
+    assert.deepEqual(await notices('a'), ['proposal.proceed']);
+  });
+});
+
 describe('다른 걸 부탁(A29)', () => {
   test('따로 부탁 → 수락하면 채팅되는 거래, 단계 · 취소는 거래만 바꾼다', async () => {
     const { proposalId } = await p.createProposal(db, 'owner', input());

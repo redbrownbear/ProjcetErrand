@@ -18,6 +18,13 @@ class _FakeRepo implements ProposalRepository {
   Stream<List<Proposal>> watch({int limit = 100}) => Stream.value(list);
   @override
   Stream<Set<int>> watchMyJoins() => Stream.value({});
+  Set<int> waits = {};
+  @override
+  Stream<Set<int>> watchMyWaits() => Stream.value(waits);
+  @override
+  Future<void> wait(int id) async => calls.add('wait:$id');
+  @override
+  Future<void> raiseMax(int id, int max) async => calls.add('raise:$id:$max');
   @override
   Stream<List<ProposalJoiner>> watchJoiners(int proposalId) => Stream.value(const [ProposalJoiner('a', '에이'), ProposalJoiner('b', '비')]);
   @override
@@ -42,7 +49,9 @@ class _FakeRepo implements ProposalRepository {
   Future<void> answerAsk(int id, String askerUid, bool accept) async => calls.add('answer:$id:$askerUid:$accept');
 }
 
-Map<String, dynamic> _doc({String owner = 'owner', String status = 'open', int count = 2}) => {
+String _day(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+Map<String, dynamic> _doc({String owner = 'owner', String status = 'open', int count = 2, int max = 5, int wait = 0}) => {
   'ownerUid': owner,
   'who': '여수댁',
   'abroad': false,
@@ -51,9 +60,10 @@ Map<String, dynamic> _doc({String owner = 'owner', String status = 'open', int c
   'item': '갓김치',
   'price': 15000,
   'fee': 3000,
-  'day': '2026-10-25',
-  'max': 5,
+  'day': _day(DateTime.now().add(const Duration(days: 3))),
+  'max': max,
   'joinedCount': count,
+  'waitCount': wait,
   'delivery': 'meet',
   'meetPlace': '강남역 11번 출구',
   'meetTime': '저녁 7시',
@@ -219,6 +229,49 @@ void main() {
     await tester.tap(find.byKey(const Key('ask-accept-c')));
     await tester.pump();
     expect(repo.calls, contains('answer:${mine.id}:c:true'));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('정원 찬 제안(A30): 대기 예약 · 제안자 정원 늘리기', (tester) async {
+    tester.view.physicalSize = const Size(360 * 3, 1600 * 3);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final full = Proposal.fromDoc('1792000000000123', _doc(owner: 'other', count: 2, max: 2, wait: 1), myUid: 'me')!;
+    expect(full.waitable(false), isTrue);
+    final store = NeighborStore();
+    late _FakeRepo repo;
+    store.attachServer('me', repo: (uid) => repo = _FakeRepo(uid, [full]));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ProposalSheet(store: store, p: full, onOpenPost: (_) {}, onMoreStories: () {}, onReview: (_) {}, onOtherAsk: () {}),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(find.text('2/2명 · 0자리 남음 · 대기 1명'), findsOneWidget);
+    await tester.tap(find.text('대기 예약하기'));
+    await tester.pump();
+    expect(repo.calls, contains('wait:${full.id}'));
+
+    // 제안자: 정원 늘리기
+    final owner = NeighborStore();
+    final mine = Proposal.fromDoc('1792000000000124', _doc(count: 2, max: 2, wait: 1), myUid: 'owner')!;
+    late _FakeRepo repo2;
+    owner.attachServer('owner', repo: (uid) => repo2 = _FakeRepo(uid, [mine]));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ProposalSheet(store: owner, p: mine, onOpenPost: (_) {}, onMoreStories: () {}, onReview: (_) {}, onOtherAsk: () {}),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('proposal-raise')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('3명'));
+    await tester.pumpAndSettle();
+    expect(repo2.calls, contains('raise:${mine.id}:3'));
     expect(tester.takeException(), isNull);
   });
 }

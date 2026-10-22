@@ -82,6 +82,18 @@ class ProposalRepository {
           })
       .handleError((Object e) => debugPrint('내 신청 구독 실패: $e'));
 
+  /// 내가 대기 예약한 제안 id (A30). [watchMyJoins]와 같은 색인을 쓰려고 상태는 앱에서 거른다
+  Stream<Set<int>> watchMyWaits() => Backend.db
+      .collectionGroup('joins')
+      .where('uid', isEqualTo: uid)
+      .snapshots()
+      .map((snap) => {
+            for (final d in snap.docs)
+              if (d.data()['status'] == 'waiting')
+                if (int.tryParse('${d.data()['proposalId']}') case final id?) id,
+          })
+      .handleError((Object e) => debugPrint('내 대기 구독 실패: $e'));
+
   /// 내 제안에 신청한 이웃 (제안자만 읽을 수 있다)
   Stream<List<ProposalJoiner>> watchJoiners(int proposalId) => Backend.db
       .collection('proposals')
@@ -95,6 +107,12 @@ class ProposalRepository {
   Future<void> create(Proposal p) => ServerApi.call('createProposal', p.toServer());
   Future<void> join(int id) => ServerApi.call('joinProposal', {'proposalId': '$id'});
   Future<void> leave(int id) => ServerApi.call('leaveProposal', {'proposalId': '$id'});
+
+  /// 정원이 찬 제안에 대기 예약 — 자리가 나면 먼저 온 순서로 자동 참여(A30). 취소는 [leave]
+  Future<void> wait(int id) => ServerApi.call('joinProposal', {'proposalId': '$id', 'wait': true});
+
+  /// 제안자가 정원을 늘린다. 0이면 제한 없음 — 대기자가 늘어난 자리만큼 들어온다
+  Future<void> raiseMax(int id, int max) => ServerApi.call('raiseProposalMax', {'proposalId': '$id', 'max': max});
 
   /// proceed — 지금 인원으로 진행 · cancel — 제안 취소
   Future<void> decide(int id, String action) => ServerApi.call('decideProposal', {'proposalId': '$id', 'action': action});

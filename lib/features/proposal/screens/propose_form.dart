@@ -315,7 +315,7 @@ class _ProposeFormState extends State<ProposeForm> {
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
                 ),
               ),
-              _stepBtn(Icons.add_rounded, !unlimited && max < 15, () => setState(() => max++)),
+              _stepBtn(Icons.add_rounded, !unlimited && max < proposalMaxPeople, () => setState(() => max++)),
               const Spacer(),
               GestureDetector(
                 onTap: () => setState(() => unlimited = !unlimited),

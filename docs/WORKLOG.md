@@ -141,6 +141,14 @@
 
 ## 기록
 
+### 2026-10-23 · 미커밋 · Claude (A30 제안 자리 예약 · 정원 늘리기)
+- 추가(서버): 정원이 찬 제안에 **대기 예약**(`joinProposal`에 `wait: true` — join `status: 'waiting'` · `waitedAt`, 제안 `waitCount`, 대기 15명까지, 제안자 알림 `proposal.wait`).
+  구매 요청을 취소하면 맨 앞 대기자가 자리를 이어받고, `raiseProposalMax`(제안자, 지금보다 많은 인원 · 0 = 제한 없음)로 정원을 늘리면 늘어난 만큼 먼저 온 순서로 자동 참여(`proposal.promoted`).
+  '지금 인원으로 진행' · '제안 취소' 때 대기는 끝난다(`proposal.waitClosed` / `proposal.cancelled`). 대기 취소는 `leaveProposal`. 테스트 `test/emu/proposal.test.ts`
+- 추가(앱): 정원 찬 서버 제안 상세의 아래 버튼이 **대기 예약하기 · 대기 취소**, 모집 인원 줄에 '대기 N명', 제안자에게 **정원 늘리기**(N명 · 제한 없음).
+  `NeighborStore.waiting` · `toggleWait` · `raiseMax`, `Proposal.waitCount` · `waitable`, `proposalMaxPeople`(서버 `MAX_PEOPLE`과 같은 15). 테스트 `test/proposal_server_test.dart`
+- 할 일: `firebase deploy --project dev --only functions` (새 함수 `raiseProposalMax`)
+
 ### 2026-10-23 · 7bf4c9f · Claude (A29 제안자에게 따로 부탁)
 - 추가(서버): `askProposer` — 제안에 없는 물건을 제안자에게 1:1로 부탁(`proposals/{id}/asks/{uid}`: 물건 40자 · 예상 물건값(선택, 물건값 상한) · 한마디 200자,
   금지 품목 · 차단 · 취소/지난 제안 거부, 다시 보내면 내용만 바뀜). `answerProposerAsk` — 제안자가 수락하면 거래(`trades`, `mode: 'proposal'`, requestId `proposal:{id}`,

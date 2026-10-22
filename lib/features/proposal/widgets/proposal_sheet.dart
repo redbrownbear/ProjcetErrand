@@ -70,6 +70,9 @@ class ProposalSheet extends StatelessWidget {
         // 서버 제안의 주인은 신청을 받는 대신 진행 · 취소를 정한다(A15)
         final owner = p.mine && p.onServer;
         final canAsk = store.live && p.onServer && !p.mine;
+        // 정원만 찬 서버 제안은 대기 예약(A30)
+        final waitOn = store.waiting.contains(p.id);
+        final canWait = store.live && !me && !p.mine && (waitOn || p.waitable(me));
         final stories = store.related(p).take(2).toList();
         final storyTitle = p.abroad ? '${countryOf(p.cc).name} 이웃 이야기' : '${p.from} · ${p.to} 이웃 이야기';
 
@@ -110,7 +113,16 @@ class ProposalSheet extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 flex: 3,
-                child: BigButton(
+                child: canWait
+                    ? BigButton(
+                        key: const Key('proposal-wait'),
+                        label: waitOn ? '대기 취소' : '대기 예약하기',
+                        bg: waitOn ? AppColors.card : AppColors.ink,
+                        fg: waitOn ? AppColors.ink : Colors.white,
+                        height: 54,
+                        onTap: () => store.toggleWait(p),
+                      )
+                    : BigButton(
                   label: me
                       ? (p.proceeding ? '진행이 정해졌어요' : '구매 요청 취소')
                       : (p.proceeding ? '모집이 끝났어요' : (closed ? '마감됐어요' : (p.mine ? '내가 올린 제안' : '저 구매할래요!'))),
@@ -213,7 +225,23 @@ class ProposalSheet extends StatelessWidget {
               _row('1명당', p.fee > 0 ? '물건값 ${won(p.price)} + 심부름료 ${won(p.fee)}' : '물건값 ${won(p.price)} · 심부름료 없음'),
               _row('사 오는 물건', [p.item, ?p.spec].join(' · ')),
               _row(p.abroad ? '출국하는 날' : '이동하는 날', '${p.day.month}/${p.day.day}'),
-              _row('모집 인원', p.unlimited ? '$count명 · 제한 없음' : '$count/${p.max}명 · ${p.left(me)}자리 남음'),
+              _row(
+                '모집 인원',
+                [
+                  p.unlimited ? '$count명 · 제한 없음' : '$count/${p.max}명 · ${p.left(me)}자리 남음',
+                  if (p.waitCount > 0) '대기 ${p.waitCount}명',
+                ].join(' · '),
+              ),
+              if (owner && !p.unlimited && !p.cancelled && !p.proceeding && !p.expired)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextLink(key: const Key('proposal-raise'), label: '정원 늘리기', onTap: () => _raise(context)),
+                ),
+              if (waitOn)
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 8),
+                  child: _CheckLine('대기 중이에요 · 자리가 나거나 정원이 늘면 먼저 온 순서로 구매 요청이 들어가요', color: AppColors.green, bold: true),
+                ),
               _row('전달', p.deliveryLabel),
               _row('결제', '만나서 직접 주고받아요 · 앱 안의 결제는 없어요'),
               if (p.proceeding) _row('진행', '제안자가 사 오기로 했어요 · 새 신청은 받지 않아요'),
@@ -323,6 +351,22 @@ class ProposalSheet extends StatelessWidget {
       ],
     ),
   );
+
+  /// 정원 늘리기 — 지금보다 많은 인원이나 제한 없음
+  Future<void> _raise(BuildContext context) async {
+    final picked = await showDialog<int>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: Text(p.waitCount > 0 ? '정원을 몇 명으로 늘릴까요? · 대기 ${p.waitCount}명' : '정원을 몇 명으로 늘릴까요?'),
+        children: [
+          for (var n = p.max + 1; n <= proposalMaxPeople; n++)
+            SimpleDialogOption(onPressed: () => Navigator.pop(ctx, n), child: Text('$n명')),
+          SimpleDialogOption(onPressed: () => Navigator.pop(ctx, 0), child: const Text('제한 없음')),
+        ],
+      ),
+    );
+    if (picked != null) await store.raiseMax(p, picked);
+  }
 
   Future<void> _ask(BuildContext context) async {
     final input = await openProposalAskSheet(context, p);

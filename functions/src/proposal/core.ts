@@ -11,8 +11,11 @@
  *
  * proposals/{id}  { ownerUid, who, abroad, from, to, cc, item, spec, price, fee, day('YYYY-MM-DD', 한국 날짜), dayEnd,
  *                   max(0 = 제한 없음), joinedCount, delivery, meetPlace, meetTime, note, area, status, createdAt, updatedAt }
- *   status: open(모집 중) · proceeding(진행 — 새 신청 받지 않음) · cancelled
- * proposals/{id}/joins/{uid}  { uid, name, proposalId, status: joined | left | cancelled, createdAt, updatedAt }
+ *   status: open(모집 중) · proceeding(진행 — 새 신청 받지 않음) · cancelled. waitCount = 대기 인원(A30)
+ * proposals/{id}/joins/{uid}  { uid, name, proposalId, status: joined | waiting | left | cancelled, waitedAt, createdAt, updatedAt }
+ *
+ * 자리 예약(A30): 정원이 찬 제안엔 대기 예약(joinProposal wait: true). 누가 취소하면 맨 앞 대기자가,
+ * 제안자가 정원을 늘리면(raiseProposalMax) 늘어난 만큼 먼저 온 순서로 자동 참여하고 알림을 받는다.
  *
  * 다른 걸 부탁(A29): 제안 목록에 없는 물건을 그 제안자에게 따로 부탁한다(askProposer, 한 사람당 한 건 — 다시 보내면 고침).
  * 제안자가 수락하면(answerProposerAsk) 두 사람의 거래(mode 'proposal', 채팅 · 사진 · 단계)가 생기고, 거절하면 끝.
@@ -138,9 +141,47 @@ const quote = (item: unknown) => {
   return `"${s.length > 20 ? s.slice(0, 20) + '…' : s}"`;
 };
 
-/** '저 구매할래요!' — 자리 하나를 잡는다. 정원 · 날짜 · 차단 · 정지를 확인한다 */
+/** 대기 예약 줄 (A30). 이보다 길면 받지 않는다 */
+export const MAX_WAIT = 15;
+
+type Waiter = { uid: string; at: number };
+
+/** 대기 중인 사람을 먼저 온 순서로 (트랜잭션 안에서, 쓰기 전에 읽는다) */
+async function waiters(tx: Transaction, db: Firestore, id: string): Promise<Waiter[]> {
+  const snap = await tx.get(proposalRef(db, id).collection('joins').where('status', '==', 'waiting'));
+  const at = (v: unknown) => (v instanceof Timestamp ? v.toMillis() : 0);
+  return snap.docs.map((d) => ({ uid: d.id, at: at(d.get('waitedAt')) })).sort((a, b) => a.at - b.at || (a.uid < b.uid ? -1 : 1));
+}
+
+/** 대기자를 [seats]명까지 참여로 올린다. 올린 사람 uid */
+function promote(tx: Transaction, db: Firestore, id: string, line: Waiter[], seats: number, at: Timestamp): string[] {
+  const up = line.slice(0, Math.max(0, seats)).map((w) => w.uid);
+  for (const uid of up) tx.update(joinRef(db, id, uid), { status: 'joined', waitedAt: null, updatedAt: at });
+  return up;
+}
+
+async function notifyPromoted(db: Firestore, push: PushSender | undefined, id: string, item: unknown, uids: string[], now: number) {
+  if (!push) return;
+  await Promise.all(
+    uids.map((uid) =>
+      deliver(
+        db,
+        push,
+        { to: uid, kind: 'proposal.promoted', title: '대기하던 제안에 자리가 났어요', body: `${quote(item)} 제안에 구매 요청이 들어갔어요`, requestId: '', proposalId: id },
+        `ppromote_${id}_${uid}_${now}`,
+      ),
+    ),
+  );
+}
+
+/**
+ * '저 구매할래요!' — 자리 하나를 잡는다. 정원 · 날짜 · 차단 · 정지를 확인한다.
+ * 정원이 찼을 때 wait: true면 대기 예약(A30) — 자리가 나거나 제안자가 정원을 늘리면 먼저 온 순서로 자동 참여.
+ */
 export async function joinProposal(db: Firestore, uid: string, data: unknown, push?: PushSender, now = Date.now()) {
-  const id = pid((data as Record<string, unknown> | null)?.proposalId);
+  const input = (data ?? {}) as Record<string, unknown>;
+  const id = pid(input.proposalId);
+  const wait = input.wait === true;
   const ref = proposalRef(db, id);
   const res = await db.runTransaction(async (tx) => {
     const p = await tx.get(ref);
@@ -157,56 +198,115 @@ export async function joinProposal(db: Firestore, uid: string, data: unknown, pu
     if (ab.exists || ba.exists) throw new HttpsError('permission-denied', '차단 관계인 사용자와는 거래할 수 없어요.');
     const jr = joinRef(db, id, uid);
     const j = await tx.get(jr);
-    if (j.exists && j.get('status') === 'joined') return null; // 이미 신청함
+    const was = j.exists ? j.get('status') : null;
+    if (was === 'joined') return null; // 이미 신청함
     const max = p.get('max') as number;
     const count = (p.get('joinedCount') as number) || 0;
-    if (max > 0 && count >= max) throw new HttpsError('failed-precondition', '정원이 찼어요.');
+    const waiting = (p.get('waitCount') as number) || 0;
+    const full = max > 0 && count >= max;
+    if (full && was === 'waiting') return null; // 이미 대기 중
+    if (full && !wait) throw new HttpsError('failed-precondition', '정원이 찼어요.');
+    if (full && waiting >= MAX_WAIT) throw new HttpsError('failed-precondition', '대기 인원도 다 찼어요.');
     const name = await nickname(tx, db, uid);
     const at = Timestamp.fromMillis(now);
-    tx.set(jr, { uid, name, proposalId: id, status: 'joined', createdAt: j.exists ? j.get('createdAt') : at, updatedAt: at });
-    tx.update(ref, { joinedCount: FieldValue.increment(1), updatedAt: at });
-    return { owner, name, item: p.get('item'), count: count + 1, max };
+    const createdAt = j.exists ? j.get('createdAt') : at;
+    if (full) {
+      tx.set(jr, { uid, name, proposalId: id, status: 'waiting', waitedAt: at, createdAt, updatedAt: at });
+      tx.update(ref, { waitCount: FieldValue.increment(1), updatedAt: at });
+      return { owner, name, item: p.get('item'), count, max, waiting: waiting + 1 };
+    }
+    tx.set(jr, { uid, name, proposalId: id, status: 'joined', waitedAt: null, createdAt, updatedAt: at });
+    tx.update(ref, {
+      joinedCount: FieldValue.increment(1),
+      ...(was === 'waiting' ? { waitCount: FieldValue.increment(-1) } : {}),
+      updatedAt: at,
+    });
+    return { owner, name, item: p.get('item'), count: count + 1, max, waiting: 0 };
   });
   if (res && push) {
-    const left = res.max > 0 ? ` · ${res.count}/${res.max}명` : ` · ${res.count}명`;
-    await deliver(
-      db,
-      push,
-      { to: res.owner, kind: 'proposal.join', title: '구매 요청이 왔어요', body: `${res.name}님이 ${quote(res.item)}을 원해요${left}`, requestId: '', proposalId: id },
-      `pjoin_${id}_${uid}_${now}`,
-    );
+    const ev = res.waiting
+      ? { kind: 'proposal.wait' as const, title: '대기 예약이 생겼어요', body: `${res.name}님이 ${quote(res.item)} 자리를 기다려요 · 대기 ${res.waiting}명` }
+      : {
+          kind: 'proposal.join' as const,
+          title: '구매 요청이 왔어요',
+          body: `${res.name}님이 ${quote(res.item)}을 원해요${res.max > 0 ? ` · ${res.count}/${res.max}명` : ` · ${res.count}명`}`,
+        };
+    await deliver(db, push, { to: res.owner, ...ev, requestId: '', proposalId: id }, `pjoin_${id}_${uid}_${now}`);
   }
-  return { proposalId: id, joined: true };
+  return { proposalId: id, joined: !res?.waiting, waiting: !!res?.waiting };
 }
 
-/** 구매 요청 취소. 모집 중일 때만 */
+/** 구매 요청 · 대기 취소. 구매 요청은 모집 중일 때만, 빈자리는 맨 앞 대기자가 이어받는다 */
 export async function leaveProposal(db: Firestore, uid: string, data: unknown, push?: PushSender, now = Date.now()) {
   const id = pid((data as Record<string, unknown> | null)?.proposalId);
   const ref = proposalRef(db, id);
   const res = await db.runTransaction(async (tx) => {
     const [p, j] = await Promise.all([tx.get(ref), tx.get(joinRef(db, id, uid))]);
     if (!p.exists) throw new HttpsError('not-found', '제안을 찾을 수 없어요.');
-    if (!j.exists || j.get('status') !== 'joined') return null;
-    if (p.get('status') !== 'open') throw new HttpsError('failed-precondition', '진행이 정해진 제안은 채팅으로 제안자와 이야기해 주세요.');
+    const was = j.exists ? j.get('status') : null;
     const at = Timestamp.fromMillis(now);
+    if (was === 'waiting') {
+      tx.update(j.ref, { status: 'left', waitedAt: null, updatedAt: at });
+      tx.update(ref, { waitCount: FieldValue.increment(-1), updatedAt: at });
+      return { waiting: true, owner: '', name: '', item: p.get('item'), promoted: [] as string[] };
+    }
+    if (was !== 'joined') return null;
+    if (p.get('status') !== 'open') throw new HttpsError('failed-precondition', '진행이 정해진 제안은 채팅으로 제안자와 이야기해 주세요.');
+    const line = await waiters(tx, db, id);
     tx.update(j.ref, { status: 'left', updatedAt: at });
-    tx.update(ref, { joinedCount: FieldValue.increment(-1), updatedAt: at });
-    return { owner: p.get('ownerUid') as string, name: j.get('name') as string, item: p.get('item') };
+    const promoted = promote(tx, db, id, line, 1, at);
+    tx.update(ref, {
+      joinedCount: FieldValue.increment(promoted.length - 1),
+      ...(promoted.length ? { waitCount: FieldValue.increment(-promoted.length) } : {}),
+      updatedAt: at,
+    });
+    return { waiting: false, owner: p.get('ownerUid') as string, name: j.get('name') as string, item: p.get('item'), promoted };
   });
-  if (res && push) {
+  if (res && !res.waiting && push) {
+    const next = res.promoted.length ? ' · 대기하던 이웃이 자리를 이어받았어요' : '';
     await deliver(
       db,
       push,
-      { to: res.owner, kind: 'proposal.leave', title: '구매 요청이 취소됐어요', body: `${res.name}님이 ${quote(res.item)} 요청을 취소했어요`, requestId: '', proposalId: id },
+      { to: res.owner, kind: 'proposal.leave', title: '구매 요청이 취소됐어요', body: `${res.name}님이 ${quote(res.item)} 요청을 취소했어요${next}`, requestId: '', proposalId: id },
       `pleave_${id}_${uid}_${now}`,
     );
   }
-  return { proposalId: id, joined: false };
+  if (res) await notifyPromoted(db, push, id, res.item, res.promoted, now);
+  return { proposalId: id, joined: false, waiting: false };
+}
+
+/** 제안자가 정원을 늘린다(A30). 0이면 제한 없음. 대기자는 먼저 온 순서로 늘어난 자리만큼 참여한다 */
+export async function raiseProposalMax(db: Firestore, uid: string, data: unknown, push?: PushSender, now = Date.now()) {
+  const input = (data ?? {}) as Record<string, unknown>;
+  const id = pid(input.proposalId);
+  const next = int(input.max, '모집 인원', 0, MAX_PEOPLE);
+  const ref = proposalRef(db, id);
+  const res = await db.runTransaction(async (tx) => {
+    const p = await tx.get(ref);
+    if (!p.exists) throw new HttpsError('not-found', '제안을 찾을 수 없어요.');
+    if (p.get('ownerUid') !== uid) throw new HttpsError('permission-denied', '제안한 사람만 할 수 있어요.');
+    if (p.get('status') !== 'open') throw new HttpsError('failed-precondition', '모집 중인 제안만 정원을 늘릴 수 있어요.');
+    const max = p.get('max') as number;
+    if (max === 0 || (next !== 0 && next <= max)) throw new HttpsError('invalid-argument', '지금보다 많은 인원으로 골라 주세요.');
+    const count = (p.get('joinedCount') as number) || 0;
+    const line = await waiters(tx, db, id);
+    const at = Timestamp.fromMillis(now);
+    const promoted = promote(tx, db, id, line, next === 0 ? line.length : next - count, at);
+    tx.update(ref, {
+      max: next,
+      joinedCount: FieldValue.increment(promoted.length),
+      waitCount: FieldValue.increment(-promoted.length),
+      updatedAt: at,
+    });
+    return { item: p.get('item'), promoted };
+  });
+  await notifyPromoted(db, push, id, res.item, res.promoted, now);
+  return { proposalId: id, max: next, promoted: res.promoted.length };
 }
 
 /**
  * 제안자의 결정. proceed: 지금 인원으로 진행(새 신청을 받지 않음), cancel: 제안 취소(신청은 모두 취소).
- * 둘 다 신청한 사람 모두에게 알린다.
+ * 둘 다 신청한 사람 모두에게 알린다. 대기하던 사람은 어느 쪽이든 대기가 끝난다.
  */
 export async function decideProposal(db: Firestore, uid: string, data: unknown, push?: PushSender, now = Date.now()) {
   const input = (data ?? {}) as Record<string, unknown>;
@@ -214,7 +314,9 @@ export async function decideProposal(db: Firestore, uid: string, data: unknown, 
   const action = input.action;
   if (action !== 'proceed' && action !== 'cancel') throw new HttpsError('invalid-argument', 'action 값이 올바르지 않아요.');
   const ref = proposalRef(db, id);
-  const joins = await ref.collection('joins').where('status', '==', 'joined').get();
+  const all = await ref.collection('joins').where('status', 'in', ['joined', 'waiting']).get();
+  const joins = all.docs.filter((d) => d.get('status') === 'joined');
+  const waits = all.docs.filter((d) => d.get('status') === 'waiting');
   const res = await db.runTransaction(async (tx) => {
     const p = await tx.get(ref);
     if (!p.exists) throw new HttpsError('not-found', '제안을 찾을 수 없어요.');
@@ -223,11 +325,12 @@ export async function decideProposal(db: Firestore, uid: string, data: unknown, 
     if (status === 'cancelled') throw new HttpsError('failed-precondition', '이미 취소한 제안이에요.');
     if (action === 'proceed' && status !== 'open') return null;
     const at = Timestamp.fromMillis(now);
+    for (const w of waits) tx.update(w.ref, { status: 'cancelled', waitedAt: null, updatedAt: at });
     if (action === 'cancel') {
-      for (const j of joins.docs) tx.update(j.ref, { status: 'cancelled', updatedAt: at });
-      tx.update(ref, { status: 'cancelled', joinedCount: 0, updatedAt: at });
+      for (const j of joins) tx.update(j.ref, { status: 'cancelled', updatedAt: at });
+      tx.update(ref, { status: 'cancelled', joinedCount: 0, waitCount: 0, updatedAt: at });
     } else {
-      tx.update(ref, { status: 'proceeding', updatedAt: at });
+      tx.update(ref, { status: 'proceeding', waitCount: 0, updatedAt: at });
     }
     return { item: p.get('item'), delivery: p.get('delivery'), meetPlace: p.get('meetPlace'), meetTime: p.get('meetTime') };
   });
@@ -237,11 +340,14 @@ export async function decideProposal(db: Firestore, uid: string, data: unknown, 
       action === 'cancel'
         ? { title: '제안이 취소됐어요', body: `${quote(res.item)} 제안을 제안자가 취소했어요.`, kind: 'proposal.cancelled' as const }
         : { title: '제안이 진행돼요', body: `${quote(res.item)} 제안자가 사 오기로 했어요.${where}`, kind: 'proposal.proceed' as const };
-    await Promise.all(
-      joins.docs.map((j) =>
-        deliver(db, push, { to: j.id, ...ev, requestId: '', proposalId: id }, `p${action}_${id}_${j.id}`),
-      ),
-    );
+    const closed =
+      action === 'cancel'
+        ? ev
+        : { title: '대기하던 제안이 마감됐어요', body: `${quote(res.item)} 제안이 지금 인원으로 진행돼요. 자리가 나지 않았어요.`, kind: 'proposal.waitClosed' as const };
+    await Promise.all([
+      ...joins.map((j) => deliver(db, push, { to: j.id, ...ev, requestId: '', proposalId: id }, `p${action}_${id}_${j.id}`)),
+      ...waits.map((w) => deliver(db, push, { to: w.id, ...closed, requestId: '', proposalId: id }, `p${action}_${id}_${w.id}`)),
+    ]);
   }
   return { proposalId: id, status: action === 'cancel' ? 'cancelled' : 'proceeding' };
 }
