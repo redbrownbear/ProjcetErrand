@@ -4,7 +4,7 @@ import '../theme/app_theme.dart';
 import '../theme/colors.dart';
 import 'app_icon.dart';
 
-/// 섹션 제목 (기획 시안 v9 `SectionHeading` / `.section-heading`).
+/// 섹션 제목.
 ///
 /// 제목 옆의 [count]는 시안의 `.count`와 같이 옅은 색 숫자로 붙고,
 /// [onAction]을 주면 오른쪽에 '전체 보기 ›'가 생긴다.

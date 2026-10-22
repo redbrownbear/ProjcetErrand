@@ -1,6 +1,6 @@
 import 'reward_ledger.dart';
 
-/// 출석 보상 규칙. 시안(`gyumsa-refined`의 `G3Attendance`)을 그대로 옮겼다.
+/// 출석 보상 규칙.
 ///
 /// 매일 1P, 연속 [streakEvery]일마다 [streakBonus]P, 월 누적 [monthTarget]일을
 /// 채우는 날 [monthBonus]P를 함께 받는다. 지급 단위는 원이 아니라 포인트(P)다.
@@ -18,9 +18,8 @@ class AttendRules {
 
 /// 달력에 찍힌 출석 이력.
 ///
-/// 개편 전에는 `benefit:attend` 한 키에 **마지막으로 받은 날짜**만 남아서
-/// "오늘 받았는지"밖에 알 수 없었다. 달력과 연속·누적 보상을 그리려면 지나간
-/// 날짜가 그대로 남아야 하므로, 하루에 한 칸씩 [keyFor]로 원장에 쌓는다.
+/// 달력과 연속·누적 보상을 그리려면 지나간 날짜가 그대로 남아야 하므로,
+/// 하루에 한 칸씩 [keyFor]로 원장에 쌓는다.
 /// 원장은 로그인 시 `users/{uid}/ledger`로도 올라가므로 기기를 바꿔도 이어진다.
 class Attendance {
   /// 하루치 출석 키. 예) `benefit:attend:2026-09-21`

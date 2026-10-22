@@ -106,7 +106,7 @@ class NeighborStore extends ChangeNotifier {
 
   // ── 제안 ────────────────────────────────────────────────────────────────
 
-  /// 서버 제안(A15). 로그인해서 서버에 붙었을 때만 쓴다 — 그때는 이 기기에만 있는 옛 제안을 섞지 않는다
+  /// 서버 제안(A15). 로그인해서 서버에 붙었을 때만 쓴다 — 그때는 이 기기에만 있는 제안을 섞지 않는다
   ProposalRepository? proposalRepo;
   List<Proposal> serverProposals = [];
   StreamSubscription<List<Proposal>>? _proposalSub;

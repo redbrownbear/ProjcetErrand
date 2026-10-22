@@ -11,7 +11,7 @@ import '../models/mission_meta.dart';
 import '../models/partner_mission.dart';
 import '../repositories/mission_progress.dart';
 
-/// 미션 상세. 시안(`gyumsa-refined`)의 `미션 상세` 화면.
+/// 미션 상세.
 ///
 /// 참여 전 확인사항을 먼저 읽고, 참여 시작 → 인증 제출 → 검수 → 적립을
 /// 한 화면 안에서 단계로 따라간다. 규제 영역별 고지(§19)는 시안에 없지만

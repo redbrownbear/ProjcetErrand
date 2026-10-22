@@ -537,7 +537,7 @@ class AppSession extends ChangeNotifier {
       brandK: p.brand,
       name: p.name,
       points: p.points,
-      // 예전엔 '2026.12.31'로 박혀 있어서 해가 바뀌면 이미 지난 쿠폰이 발급됐다
+      // 유효기간은 교환일부터 1년
       exp: Coupon.expiryFrom(now),
       code: genCode(),
     );

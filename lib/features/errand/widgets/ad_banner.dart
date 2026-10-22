@@ -8,7 +8,7 @@ import '../../../core/theme/colors.dart';
 import '../../../core/widgets/app_icon.dart';
 import '../models/home_ad.dart';
 
-/// 홈 광고 배너 (시안 v33 `.bn`).
+/// 홈 광고 배너.
 ///
 /// 옅은 살구색 띠에 흰 아이콘 타일 + 세 줄 문구, 오른쪽 아래에 '1 / 3' 쪽수.
 /// 몇 초마다 다음 장으로 넘어가고, 손으로 넘길 수도 있다.

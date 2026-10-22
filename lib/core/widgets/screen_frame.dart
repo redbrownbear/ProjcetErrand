@@ -7,7 +7,7 @@ import 'keyboard_safe_area.dart';
 
 /// 전체화면 하위 화면 공통 프레임 (뒤로가기 헤더 + 스크롤 바디).
 ///
-/// 기획 시안 v9의 `PageHeader`(`design.css .page-header`) 규격:
+/// 규격:
 /// 흰 바탕 · 아래 1px 경계 · 44px 아이콘 버튼 · 가운데 정렬 제목 · 제목 아래 부제.
 class ScreenFrame extends StatelessWidget {
   final String title;

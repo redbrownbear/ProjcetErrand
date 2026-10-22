@@ -13,8 +13,7 @@ class NearbyQuery {
   final double radius;
   final String sort;
 
-  /// 곧 마감되는 부탁만 ([soonWindow] 안). 예전엔 '30분 안에 끝나는(소요시간)' 조건이었는데,
-  /// 글쓰기에서 소요시간을 빼고 마감 일시만 받기로 해서 마감 기준으로 바꿨다.
+  /// 곧 마감되는 부탁만 ([soonWindow] 안). 글쓰기는 소요시간 없이 마감 일시만 받는다.
   final bool shortOnly;
 
   static const soonWindow = Duration(hours: 3);

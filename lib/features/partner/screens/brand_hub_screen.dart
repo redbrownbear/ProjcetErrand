@@ -7,7 +7,7 @@ import '../../../core/widgets/screen_frame.dart';
 import '../models/partner_proposal.dart';
 import 'partner_proposal_screen.dart';
 
-/// 브랜드 협업 안내. 시안(`gyumsa-refined`)의 `G4BrandHub`.
+/// 브랜드 협업 안내.
 ///
 /// 홈 '겸사겸사 소식'의 광고 카드와 부업 탭 아래 파트너 배너가 여기로 온다.
 /// 제안할 수 있는 협업 종류와 진행 절차를 먼저 읽고 제안서로 넘어간다.

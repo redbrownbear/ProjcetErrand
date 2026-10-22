@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/colors.dart';
 
-/// 기획 시안 v9의 선형 아이콘 세트(`motion.jsx`의 `<Icon name="…"/>`)를 Flutter로 옮긴 것.
+/// 앱의 선형 아이콘 이름표.
 ///
 /// 시안은 stroke 1.8의 얇은 선 아이콘을 쓴다. Flutter에는 같은 그림이 없으므로
 /// 결이 가장 가까운 Material outlined/rounded 아이콘으로 1:1 대응시켰다.

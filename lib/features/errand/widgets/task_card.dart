@@ -8,7 +8,7 @@ import '../../../core/utils/formatters.dart';
 import '../data/countries.dart';
 import '../models/task_item.dart';
 
-/// 부탁 한 줄 (시안 v33 `.row`).
+/// 부탁 한 줄.
 ///
 /// 카드가 아니라 **1px 밑줄로 구분되는 행**이다. 왼쪽에 종류 아이콘 타일(40px),
 /// 가운데 제목과 '장소 · 거리', 그 아래 마감 일시, 오른쪽에 상태 배지와 금액이 세로로 붙는다.

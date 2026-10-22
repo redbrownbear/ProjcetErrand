@@ -2,13 +2,9 @@ import 'package:flutter/material.dart';
 
 /// 기획 시안의 색 토큰.
 ///
-/// 기준은 최신 시안 `겸사겸사_v33.html`이다. `:root`의 `--ink --sub --line --soft --y --g --r --b --v`
-/// 계열을 그대로 옮겼다. 화면 바탕은 옅은 회색(`--soft`)이고, 그 위에 흰 카드가 올라간다.
-/// CSS 곳곳에 리터럴로 흩어져 있던 값(내비게이션·필·버튼·출석·수익 카드 등)은
-/// 이름을 붙여 아래에 모았다. 새 화면을 만들 때는 리터럴 색을 쓰지 말고 여기서 가져다 쓴다.
-///
-/// 예전 시안의 이름(`inkSoft`, `btnPrimary` 등)은 기존 화면이 그대로 쓰고 있어서 남겨 두고,
-/// 값만 v33 팔레트로 맞췄다.
+/// 화면 바탕은 옅은 회색([page])이고, 그 위에 흰 카드가 올라간다.
+/// 새 화면을 만들 때는 리터럴 색을 쓰지 말고 여기서 가져다 쓴다.
+/// `inkSoft` · `btnPrimary` 같은 다른 이름은 쓰는 화면이 남아 있어서 같은 값의 별칭으로 둔다.
 class AppColors {
   // ── 기본 토큰 (:root) ────────────────────────────────────────────────────
   /// --ink
@@ -48,7 +44,7 @@ class AppColors {
   /// --faint. 아이콘·화살표처럼 존재감이 가장 옅은 요소
   static const faint = Color(0xFFB0B8C1);
 
-  /// 예전 이름. 지금은 [ink2]와 같다.
+  /// [ink2]의 별칭.
   static const inkSoft = ink2;
 
   // ── 파생 색 ───────────────────────────────────────────────────────────────
@@ -95,8 +91,6 @@ class AppColors {
   static const navIdle = faint;
   static const navActive = ink;
 
-  /// 예전 가운데 '부탁하기' 버튼 색
-  static const createYellow = yellow;
 
   /// 주 버튼 · 보조 버튼
   static const btnPrimary = yellow;

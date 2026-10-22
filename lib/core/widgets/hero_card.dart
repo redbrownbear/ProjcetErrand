@@ -6,7 +6,7 @@ import 'app_icon.dart';
 import 'bubble_quota.dart';
 import 'gyeomi.dart';
 
-/// 탭 맨 위의 겸이 카드 (시안 v33 `.h2.h3`).
+/// 탭 맨 위의 겸이 카드.
 ///
 /// 부탁하기 · 돈벌기 · 해외 부탁하기 · 해외 돈벌기가 모두 같은 틀에 문구만 다르다.
 /// [blue]면 해외 톤(파란 바탕·파란 버튼)이 된다.

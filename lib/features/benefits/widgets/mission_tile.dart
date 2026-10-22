@@ -7,7 +7,7 @@ import '../../../core/widgets/surface.dart';
 import '../models/mission_meta.dart';
 import '../models/partner_mission.dart';
 
-/// 미션 목록의 한 줄 (시안 v33 `.row.mission-clean`).
+/// 미션 목록의 한 줄.
 ///
 /// 종류·소요시간 / 제목 / 참여 조건과 비용 / 보상 순으로 읽힌다.
 /// **비용이 드는 미션인지**([MissionMeta.costTag])를 조건 옆에 같이 두는 게 핵심이다.

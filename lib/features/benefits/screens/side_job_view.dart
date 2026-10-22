@@ -18,7 +18,7 @@ import '../models/reward_ledger.dart';
 import 'mission_tab.dart';
 import '../models/point_wallet.dart';
 
-/// 하단 '마켓' 탭 (v77 — 예전 '미션·공구').
+/// '마켓' 화면 — 홈 · 마이 · 글쓰기에서 들어온다(하단 메뉴에는 없다).
 ///
 /// 안쪽 밑줄 탭으로 미션([MissionTab]) · 공동구매 · 중고장터 · 나눔을 나눈다.
 /// 미션·공동구매 위에는 이달의 럭키드로우 띠가 붙는다.

@@ -18,7 +18,7 @@ class PayRepository {
 
   CollectionReference<Map<String, dynamic>> get _col => Backend.users.doc(uid).collection('payEntries');
 
-  /// 원장 전체. 잔액이 이 기록의 합이라 일부만 읽으면 잔액이 틀린다 (예전엔 최근 100줄만 읽었다).
+  /// 원장 전체. 잔액이 이 기록의 합이라 일부만 읽으면 잔액이 틀린다.
   Future<List<PayEntry>> load() => Backend.guard<List<PayEntry>>(() async {
     final snap = await _col.orderBy('at', descending: true).get();
     final out = <PayEntry>[];

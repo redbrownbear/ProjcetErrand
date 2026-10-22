@@ -8,7 +8,7 @@ import '../../../core/widgets/screen_frame.dart';
 import '../models/partner_proposal.dart';
 import '../repositories/partner_repository.dart';
 
-/// 브랜드 협업 제안서 작성. 시안(`gyumsa-refined`)의 `GyPartner`.
+/// 브랜드 협업 제안서 작성.
 ///
 /// 기업 미션([PartnerProposal.kindBrand])과 공동구매([PartnerProposal.kindGroup])가
 /// 같은 폼을 쓰고 라벨·예시 문구만 달라진다.

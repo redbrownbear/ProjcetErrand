@@ -9,7 +9,7 @@ import '../models/job_posting.dart';
 import '../repositories/job_posting_repository.dart';
 import 'job_post_form.dart';
 
-/// 단기알바 모집 등록. 시안(`gyumsa-refined`)의 `GyJobForm`.
+/// 단기알바 모집 등록.
 ///
 /// 회사와 업무 → 근무 조건 → 급여와 모집, 세 단계로 나눈다. 일상 부탁과 달리
 /// **근로 조건**이라 회사·주소·근무시간·휴게시간·급여 기준·지급일·담당자를
@@ -60,7 +60,7 @@ class _JobPostScreenState extends State<JobPostScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 시스템 뒤로가기도 화면 왼쪽 위 버튼처럼 한 단계씩 돌아간다. 예전엔 바로 닫혀서 쓰던 내용이 다 날아갔다.
+    // 시스템 뒤로가기도 화면 왼쪽 위 버튼처럼 한 단계씩 돌아간다 — 바로 닫히면 쓰던 내용이 날아간다.
     return PopScope(
       canPop: step == 0,
       onPopInvokedWithResult: (didPop, _) {

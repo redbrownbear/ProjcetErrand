@@ -52,7 +52,7 @@ class GyeomsaApp extends StatelessWidget {
     return MaterialApp(
       title: '겸사겸사',
       debugShowCheckedModeBanner: false,
-      // 색·서체·모서리는 전부 core/theme에 모여 있다 (기획 시안 v9 기준).
+      // 색·서체·모서리는 전부 core/theme에 모여 있다.
       theme: buildAppTheme(),
       scrollBehavior: const _AppScrollBehavior(),
       // 폴더블·태블릿·웹처럼 폭이 넓은 화면에서 레이아웃이 가로로 늘어나

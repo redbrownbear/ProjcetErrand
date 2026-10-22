@@ -20,7 +20,7 @@ import '../navigation/errand_actions.dart';
 import '../widgets/task_card.dart';
 import 'overseas_screen.dart';
 
-/// 홈의 '해외' 쪽 (시안 v33 `#osRoot` · v77에서 하단 탭 대신 홈 맨 위 국내/해외 전환으로 옮김).
+/// 홈의 '해외' 쪽 — 홈 맨 위 국내/해외 전환에서 연다.
 ///
 /// '부탁하기 | 돈벌기 | 현지 이웃' 전환에 파란 겸이 카드를 쓴다.
 /// - **부탁하기**: LIVE 제안 보드 → 이런 것도 부탁해도 돼요 → 이렇게 진행돼요(3단계 + 통관 안내)

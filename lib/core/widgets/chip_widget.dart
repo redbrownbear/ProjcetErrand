@@ -3,10 +3,9 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../theme/colors.dart';
 
-/// 목록 상단의 필터 칩 (시안 v33 `.chip`).
+/// 목록 상단의 필터 칩.
 ///
-/// 흰 바탕에 옅은 테두리, 선택되면 먹색으로 찬다. [pill]은 예전 홈 칩 자리에서
-/// 쓰던 이름이라 남겨 두었고, 지금은 높이만 조금 더 크다.
+/// 흰 바탕에 옅은 테두리, 선택되면 먹색으로 찬다. [pill]은 높이만 조금 더 큰 모양이다.
 class ChipWidget extends StatelessWidget {
   final String label;
   final bool active;

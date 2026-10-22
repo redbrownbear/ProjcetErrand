@@ -8,7 +8,7 @@ import '../../core/widgets/app_icon.dart';
 /// 탭 위에 고정된 헤더. 홈 · 마켓은 동네 이름, 다른 탭은 탭 제목을 보여 준다.
 /// 오른쪽은 응모권 · 글쓰기 · 알림 (시안 v77).
 ///
-/// 검색은 홈 바로가기 '전체'로 옮겼다 — v77 헤더에는 검색 버튼이 없다.
+/// 검색 버튼은 없다 — 검색은 홈 바로가기 '전체'에서 한다.
 class ShellHeader extends StatelessWidget {
   /// 탭 제목. null이면 홈으로 보고 동네 이름([scope])을 그린다.
   final String? title;

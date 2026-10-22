@@ -19,9 +19,8 @@ import 'search_screen.dart';
 
 /// 동네 부탁 허브.
 ///
-/// 예전에는 홈 한 화면에 카테고리 그리드·반경/정렬·목록이 모두 깔려 있어서
-/// 홈이 계속 길어졌다. 홈은 진입점만 남기고, 실제 탐색은 이 허브로 한 뎁스
-/// 내려왔다. 목록을 더 좁히는 일(카테고리·반경·정렬·곧 마감)은 전부 여기서 한다.
+/// 홈은 진입점만 두고 실제 탐색은 여기서 한다 — 홈이 길어지지 않게.
+/// 목록을 더 좁히는 일(카테고리·반경·정렬·곧 마감)은 전부 여기서 한다.
 class LocalErrandHubScreen extends StatefulWidget {
   final List<TaskItem> items;
   final String scope;

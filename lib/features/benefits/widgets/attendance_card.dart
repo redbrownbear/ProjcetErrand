@@ -5,10 +5,9 @@ import '../../../core/theme/colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../models/attendance.dart';
 
-/// 출석 달력 카드. 시안 `gyumsa-refined`의 `.g3-attendance`를 옮겼다.
+/// 출석 달력 카드.
 ///
-/// 개편 전 홈의 출석은 "오늘 받기" 한 줄이라 지난 출석이 보이지 않았다.
-/// 시안은 이번 달 달력을 항상 펼쳐 두고, 그 아래에 월 누적·연속 두 게이지를
+/// 이번 달 달력을 항상 펼쳐 두고, 그 아래에 월 누적·연속 두 게이지를
 /// 나란히 둔다. 보상 규칙은 [AttendRules]에 있다.
 class AttendanceCard extends StatelessWidget {
   final Attendance attendance;

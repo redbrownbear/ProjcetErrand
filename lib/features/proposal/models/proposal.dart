@@ -12,7 +12,7 @@ const proposalMaxPeople = 15;
 /// 국내는 다른 지역으로 이동할 때만 올릴 수 있다(예: 대전 → 서울).
 ///
 /// 서버에 연결되면 `proposals/{id}`에 올라가고 신청 · 취소 · 진행 결정은 서버 함수가 한다(A15, functions/src/proposal).
-/// 서버 연결 전에는 이 기기에만 저장된다(예전 방식).
+/// 서버 연결 전에는 이 기기에만 저장된다.
 class Proposal {
   final int id;
 

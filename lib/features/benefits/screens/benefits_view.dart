@@ -62,13 +62,8 @@ class BenefitsView extends StatefulWidget {
 }
 
 class _BenefitsViewState extends State<BenefitsView> {
-  // 예전에는 여기서 출석·광고·프로필·친구초대 같은 미션을 `benefit:*` 키로 따로
-  // 굴렸다. 전부 제휴사가 돈을 대지 않는 자체 지급이라, 사람이 늘수록 손실이
-  // 정비례로 커지는 구조였다. 게다가 홈의 `daily:*` 미션과 항목이 겹쳐서
-  // 어느 쪽이 진짜인지 코드만 봐서는 알 수 없었다.
-  //
-  // 지금은 미션을 [dailyMissions] 한 곳에서만 관리한다. 여기 남은 건 실제 값이
-  // 있는 것(내 포인트·이번 달 수익·수수료 면제)과 제휴 캠페인 목록뿐이다.
+  // 미션은 [dailyMissions] 한 곳에서만 관리한다. 여기엔 실제 값이 있는 것
+  // (내 포인트·이번 달 수익·수수료 면제)과 제휴 캠페인 목록만 둔다.
 
   void _push(Widget page) => Navigator.push(context, MaterialPageRoute(builder: (_) => page));
 
@@ -135,7 +130,7 @@ class _BenefitsViewState extends State<BenefitsView> {
 
   @override
   Widget build(BuildContext context) {
-    // '근처에서 벌기'는 지금 지원할 수 있는 동네 부탁만. 예전엔 해외 부탁·마감된 부탁도 섞였다.
+    // '근처에서 벌기'는 지금 지원할 수 있는 동네 부탁만(해외 · 마감 제외).
     final nearby = widget.items.where((it) => it.mode == 'ask' && !it.isExpired).take(2).toList();
     final seaCount = widget.items.where((it) => it.mode == 'sea').length;
 
@@ -163,9 +158,7 @@ class _BenefitsViewState extends State<BenefitsView> {
           onOpenCoupons: () => _push(MyCouponsScreen(wallet: widget.wallet, goPointsHub: widget.goPointsHub)),
         ),
 
-        // 이번 달 수익. 옆에 있던 '이번 달 적립(P)'은 뺐다 — 셸이 늘 0을 넘기고
-        // 있어서 아무 값도 못 보여주는 칸이었다. 포인트 원장을 월별로 집계할 수
-        // 있게 되면 그때 되살린다.
+        // 이번 달 수익. '이번 달 적립(P)'은 포인트 원장을 월별로 집계할 수 있을 때 붙인다.
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
           child: Container(

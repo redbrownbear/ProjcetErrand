@@ -97,7 +97,7 @@ class _HomeShellState extends State<HomeShell> {
   /// 마켓 탭의 안쪽 탭 — 0 미션 · 1 공동구매 · 2 중고장터 · 3 나눔
   int sideSub = 0;
 
-  /// 홈 맨 위 국내 / 해외 전환 (v77 — 예전 하단 '해외' 탭)
+  /// 홈 맨 위 국내 / 해외 전환
   bool homeAbroad = false;
 
   final _communityKey = GlobalKey<CommunityViewState>();

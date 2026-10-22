@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
 import '../theme/colors.dart';
 
-/// 입력 한 칸. 시안(`gyumsa-refined`)의 `.g2-field` — 라벨 · 입력 · 도움말이 한 묶음이다.
+/// 입력 한 칸 — 라벨 · 입력 · 도움말이 한 묶음이다.
 ///
 /// 새로 붙는 등록 화면(브랜드 협업 제안 · 단기알바 모집 · 해외 사다주기)이 모두
 /// 같은 규격을 쓰므로 한 곳에 뒀다.

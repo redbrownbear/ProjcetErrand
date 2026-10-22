@@ -1,7 +1,7 @@
 import '../../errand/models/comment.dart';
 import '../models/com_post.dart';
 
-/// 체험용 커뮤니티 글. 시안(v77)에 걸린 글을 옮겼다.
+/// 체험용 커뮤니티 글 (시안 v77의 예시 글).
 const seedComPosts = [
   // 오늘의 질문 (피드에는 안 나오고 질문 카드로만 열린다)
   ComPost(

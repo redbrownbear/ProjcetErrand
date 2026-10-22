@@ -7,7 +7,7 @@ import '../../../core/widgets/fact_rows.dart';
 import '../../../core/widgets/screen_frame.dart';
 import '../models/job_posting.dart';
 
-/// 내가 올린 단기알바 모집글 상세. 시안(`gyumsa-refined`)의 `GyJobDetail`.
+/// 내가 올린 단기알바 모집글 상세.
 ///
 /// 지원자가 지원 전에 알아야 할 근로 조건을 한 줄씩 그대로 보여준다.
 class JobPostingDetailScreen extends StatelessWidget {

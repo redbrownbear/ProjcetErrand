@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../theme/colors.dart';
 
-/// 이름-값을 한 줄씩 쌓은 표. 시안(`gyumsa-refined`)의 `.facts-v9` / `.g3-rows`.
+/// 이름-값을 한 줄씩 쌓은 표.
 ///
 /// 미션 상세의 '참여 전에 확인하세요', 단기알바 상세의 근무 조건처럼
 /// **지원 전에 확인해야 하는 조건**을 빠짐없이 나열할 때 쓴다.

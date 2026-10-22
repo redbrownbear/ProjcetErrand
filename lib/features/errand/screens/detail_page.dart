@@ -195,7 +195,7 @@ class _DetailPageState extends State<DetailPage> {
       ),
       child: Row(
         children: [
-          // 예전엔 '‹' 글자(폭 8px 남짓)만 눌려서 손가락으로 맞추기 어려웠다. 화살표와 제목을 함께 누르게 한다.
+          // 화살표 글자만으로는 누를 자리가 좁아서 화살표와 제목을 함께 누르게 한다.
           InkWell(
             onTap: () => Navigator.of(context).pop(),
             borderRadius: BorderRadius.circular(10),

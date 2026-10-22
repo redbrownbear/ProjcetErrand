@@ -1,7 +1,7 @@
 import '../../../core/storage/local_store.dart';
 import '../../benefits/models/reward_ledger.dart';
 
-/// 응모권을 받는 방법. 시안(v77) '응모권 모으는 방법' 표를 그대로 옮겼다.
+/// 응모권을 받는 방법 (시안 v77 '응모권 모으는 방법' 표).
 ///
 /// [once]가 true면 계정당 한 번, [daily]면 하루 한 번, 둘 다 아니면 할 때마다 받는다.
 class TicketRule {

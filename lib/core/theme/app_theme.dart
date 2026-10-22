@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'colors.dart';
 
-/// 기획 시안 v33의 타이포그래피·모서리 값.
+/// 타이포그래피·모서리 값.
 ///
 /// 시안은 letter-spacing을 `-0.03em` 안팎으로 조여서 쓴다.
 /// CSS의 `em` 단위는 글자 크기에 비례하므로, Flutter에서는 각 스타일마다

@@ -20,7 +20,7 @@ import '../../../core/utils/stable_sort.dart';
 class DayJobScreen extends StatefulWidget {
   final void Function(DayJob) onApply;
 
-  /// 단기알바 모집 등록. 시안(`gyumsa-refined`)의 '알바 모집하기 +'.
+  /// 단기알바 모집 등록('알바 모집하기 +').
   final VoidCallback? onPost;
   const DayJobScreen({super.key, required this.onApply, this.onPost});
   @override
