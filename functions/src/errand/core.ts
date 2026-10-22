@@ -304,7 +304,7 @@ export async function advanceTrade(db: Firestore, uid: string, data: unknown) {
     const giving = isGiving(trade.get('mode'));
     const applicant = (trade.get('applicantUid') as string | undefined) ?? helperUid;
     // 도움을 주는 글은 거래 하나가 끝나도 글(모집)은 그대로 둔다
-    const req = isFinished(next) && !giving ? await tx.get(reqRef) : null;
+    const req = (isFinished(next) && !giving) || next === 'completed' ? await tx.get(reqRef) : null;
 
     tx.update(tradeRef, {
       status: next,
@@ -314,8 +314,12 @@ export async function advanceTrade(db: Firestore, uid: string, data: unknown) {
       ...(next === 'cancelled' ? { cancelledBy: role } : {}),
     });
 
-    if (next === 'completed' && req?.exists) {
+    if (next === 'completed' && req?.exists && !giving) {
       tx.update(reqRef, { status: 'done', updatedAt: now });
+    }
+    if (next === 'completed' && req?.exists) {
+      // 공개 완료 기록(A23, LIVE 보드 티커) — 누가 · 무엇을은 빼고 동네 · 종류 · 시각만
+      tx.set(db.collection('activity').doc(tid), completionRecord(req, now));
     }
     if (next === 'cancelled' && req?.exists) {
       // 시작 전 취소: 부탁을 다시 모집 중으로 돌린다(마감이 지났으면 만료). 정책은 1차 기본값.
@@ -329,6 +333,22 @@ export async function advanceTrade(db: Firestore, uid: string, data: unknown) {
     }
     return { status: next };
   });
+}
+
+/** 완료된 거래의 공개 기록. 이름 · 제목 · 금액 · 정확한 위치는 넣지 않는다 */
+export function completionRecord(req: { get(field: string): unknown }, at: Timestamp) {
+  const text = (k: string, max: number) => {
+    const v = req.get(k);
+    return typeof v === 'string' ? v.slice(0, max) : '';
+  };
+  return {
+    kind: 'done',
+    mode: text('mode', 10) || 'ask',
+    cat: text('cat', 30),
+    area: text('area', 40),
+    cc: text('cc', 2),
+    at,
+  };
 }
 
 // ── 예약 실행: 마감 지난 모집 정리 ──────────────────────────────────────────

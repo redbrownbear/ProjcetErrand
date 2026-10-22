@@ -299,6 +299,16 @@ describe('여행 · 출국 일정', () => {
   });
 });
 
+describe('공개 완료 기록', () => {
+  test('누구나 읽고, 앱은 못 쓴다', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'activity', 't1'), { kind: 'done', cat: 'pickup', area: '방배동', at: Timestamp.now() });
+    });
+    await assertSucceeds(getDoc(doc(db(), 'activity', 't1')));
+    await assertFails(setDoc(doc(db(OWNER), 'activity', 't2'), { kind: 'done' }));
+  });
+});
+
 describe('운영 설정', () => {
   test('로그인한 사람은 읽고, 아무도 앱에서 고치지 못한다', async () => {
     await assertSucceeds(getDoc(doc(db(OWNER), 'config', 'safety')));

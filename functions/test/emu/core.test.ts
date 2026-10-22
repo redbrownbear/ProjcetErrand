@@ -57,6 +57,13 @@ describe('정상 흐름', () => {
     assert.equal(t.status, 'completed');
     assert.equal(t.history.length, 4);
     assert.equal((await req()).status, 'done');
+
+    // 공개 완료 기록(A23): 동네 · 종류 · 시각만, 이름 · 제목 · 금액 없음
+    const act = (await db.collection('activity').doc(tradeId).get()).data()!;
+    assert.equal(act.kind, 'done');
+    assert.equal(act.cat, 'pickup');
+    assert.equal(act.mode, 'ask');
+    assert.deepEqual(Object.keys(act).sort(), ['area', 'at', 'cat', 'cc', 'kind', 'mode']);
   });
 
   test('보완 요청 → 다시 완료', async () => {
@@ -241,6 +248,7 @@ describe('가는 김에 · 제가 가요(going) — 글쓴이가 도와주는 �
     await core.advanceTrade(db, OWNER, { tradeId: t1, action: 'finish' });
     await core.advanceTrade(db, HELPER, { tradeId: t1, action: 'confirm' });
     assert.equal((await trade(t1)).status, 'completed');
+    assert.equal((await db.collection('activity').doc(t1).get()).get('mode'), 'going', '가는 김에 완료도 기록');
     r = (await db.collection('requests').doc(GID).get()).data()!;
     assert.equal(r.status, 'open', '거래 하나가 끝나도 글은 그대로');
 

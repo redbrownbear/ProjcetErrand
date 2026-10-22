@@ -141,6 +141,16 @@
 
 ## 기록
 
+### 2026-10-23 · 미커밋 · Claude (A23 LIVE 보드 실데이터 · 완료 티커)
+- 추가(서버): 거래가 완료되면 공개 완료 기록 `activity/{tradeId}` — 동네(`area`) · 종류(`cat`) · 방식(`mode`) · 나라(`cc`) · 시각만(이름 · 제목 · 금액 · 위치 없음, `completionRecord`).
+  규칙: 누구나 읽고 앱은 못 씀. 테스트 `test/emu/core.test.ts` · 규칙 테스트
+- 변경(앱): 로그인해서 서버에 붙으면 제안 보드 · 제안 목록 · 세계 제안 지도에 **실제 제안만**(예시 제안을 섞지 않음), 없으면 '아직 올라온 제안이 없어요'.
+  보드의 제휴 줄(AD '제휴 베이커리' 등 체험용)도 서버에 붙으면 뺀다. 로그인 전 체험 화면은 예전처럼 예시 + '체험용 예시' 표시.
+  보드 위에 **최근 완료 한 줄**('방배동 · 받아오기 부탁이 끝났어요 · 12분 전', 일주일 안 · 국내/해외 따로) — `errand/repositories/activity_repository.dart`, `NeighborStore.recentDone`.
+  테스트 `test/live_board_test.dart`
+- 제거: 서버 모드의 예시 제안(신청 불가 안내 토스트로만 막던 것) — 실데이터 전환
+- 할 일: `firebase deploy --project dev --only functions,firestore`
+
 ### 2026-10-23 · d06314e · Claude (A11 여행 · 출국 일정)
 - 추가(서버): `users/{uid}/travels/{id}` 규칙 — 본인만, 나라 코드 · 도시(30자) · 출국/귀국일('YYYY-MM-DD', 귀국 ≥ 출국) · 해외 부탁 받을 생각(`takeAsks`) · 메모(60자). 규칙 테스트
 - 추가(앱): 마이 › 나의 활동 › **내 여행 일정**(`features/travel/` — 모델 `TravelPlan` · `TravelRepository` · `travel_screens.dart`).

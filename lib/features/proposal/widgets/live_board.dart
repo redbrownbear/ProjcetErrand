@@ -5,6 +5,7 @@ import '../../../app/neighbor_store.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/kit.dart';
+import '../../errand/repositories/activity_repository.dart';
 import '../data/proposals.dart';
 import '../models/proposal.dart';
 import '../../trip/widgets/trip_widgets.dart';
@@ -99,8 +100,23 @@ class LiveBoard extends StatelessWidget {
               ),
             ],
           ),
+          if (store.recentDoneFor(abroad: abroad) case final done when done.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            DoneTicker(done: done, now: store.clock()),
+          ],
           const SizedBox(height: 13),
-          SponsorBoardRow(sponsor: sponsor, onTap: onSponsor),
+          // 제휴 줄은 체험 화면에만. 서버에 붙으면 실제 제휴가 생길 때까지 뺀다
+          if (!store.live) SponsorBoardRow(sponsor: sponsor, onTap: onSponsor),
+          if (store.live && list.isEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 12),
+              decoration: BoxDecoration(color: const Color(0xB3FFFFFF), borderRadius: BorderRadius.circular(12)),
+              child: Text(
+                abroad ? '아직 올라온 제안이 없어요\n해외에 갈 일이 있으면 첫 제안을 올려 보세요' : '아직 올라온 제안이 없어요\n다른 지역에 갈 일이 있으면 첫 제안을 올려 보세요',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.sub, height: 1.5),
+              ),
+            ),
           for (final p in list.take(4)) ...[
             const SizedBox(height: 6),
             ProposalRow(p: p, meJoined: store.joined.contains(p.id), onTap: () => onOpen(p)),
@@ -117,9 +133,45 @@ class LiveBoard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             '${abroad ? '가격과 인원을 정하면 이웃이 구매를 눌러요' : '다른 지역으로 이동할 때만 올릴 수 있어요'}'
-            '${list.any((p) => !p.mine) ? '\n지금 보이는 제안은 체험용 예시예요' : ''}',
+            '${list.any((p) => p.sample) ? '\n지금 보이는 제안은 체험용 예시예요' : ''}',
             textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.sub),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 최근 완료 한 줄(A23) — 서버의 공개 완료 기록에서. 누가 · 무엇을은 없고 동네 · 종류 · 시각만
+class DoneTicker extends StatelessWidget {
+  final List<DoneActivity> done;
+  final DateTime now;
+  const DoneTicker({super.key, required this.done, required this.now});
+
+  @override
+  Widget build(BuildContext context) {
+    final last = done.first;
+    return Container(
+      height: 32,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(color: const Color(0xB3FFFFFF), borderRadius: BorderRadius.circular(10)),
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle_rounded, size: 15, color: AppColors.green),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              last.line,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.ink2),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            agoLabel(last.at, now),
+            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: AppColors.sub),
           ),
         ],
       ),

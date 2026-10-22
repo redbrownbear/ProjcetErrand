@@ -83,7 +83,7 @@ void main() {
     expect(m['meetPlace'], '강남역');
   });
 
-  test('서버에 붙으면: 서버 제안 + 예시, 예시엔 신청 못 함, 신청 · 올리기는 서버 함수로', () async {
+  test('서버에 붙으면: 실제 제안만(예시 없음), 신청 · 올리기는 서버 함수로', () async {
     final store = NeighborStore();
     final toasts = <String>[];
     store.toast = toasts.add;
@@ -91,11 +91,8 @@ void main() {
     late _FakeRepo repo;
     store.attachServer('me', repo: (uid) => repo = _FakeRepo(uid, [server]));
     await Future<void>.delayed(Duration.zero);
-    expect(store.proposals.first.id, server.id);
-
-    final seed = store.proposals.firstWhere((x) => x.sample && x.openFor(false));
-    store.toggleJoin(seed);
-    expect(toasts.last, contains('예시'));
+    expect(store.proposals.map((p) => p.id), [server.id]);
+    expect(store.proposals.any((p) => p.sample), isFalse);
 
     store.toggleJoin(server);
     await Future<void>.delayed(Duration.zero);

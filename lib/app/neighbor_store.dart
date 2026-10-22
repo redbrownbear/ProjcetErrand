@@ -6,6 +6,7 @@ import '../core/storage/local_store.dart';
 import '../features/community/data/com_posts.dart';
 import '../features/community/models/com_post.dart';
 import '../features/errand/models/comment.dart';
+import '../features/errand/repositories/activity_repository.dart';
 import '../features/lucky/models/tickets.dart';
 import '../features/market/models/used_item.dart';
 import '../features/proposal/data/proposals.dart';
@@ -108,14 +109,21 @@ class NeighborStore extends ChangeNotifier {
   StreamSubscription<List<Proposal>>? _proposalSub;
   StreamSubscription<Set<int>>? _joinSub;
 
+  /// 최근 완료된 거래(A23, LIVE 보드 티커). 서버에 붙었을 때만
+  List<DoneActivity> recentDone = [];
+  StreamSubscription<List<DoneActivity>>? _doneSub;
+
   /// 로그인한 uid가 바뀔 때 셸이 부른다. null이면 서버 구독을 끊고 이 기기 제안으로 돌아간다
-  void attachServer(String? uid, {ProposalRepository Function(String uid)? repo}) {
+  void attachServer(String? uid, {ProposalRepository Function(String uid)? repo, ActivityRepository? activity}) {
     if (proposalRepo?.uid == uid) return;
     _proposalSub?.cancel();
     _joinSub?.cancel();
+    _doneSub?.cancel();
     _proposalSub = null;
     _joinSub = null;
+    _doneSub = null;
     serverProposals = [];
+    recentDone = [];
     if (uid == null) {
       proposalRepo = null;
       joined = LocalStore.read<List<dynamic>>('joinedProposals', const []).whereType<int>().toSet();
@@ -130,6 +138,10 @@ class NeighborStore extends ChangeNotifier {
         joined = ids;
         notifyListeners();
       });
+      _doneSub = (activity ?? const ActivityRepository()).watchRecent().listen((list) {
+        recentDone = list;
+        notifyListeners();
+      });
     }
     notifyListeners();
   }
@@ -138,10 +150,20 @@ class NeighborStore extends ChangeNotifier {
   void dispose() {
     _proposalSub?.cancel();
     _joinSub?.cancel();
+    _doneSub?.cancel();
     super.dispose();
   }
 
-  List<Proposal> get proposals => [...(proposalRepo != null ? serverProposals : myProposals), ..._seedProposals];
+  /// 서버에 붙으면 실제 제안만(A23). 로그인 전 · 서버 연결 전에는 이 기기 제안 + 체험용 예시
+  bool get live => proposalRepo != null;
+
+  List<Proposal> get proposals => live ? serverProposals : [...myProposals, ..._seedProposals];
+
+  /// 보드 티커에 띄울 최근 완료(일주일 안)
+  List<DoneActivity> recentDoneFor({required bool abroad}) {
+    final since = clock().subtract(const Duration(days: 7));
+    return [for (final a in recentDone) if (a.abroad == abroad && a.at.isAfter(since)) a];
+  }
 
   /// 내가 올린 제안 (마이 · 제안 목록)
   List<Proposal> get mine => proposals.where((p) => p.mine).toList();
