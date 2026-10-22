@@ -141,12 +141,13 @@
 
 ## 기록
 
-### 2026-10-22 · 미커밋 · Claude (A35 App Check 앱 연결 · dev 배포)
+### 2026-10-22 · 4f61af0 외 · Claude (A35 App Check 앱 연결 · dev 배포)
 - 변경: dev에 함수 · 규칙 v2 · 색인 배포 완료(사용자, 2026-10-22). 다음 할 일의 'W3 앱 반영본 배포' 지움
 - 추가(A35): `firebase_app_check` 패키지, `core/backend/app_check.dart` — 출시 빌드 Play Integrity · App Attest, 디버그 빌드는 디버그 제공자.
   웹 · 데스크톱은 건너뜀. **강제는 아직 끔**(서버 `ENFORCE_APP_CHECK`, 콘솔 Firestore 적용) — 디버그 토큰 등록 · 지표 확인 뒤 출시 직전에 켠다
 - 변경(CI): `app`이 pub get 뒤 pubspec.lock이 커밋본과 다르면 고른 패키지 버전을 주석으로 남긴다(이 작업 환경에서 pub.dev를 못 열어 버전을 CI로 확인).
-  `firebase_app_check`는 우선 `any` — 확인되면 그 버전으로 고정
+  `firebase_app_check`는 CI가 고른 `^0.4.8`로 고정. **PC에서 pull 뒤 `flutter pub get`** 해야 pubspec.lock이 맞춰진다
+- 변경(버그): 가는 김에 시트 첫 줄 — 시각에 '30분'이 붙으면('오늘 오후 7시 30분') 옆 이름 글자가 넘쳤다(시각에 따라 테스트가 실패하던 원인). 이름 쪽을 줄임표로
 
 ### 2026-10-22 · 1ea73c0 외 · Claude (A21 동의 관리 · A20 금지 품목 서버 설정)
 - 추가(A21): 가입 화면에 약관 동의(필수 3 · 선택 3, 선택은 기본 꺼짐) — 이용약관 · 개인정보 수집·이용 · 만 14세 이상 / 위치 정보 · 혜택 알림 · 야간 혜택 알림.

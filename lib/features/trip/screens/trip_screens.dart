@@ -407,9 +407,14 @@ class _TripSheetState extends State<_TripSheet> {
                     child: Text('${tripDay(at)} ${tripTime(at)}', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800)),
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    [t.who, if (t.sample && t.ago != null) t.ago!, if (t.sample) '예시'].join(' · '),
-                    style: const TextStyle(fontSize: 13, color: AppColors.sub, fontWeight: FontWeight.w600),
+                  // 시각에 '30분'이 붙으면 칩이 길어진다 — 이름 쪽이 줄어든다
+                  Flexible(
+                    child: Text(
+                      [t.who, if (t.sample && t.ago != null) t.ago!, if (t.sample) '예시'].join(' · '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 13, color: AppColors.sub, fontWeight: FontWeight.w600),
+                    ),
                   ),
                 ],
               ),
