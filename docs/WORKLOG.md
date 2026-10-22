@@ -141,7 +141,7 @@
 
 ## 기록
 
-### 2026-10-23 · 미커밋 · Claude (A33 공지 · 업데이트)
+### 2026-10-23 · a721a00 · Claude (A33 공지 · 업데이트)
 - 추가(서버): Firestore `notices/{id}`(title · body · kind notice/update/event · pinned · hidden · publishedAt) — 누구나 읽고 앱은 못 씀(규칙 테스트).
   올리기 · 내리기 스크립트 `functions/scripts/post-notice.js`(예약 시각 `--at`, 고정 `--pin`, `--hide`). 운영 방법은 설계 문서 W5 운영 방법 5
 - 추가(앱): 마이 › 계정 › **공지 · 업데이트**(로그인 전 화면에도 링크) — `features/notice/`(모델 `Notice` · `NoticeRepository` · `notice_screens.dart`).
