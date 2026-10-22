@@ -26,6 +26,9 @@ class NewRequestData {
   /// trip('가는 김에 · 가는 분 찾아요') 등 덧붙은 갈래
   final String? extra;
 
+  /// 동네 부탁의 위치(선택, A13 동선 추천용). 공개 문서에는 안 올라가고 private/detail로 간다
+  final double? lat, lng;
+
   const NewRequestData({
     required this.mode,
     required this.cat,
@@ -44,6 +47,8 @@ class NewRequestData {
     required this.payment,
     required this.completion,
     this.extra,
+    this.lat,
+    this.lng,
   });
 
   bool get sea => mode == 'sea';
@@ -78,6 +83,8 @@ class NewRequestData {
       city: city,
       country: country,
       region: publicRegion(scope),
+      lat: lat,
+      lng: lng,
       // 새 부탁은 실제 거리를 알 수 없어 임의의 거리를 붙이지 않는다.
       distM: abroad ? 9e9 : null,
       mins: (abroad || going) ? 0 : mins,

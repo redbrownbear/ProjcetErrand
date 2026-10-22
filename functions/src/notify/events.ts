@@ -18,7 +18,8 @@ export type NotifyKind =
   | 'chat.message'
   | 'request.comment'
   | 'request.hidden'
-  | 'trade.photo';
+  | 'trade.photo'
+  | 'match.route';
 
 export interface NotifyEvent {
   to: string;

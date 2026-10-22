@@ -25,6 +25,11 @@ class RequestForm {
   /// 가는 김에(제가 가요)가 해외로 가는가
   bool abroad = false;
 
+  /// 동네 부탁의 위치(선택). 고르면 그 근처를 지나는 이웃의 동선과 맞춰 알려 준다(A13).
+  /// 정확한 좌표는 수락된 사람만 보는 `private/detail`에 간다
+  (double, double)? pin;
+  String? pinLabel;
+
   /// 미리보기에 쓸 내 동네 이름
   String scope = '전국';
   String cat = 'buy';
@@ -204,6 +209,8 @@ class RequestForm {
     payment: going ? 'none' : payment,
     completion: completion.text.trim(),
     extra: kind == 'ask' ? extra : null,
+    lat: (sea || going) ? null : pin?.$1,
+    lng: (sea || going) ? null : pin?.$2,
   );
 
   /// 마지막 단계의 '이렇게 올라가요' 미리보기 — 실제로 올라가는 글과 같은 함수([NewRequestData.toItem])로 만든다

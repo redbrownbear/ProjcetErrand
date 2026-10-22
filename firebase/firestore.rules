@@ -77,6 +77,11 @@ service cloud.firestore {
           && !incoming().diff(resource.data).affectedKeys().hasAny(['cells', 'overLimit', 'cellsAt', 'createdAt']);
       }
 
+      // 내 동선에 맞는 부탁(A13). 서버가 만들고, 본인은 읽고 지운다(관심 없음)
+      match /matches/{requestId} { allow read, delete: if isMe(uid); }
+      // 서버 전용 카운터(추천 푸시 하루 상한 등)
+      match /meta/{id} { allow read: if isMe(uid); }
+
       // 동의 · 철회 기록(A21). 추가만 하고 고치거나 지우지 않는다. 시각은 서버 시각만 받는다
       match /consentLog/{id} {
         allow read: if isMe(uid);

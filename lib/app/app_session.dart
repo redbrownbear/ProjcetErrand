@@ -464,6 +464,14 @@ class AppSession extends ChangeNotifier {
     if (upload) repo.saveConsents(consents, [for (final k in consents.map.keys) k]);
   }
 
+  /// 부탁 하나를 서버에서 불러온다(동선 추천 · 알림으로 목록에 없는 글을 열 때). 못 읽으면 null
+  Future<TaskItem?> loadRequest(int id) async {
+    final it = await _requests.get(id);
+    if (it == null || (it.deadline != null && it.deadline!.isBefore(DateTime.now()))) return null;
+    _update(() => _related[id] = it);
+    return it;
+  }
+
   // ── 동의 ────────────────────────────────────────────────────────────────
 
   /// 로그인한 계정이 지금 버전의 필수 동의를 아직 안 했다 → 셸이 동의 화면을 띄운다

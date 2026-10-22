@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gyeomsa/core/utils/geohash.dart';
 import 'package:gyeomsa/features/route/models/commute_route.dart';
+import 'package:gyeomsa/features/route/repositories/match_repository.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// W6 · A02 정기 동선: 격자 계산(서버와 같은 값) · 저장 모양 · 검증
 void main() {
@@ -51,5 +53,21 @@ void main() {
     expect(make(radius: 50).problem, isNotNull);
     expect(make(radius: 8000).radiusLabel, '8km');
     expect(make(days: const [6, 7]).dayLabel, '주말');
+  });
+
+  test('동선 추천 문서: 읽기 · 마감 지난 것 가리기', () {
+    final m = RouteMatch.fromDoc('1760000000100', {
+      'title': '교대역 편의점 택배',
+      'price': 3000,
+      'routeName': '퇴근',
+      'extraMin': 4,
+      'deadline': Timestamp.fromDate(DateTime(2026, 10, 22, 22)),
+      'createdAt': Timestamp.fromDate(DateTime(2026, 10, 22, 14)),
+    })!;
+    expect(m.requestId, 1760000000100);
+    expect(m.extraMin, 4);
+    expect(m.expiredAt(DateTime(2026, 10, 22, 21)), isFalse);
+    expect(m.expiredAt(DateTime(2026, 10, 22, 23)), isTrue);
+    expect(RouteMatch.fromDoc('abc', {'title': 'x'}), isNull);
   });
 }

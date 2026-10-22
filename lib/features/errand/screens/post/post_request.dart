@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/colors.dart';
 import '../../models/new_request_data.dart';
 import 'form_steps.dart';
+import '../../../route/screens/route_screens.dart' show showPlacePicker;
 import 'request_form.dart';
 import '../../../../core/widgets/keyboard_safe_area.dart';
 
@@ -59,6 +60,17 @@ class _PostRequestState extends State<PostRequest> {
     _form.save();
   }
 
+  /// 동네 부탁의 위치(선택). 만날 장소 칸이 비어 있으면 고른 이름으로 채운다
+  Future<void> _pickPlace() async {
+    final p = await showPlacePicker(context, title: '어디쯤이에요?', sub: '정확한 위치는 수락된 사람만 봐요. 목록에는 동네 이름만 보여요.');
+    if (p == null || !mounted) return;
+    _update(() {
+      _form.pin = (p.lat, p.lng);
+      _form.pinLabel = p.label;
+      if (_form.place.text.trim().isEmpty) _form.place.text = p.label;
+    });
+  }
+
   Future<void> _pickDeadline() async {
     final now = DateTime.now();
     final initial = _form.deadlineOk ? _form.deadline! : now.add(const Duration(hours: 2));
@@ -113,7 +125,7 @@ class _PostRequestState extends State<PostRequest> {
 
   Widget _stepBody() => switch (_step) {
     0 => WhatStep(form: _form, update: _update),
-    1 => WhereStep(form: _form, update: _update, onPickDeadline: _pickDeadline),
+    1 => WhereStep(form: _form, update: _update, onPickDeadline: _pickDeadline, onPickPlace: _pickPlace),
     _ => CostStep(form: _form, update: _update),
   };
 

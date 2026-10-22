@@ -333,6 +333,8 @@ class _HomeShellState extends State<HomeShell> {
                   final photoTrade = n.kind == 'trade.photo' && n.tradeId != null ? session.tradeById(n.tradeId!) : null;
                   if (n.kind == 'request.comment' && it != null) {
                     actions.open(context, it);
+                  } else if (n.kind == 'match.route' && rid != null) {
+                    _openRequestById(rid);
                   } else if (photoTrade != null) {
                     openPhotos(photoTrade);
                   } else {
@@ -383,6 +385,18 @@ class _HomeShellState extends State<HomeShell> {
         closed: !t.isOpenForChat,
       ),
     );
+  }
+
+  /// 부탁 id로 상세 열기(동선 추천 · 알림). 목록에 아직 없으면 서버에서 한 번 불러온다
+  Future<void> _openRequestById(int id) async {
+    var it = session.items.where((i) => i.id == id).firstOrNull;
+    it ??= await session.loadRequest(id);
+    if (!mounted) return;
+    if (it == null) {
+      session.flash('마감됐거나 내려간 부탁이에요');
+      return;
+    }
+    actions.open(context, it);
   }
 
   /// 거래 한 건의 사진 · 영수증(A37)
@@ -582,7 +596,7 @@ class _HomeShellState extends State<HomeShell> {
             s.flash('서버에 연결되면 동선을 등록할 수 있어요');
             return;
           }
-          _push(RouteListScreen(uid: uid));
+          _push(RouteListScreen(uid: uid, onOpenRequest: _openRequestById));
         },
         serverIssue: s.serverIssue,
         syncing: s.syncing,

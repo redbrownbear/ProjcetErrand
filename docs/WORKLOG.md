@@ -141,6 +141,18 @@
 
 ## 기록
 
+### 2026-10-22 · 미커밋 · Claude (A13 동선 기반 추천 v0 — W7)
+- 추가(서버): `functions/src/route/match.ts` · 트리거 `onRequestPlaced` — 부탁의 정확한 위치(`private/detail`)가 처음 저장될 때 **한 번만** 계산.
+  매칭 격자에 부탁 칸이 든 동선(collectionGroup `routes`, `cells` array-contains — 색인 추가) → 켜짐 · 글쓴이 아님 · 차단 관계 없음 ·
+  요일/시간대가 지금~마감 사이 · 추가 소요(동선 선분까지 직선거리 × 2 ÷ 이동수단 평균 속도) ≤ 15분.
+  결과 `users/{uid}/matches/{requestId}`(본인 읽기 · 지우기), 푸시 `match.route`는 사람당 하루 3번 · 밤 9시~아침 8시 금지(`users/{uid}/meta/matchPush`).
+  기본값은 `config/matching`(extraMinutes · dailyPushLimit · quietStart/End · maxCandidates)으로 바꾼다(T02). 동네 부탁(mode ask)만 대상.
+  부탁 공개 문서엔 약 1km 격자 `cell`만 붙인다(지도 핀용 — A31). 테스트 `test/unit/match.test.ts` · `test/emu/match.test.ts`
+- 추가(앱): 부탁 쓰기 '만날 장소' 아래 **위치 고르기(선택)** — 역 · 장소 검색 · 지도. 좌표는 지금처럼 `private/detail`에만(수락된 사람만).
+  장소 고르기 시트를 동선 화면과 같이 쓴다(`showPlacePicker`). 내 동선 화면 위에 **내 동선에 맞는 부탁** 목록(관심 없음으로 지우기), 누르면 그 부탁으로.
+  추천 알림을 누르면 그 부탁으로(목록에 없으면 서버에서 한 번 불러옴 — `AppSession.loadRequest`)
+- 아직: v0은 직선거리 어림. 실제 경로(TMAP)는 v1. 위치를 안 고른 부탁은 추천 대상이 아니다
+
 ### 2026-10-22 · 8287073 · Claude (커밋 메시지 형식)
 - 변경: 커밋 메시지 첫 줄을 `[main] YYYYMMDD 내용`(한국 시간)으로 — `CLAUDE.md` 커밋 규칙에 추가. 이미 올린 커밋은 그대로 둔다
 

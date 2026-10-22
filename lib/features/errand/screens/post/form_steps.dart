@@ -183,7 +183,10 @@ class WhereStep extends StatelessWidget {
   final RequestForm form;
   final FormUpdate update;
   final VoidCallback onPickDeadline;
-  const WhereStep({super.key, required this.form, required this.update, required this.onPickDeadline});
+
+  /// 동네 부탁의 위치 고르기(선택, A13). 없으면 버튼을 그리지 않는다
+  final VoidCallback? onPickPlace;
+  const WhereStep({super.key, required this.form, required this.update, required this.onPickDeadline, this.onPickPlace});
 
   @override
   Widget build(BuildContext context) {
@@ -295,6 +298,32 @@ class WhereStep extends StatelessWidget {
   List<Widget> _localFields() => [
     const FieldLabel('만날 장소'),
     TextField(controller: form.place, onChanged: (_) => update(), decoration: formFieldDecoration('예: 역삼동 / 강남역 3번출구')),
+    if (onPickPlace != null) ...[
+      const SizedBox(height: 8),
+      Row(
+        children: [
+          Icon(Icons.place_outlined, size: 18, color: form.pin == null ? AppColors.faint : AppColors.green),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              form.pin == null ? '위치를 고르면 이 근처를 지나는 이웃에게 먼저 알려요 (선택)' : '위치 고름 · ${form.pinLabel ?? ''}',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 12.5, color: form.pin == null ? AppColors.sub : AppColors.ink2, height: 1.4),
+            ),
+          ),
+          TextButton(onPressed: onPickPlace, child: Text(form.pin == null ? '위치 고르기' : '바꾸기')),
+          if (form.pin != null)
+            TextButton(
+              onPressed: () => update(() {
+                form.pin = null;
+                form.pinLabel = null;
+              }),
+              child: const Text('빼기'),
+            ),
+        ],
+      ),
+    ],
   ];
 
   Widget _pill(

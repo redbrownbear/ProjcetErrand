@@ -9,6 +9,7 @@ import '../../../core/widgets/kit.dart';
 import '../../trip/widgets/trip_parts.dart';
 import '../data/route_places.dart';
 import '../models/commute_route.dart';
+import '../repositories/match_repository.dart';
 import '../repositories/route_repository.dart';
 
 /// 마이 › 내 동선 (개발 To-do A08). 정기 동선 목록 · 켜기/끄기 · 고치기 · 지우기, 최대 6개.
@@ -16,7 +17,11 @@ import '../repositories/route_repository.dart';
 class RouteListScreen extends StatelessWidget {
   final String uid;
   final RouteRepository? repo;
-  const RouteListScreen({super.key, required this.uid, this.repo});
+
+  /// '내 동선에 맞는 부탁'을 누르면 그 부탁 상세로(A13)
+  final void Function(int requestId)? onOpenRequest;
+  final MatchRepository? matches;
+  const RouteListScreen({super.key, required this.uid, this.repo, this.onOpenRequest, this.matches});
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +52,7 @@ class RouteListScreen extends StatelessWidget {
                 '위치는 약 1km 칸으로만 저장하고 실시간 위치는 모으지 않아요.',
                 style: AppType.meta.copyWith(fontSize: 13, height: 1.55),
               ),
+              if (list.isNotEmpty) _MatchList(repo: matches ?? MatchRepository(uid), onOpen: onOpenRequest),
               const SizedBox(height: 14),
               if (snap.connectionState == ConnectionState.waiting && list.isEmpty)
                 const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator(strokeWidth: 2)))
@@ -66,6 +72,57 @@ class RouteListScreen extends StatelessWidget {
                     onEdit: () => edit(route),
                     onToggle: (on) => r.setActive(route.id, on),
                     onDelete: () => r.delete(route.id),
+                  ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// 내 동선에 맞는 부탁(서버가 부탁이 올라올 때 계산해 둔 것)
+class _MatchList extends StatelessWidget {
+  final MatchRepository repo;
+  final void Function(int requestId)? onOpen;
+  const _MatchList({required this.repo, this.onOpen});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<RouteMatch>>(
+      stream: repo.watch(),
+      builder: (context, snap) {
+        final list = snap.data ?? const <RouteMatch>[];
+        return Container(
+          margin: const EdgeInsets.only(top: 14),
+          padding: const EdgeInsets.fromLTRB(16, 14, 8, 8),
+          decoration: BoxDecoration(color: AppColors.yellowSoft, borderRadius: BorderRadius.circular(18)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('내 동선에 맞는 부탁', style: AppType.sectionSmall),
+              const SizedBox(height: 4),
+              if (list.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8, right: 8),
+                  child: Text('아직 없어요. 동선 근처에 부탁이 올라오면 여기 모이고, 낮 시간엔 알림도 보내요(하루 3번까지).', style: AppType.meta.copyWith(height: 1.5)),
+                )
+              else
+                for (final m in list)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    title: Text(m.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.body.copyWith(fontWeight: AppType.w600)),
+                    subtitle: Text(
+                      [m.routeName, '약 ${m.extraMin < 1 ? 1 : m.extraMin}분 더', if (m.area.isNotEmpty) m.area, if (m.price > 0) '${m.price}원'].join(' · '),
+                      style: AppType.meta,
+                    ),
+                    onTap: onOpen == null ? null : () => onOpen!(m.requestId),
+                    trailing: IconButton(
+                      tooltip: '관심 없음',
+                      icon: const Icon(Icons.close_rounded, size: 18, color: AppColors.sub),
+                      onPressed: () => repo.dismiss(m.requestId),
+                    ),
                   ),
             ],
           ),
@@ -197,8 +254,10 @@ class _RouteEditScreenState extends State<RouteEditScreen> {
   }
 
   Future<void> _pickPlace(bool isFrom) async {
-    final p = await showSheet<RoutePoint>(context, (_) => _PlaceSheet(title: isFrom ? '어디서 출발해요?' : '어디로 가요?'));
-    if (p != null) setState(() => isFrom ? from = p : to = p);
+    final picked = await showPlacePicker(context, title: isFrom ? '어디서 출발해요?' : '어디로 가요?', sub: '약 1km 칸으로만 저장해요');
+    if (picked == null) return;
+    final p = RoutePoint.at(picked.label, picked.lat, picked.lng);
+    setState(() => isFrom ? from = p : to = p);
   }
 
   Future<void> _save() async {
@@ -361,10 +420,22 @@ class _RouteEditScreenState extends State<RouteEditScreen> {
   }
 }
 
-/// 출발 · 도착 고르기: 자주 쓰는 역 → 장소 검색(키가 있을 때) → 지도에서 콕 찍기
+/// 고른 장소. 좌표를 어떻게 저장할지(격자로 줄일지)는 부르는 쪽이 정한다
+class PickedPlace {
+  final String label;
+  final double lat;
+  final double lng;
+  const PickedPlace(this.label, this.lat, this.lng);
+}
+
+/// 장소 고르기: 자주 쓰는 역 → 장소 검색(키가 있을 때) → 지도에서 콕 찍기. 동선 · 부탁 쓰기에서 같이 쓴다
+Future<PickedPlace?> showPlacePicker(BuildContext context, {required String title, required String sub}) =>
+    showSheet<PickedPlace>(context, (_) => _PlaceSheet(title: title, sub: sub));
+
 class _PlaceSheet extends StatefulWidget {
   final String title;
-  const _PlaceSheet({required this.title});
+  final String sub;
+  const _PlaceSheet({required this.title, required this.sub});
 
   @override
   State<_PlaceSheet> createState() => _PlaceSheetState();
@@ -406,7 +477,7 @@ class _PlaceSheetState extends State<_PlaceSheet> {
     }
   }
 
-  void _done(String label, double lat, double lng) => Navigator.pop(context, RoutePoint.at(label, lat, lng));
+  void _done(String label, double lat, double lng) => Navigator.pop(context, PickedPlace(label, lat, lng));
 
   @override
   Widget build(BuildContext context) {
@@ -414,7 +485,7 @@ class _PlaceSheetState extends State<_PlaceSheet> {
     final stations = routeStations.where((s) => filter.isEmpty || s.$1.contains(filter)).toList();
     return SheetFrame(
       title: widget.title,
-      sub: '약 1km 칸으로만 저장해요',
+      sub: widget.sub,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
