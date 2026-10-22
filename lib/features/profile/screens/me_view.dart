@@ -44,6 +44,9 @@ class MeView extends StatelessWidget {
   /// 계정 › 동의 · 권한 관리
   final VoidCallback? onOpenConsents;
 
+  /// 나의 활동 › 내 동선(A08)
+  final VoidCallback? onOpenRoutes;
+
   /// 서버에 붙지 못한 사유. null이면 정상 연결.
   final String? serverIssue;
 
@@ -76,6 +79,7 @@ class MeView extends StatelessWidget {
     required this.onOpenActivity,
     required this.onRename,
     this.onOpenConsents,
+    this.onOpenRoutes,
     this.serverIssue,
     this.syncing = false,
     this.lucky,
@@ -127,6 +131,7 @@ class MeView extends StatelessWidget {
             MenuRow('지원한 부탁', trailing: '${stats.applied}건', onTap: onOpenApplied),
             MenuRow('내가 올린 부탁', trailing: '${stats.requested}건', onTap: onOpenMine),
             MenuRow('관심 저장', trailing: '${stats.saved}건', onTap: onOpenSaved),
+            if (onOpenRoutes != null) MenuRow('내 동선', trailing: '최대 6개', onTap: onOpenRoutes),
             if (onOpenProposals != null) MenuRow('내 제안 · 구매 요청', trailing: '$proposalCount건', onTap: onOpenProposals),
             const MenuRow('내 후기', trailing: '준비 중'),
           ],

@@ -37,6 +37,7 @@ import '../features/profile/models/consents.dart';
 import '../features/profile/screens/consent_screen.dart';
 import '../features/profile/screens/me_view.dart';
 import '../features/profile/widgets/consent_widgets.dart';
+import '../features/route/screens/route_screens.dart';
 import '../features/profile/screens/saved_screen.dart';
 import 'app_nav.dart';
 import 'app_session.dart';
@@ -575,6 +576,14 @@ class _HomeShellState extends State<HomeShell> {
         onOpenActivity: goActivity,
         onRename: s.renameNickname,
         onOpenConsents: () => _push(ConsentManageScreen(session: s)),
+        onOpenRoutes: () {
+          final uid = s.myUid;
+          if (uid == null) {
+            s.flash('서버에 연결되면 동선을 등록할 수 있어요');
+            return;
+          }
+          _push(RouteListScreen(uid: uid));
+        },
         serverIssue: s.serverIssue,
         syncing: s.syncing,
         lucky: LuckyCard(nav: social),
