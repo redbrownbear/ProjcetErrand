@@ -29,6 +29,24 @@ service cloud.firestore {
     function optMoney(m, k) { return !(k in m) || m[k] == null || money(m[k]); }
 
     // ── 사용자 ────────────────────────────────────────────────────────────
+    // 동선의 출발 · 도착: 사람이 고른 이름과 동네, 격자만(좌표 없음)
+    function routePoint(p) {
+      return p is map && p.keys().hasOnly(['label', 'area', 'cell6'])
+          && str(p.label, 1, 40) && optStr(p, 'area', 30)
+          && p.cell6 is string && p.cell6.matches('^[0-9b-hjkmnp-z]{6}$');
+    }
+    function routeValid(m) {
+      return str(m.name, 1, 20)
+          && routePoint(m.from) && routePoint(m.to)
+          && m.days is list && m.days.size() >= 1 && m.days.size() <= 7
+          && m.window is map && m.window.keys().hasOnly(['start', 'end'])
+          && m.window.start is string && m.window.start.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')
+          && m.window.end is string && m.window.end.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')
+          && m.mode in ['walk', 'transit', 'car', 'bike']
+          && m.radiusM is int && m.radiusM >= 100 && m.radiusM <= 8000
+          && m.active is bool;
+    }
+
     // 서버만 쓰는 필드: 포인트 사본, 본인인증, 운영자 역할, 이용 정지, 집계
     function serverUserFields() { return ['points', 'verified', 'role', 'suspended', 'stats']; }
 
@@ -49,6 +67,16 @@ service cloud.firestore {
         allow read: if isMe(uid);
         allow update: if isMe(uid) && changedOnly(['readAt']);
       }
+      // 정기 동선(W6 · A02). 본인만. 정확한 좌표는 못 쓰고 격자(geohash 6자리)와 이름만.
+      // 매칭용 격자(cells · overLimit · cellsAt)는 서버 트리거 onRouteWrite만 쓴다
+      match /routes/{routeId} {
+        allow read, delete: if isMe(uid);
+        allow create: if isMe(uid) && routeValid(incoming())
+          && onlyKeys(['name', 'from', 'to', 'days', 'window', 'mode', 'radiusM', 'active', 'createdAt', 'updatedAt']);
+        allow update: if isMe(uid) && routeValid(incoming())
+          && !incoming().diff(resource.data).affectedKeys().hasAny(['cells', 'overLimit', 'cellsAt', 'createdAt']);
+      }
+
       // 동의 · 철회 기록(A21). 추가만 하고 고치거나 지우지 않는다. 시각은 서버 시각만 받는다
       match /consentLog/{id} {
         allow read: if isMe(uid);

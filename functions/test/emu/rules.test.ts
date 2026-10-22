@@ -229,6 +229,43 @@ describe('거래 사진', () => {
   });
 });
 
+describe('정기 동선', () => {
+  const route = (extra: Record<string, unknown> = {}) => ({
+    name: '출근',
+    from: { label: '방배역', area: '방배동', cell6: 'wydm9q' },
+    to: { label: '강남역', area: '역삼동', cell6: 'wydm9x' },
+    days: [1, 2, 3, 4, 5],
+    window: { start: '08:00', end: '09:00' },
+    mode: 'transit',
+    radiusM: 500,
+    active: true,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    ...extra,
+  });
+  const ref = (uid: string, id = 'r1') => doc(db(uid), 'users', OWNER, 'routes', id);
+
+  test('본인만 격자 · 요일 · 시간대로 저장한다', async () => {
+    await assertSucceeds(setDoc(ref(OWNER), route()));
+    await assertSucceeds(getDoc(ref(OWNER)));
+    await assertFails(getDoc(ref(STRANGER)));
+    await assertFails(setDoc(ref(STRANGER, 'r2'), route()));
+  });
+
+  test('정확한 좌표 · 서버 격자 · 이상한 값은 거부', async () => {
+    await assertFails(setDoc(ref(OWNER, 'a'), route({ from: { label: '집', cell6: 'wydm9q', lat: 37.48, lng: 126.99 } })));
+    await assertFails(setDoc(ref(OWNER, 'b'), route({ cells: ['wydm9q'] })));
+    await assertFails(setDoc(ref(OWNER, 'c'), route({ window: { start: '25:00', end: '09:00' } })));
+    await assertFails(setDoc(ref(OWNER, 'd'), route({ radiusM: 50 })));
+    await assertFails(setDoc(ref(OWNER, 'e'), route({ mode: 'plane' })));
+    await assertFails(setDoc(ref(OWNER, 'f'), route({ to: { label: '강남역', cell6: 'WYDM9X' } })));
+    await assertSucceeds(setDoc(ref(OWNER, 'g'), route()));
+    await assertFails(updateDoc(ref(OWNER, 'g'), { cells: ['x'] }));
+    await assertSucceeds(updateDoc(ref(OWNER, 'g'), { active: false, updatedAt: serverTimestamp() }));
+    await assertSucceeds(deleteDoc(ref(OWNER, 'g')));
+  });
+});
+
 describe('운영 설정', () => {
   test('로그인한 사람은 읽고, 아무도 앱에서 고치지 못한다', async () => {
     await assertSucceeds(getDoc(doc(db(OWNER), 'config', 'safety')));

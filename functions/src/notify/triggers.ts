@@ -5,6 +5,7 @@ import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { getMessaging } from 'firebase-admin/messaging';
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 
+import { computeRouteCells } from '../route/core';
 import { screenRequest } from '../safety/screen';
 import { deliver, PushSender } from './deliver';
 import { applicationEvents, NotifyEvent, tradeEvents } from './events';
@@ -49,4 +50,9 @@ export const onTradeWrite = onDocumentWritten('trades/{tradeId}', async (event) 
 /** 부탁 글이 올라오거나 고쳐지면 금지 품목 · 물건값 상한을 본다(A20) */
 export const onRequestWrite = onDocumentWritten('requests/{requestId}', async (event) => {
   await screenRequest(getFirestore(), event.params.requestId, event.data?.before.data(), event.data?.after.data(), fcm);
+});
+
+/** 정기 동선이 생기거나 바뀌면 매칭용 격자를 계산한다(W6 · A02) */
+export const onRouteWrite = onDocumentWritten('users/{uid}/routes/{routeId}', async (event) => {
+  await computeRouteCells(getFirestore(), event.params.uid, event.params.routeId, event.data?.before.data(), event.data?.after.data());
 });

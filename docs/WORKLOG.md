@@ -141,6 +141,14 @@
 
 ## 기록
 
+### 2026-10-22 · 미커밋 · Claude (A02 동선 데이터 구조 — W6)
+- 추가(서버): `users/{uid}/routes/{id}` 규칙 — 본인만, 이름 · 출발/도착(이름 · 동 · **geohash 6자리 격자만**, 좌표 거부) · 요일 · 시간대 · 이동수단 ·
+  반경 100m~8km(시안 v80) · 켜기/끄기. 매칭 격자 `cells`는 앱이 못 쓰고 트리거 `onRouteWrite`(`functions/src/route/`)가 출발→도착 선분 + 반경으로 계산(최대 300칸).
+  한 사람당 6개(시안 v80) — 넘친 동선은 격자를 비우고 `overLimit`. 테스트 `test/unit/geohash.test.ts` · `test/emu/route.test.ts` · 규칙 테스트
+- 추가(앱): `core/utils/geohash.dart`(서버와 같은 계산), `features/route/models/commute_route.dart` · `repositories/route_repository.dart`, `test/route_model_test.dart`.
+  화면(A08 주 동선 입력)은 다음 커밋
+- 1회성 동선(A09 가는 김에)은 이미 `requests`(mode going)라 따로 만들지 않음. 설계 문서의 `users/{uid}/trips` · `tripPosts`는 쓰지 않는다
+
 ### 2026-10-22 · fb5c6f1 외 · Claude (A37 완료 사진 · 영수증)
 - 추가(서버): Storage 규칙 `firebase/storage.rules`(`trades/{tradeId}/{uid}/…` — 거래 당사자만 읽기, 본인 폴더에 이미지 5MB까지 새 파일만),
   `firebase.json`에 storage. 서버 함수 `addTradePhoto`(`functions/src/photo/`) — 진행 중 거래에만, 본인 폴더 경로만, 영수증은 금액 필수, 거래마다 20장,
