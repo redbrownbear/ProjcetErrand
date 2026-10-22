@@ -154,7 +154,6 @@ class _HeroBody extends StatelessWidget {
   final Widget? bubble;
 
   const _HeroBody({
-    super.key,
     required this.sub,
     required this.title,
     this.liveBold,
