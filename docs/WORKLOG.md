@@ -141,7 +141,7 @@
 
 ## 기록
 
-### 2026-10-23 · 미커밋 · Claude (A38 채팅 사진 전송)
+### 2026-10-23 · 17c0c0d · Claude (A38 채팅 사진 전송)
 - 추가(서버): `sendMessage`에 `photoPath` — 내 폴더(`trades/{id}/{uid}/`, 거래 사진과 같은 Storage 규칙)에 올린 파일만, 글 없이도 보냄, 거래마다 30장(`chatPhotoCount`).
   마지막 메시지 · 푸시는 '사진'. 테스트 `test/emu/chat.test.ts`
 - 추가(앱): 채팅방 입력줄 왼쪽 **사진 보내기**(카메라 · 앨범), 말풍선에 사진(누르면 크게 보기). 사진은 링크 대신 규칙을 거치는 `PhotoRepository.load`로 읽는다
