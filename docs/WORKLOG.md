@@ -141,7 +141,7 @@
 
 ## 기록
 
-### 2026-10-23 · 미커밋 · Claude (A15 제안하기 서버 저장)
+### 2026-10-23 · 3444258 · Claude (A15 제안하기 서버 저장)
 - 추가(서버): `functions/src/proposal/` — `createProposal`(국내는 다른 지역 이동만 · 금지 품목 · 1명당 물건값 상한(`config/safety`) · 오늘부터 60일 · 인원 0(제한 없음)~15 ·
   전달 방식 `each`(구매자마다 따로) / `meet`(정한 장소 · 시간에 한꺼번에, 장소 필수)), `joinProposal`(정원 · 날짜 · 차단 · 정지 확인, 두 번 눌러도 한 자리),
   `leaveProposal`(모집 중일 때만), `decideProposal`(제안자: `proceed` 지금 인원으로 진행 — 새 신청 막음 / `cancel` 취소 — 신청 모두 취소). 알림 `proposal.join · leave · proceed · cancelled`
