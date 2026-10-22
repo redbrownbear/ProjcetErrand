@@ -141,7 +141,7 @@
 
 ## 기록
 
-### 2026-10-23 · 미커밋 · Claude (A30 제안 자리 예약 · 정원 늘리기)
+### 2026-10-23 · 2bfde2f 외 · Claude (A30 제안 자리 예약 · 정원 늘리기)
 - 추가(서버): 정원이 찬 제안에 **대기 예약**(`joinProposal`에 `wait: true` — join `status: 'waiting'` · `waitedAt`, 제안 `waitCount`, 대기 15명까지, 제안자 알림 `proposal.wait`).
   구매 요청을 취소하면 맨 앞 대기자가 자리를 이어받고, `raiseProposalMax`(제안자, 지금보다 많은 인원 · 0 = 제한 없음)로 정원을 늘리면 늘어난 만큼 먼저 온 순서로 자동 참여(`proposal.promoted`).
   '지금 인원으로 진행' · '제안 취소' 때 대기는 끝난다(`proposal.waitClosed` / `proposal.cancelled`). 대기 취소는 `leaveProposal`. 테스트 `test/emu/proposal.test.ts`
