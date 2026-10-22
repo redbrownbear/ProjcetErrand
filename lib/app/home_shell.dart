@@ -27,6 +27,7 @@ import '../features/errand/screens/home/home_content.dart';
 import '../features/errand/screens/list_screen.dart';
 import '../features/errand/screens/overseas_tab.dart';
 import '../features/errand/screens/post/post_request.dart';
+import '../features/errand/screens/trade_photos_screen.dart';
 import '../features/errand/widgets/region_sheet.dart';
 import '../features/lucky/models/tickets.dart';
 import '../features/lucky/widgets/lucky_card.dart';
@@ -325,11 +326,14 @@ class _HomeShellState extends State<HomeShell> {
                 ),
                 onTap: () {
                   Navigator.pop(ctx);
-                  // 댓글 알림은 그 글로, 나머지(지원·거래)는 진행 중인 부탁으로
+                  // 댓글 알림은 그 글로, 사진 알림은 그 거래의 사진으로, 나머지(지원·거래)는 진행 중인 부탁으로
                   final rid = int.tryParse(n.requestId ?? '');
                   final it = rid == null ? null : session.items.where((i) => i.id == rid).firstOrNull;
+                  final photoTrade = n.kind == 'trade.photo' && n.tradeId != null ? session.tradeById(n.tradeId!) : null;
                   if (n.kind == 'request.comment' && it != null) {
                     actions.open(context, it);
+                  } else if (photoTrade != null) {
+                    openPhotos(photoTrade);
                   } else {
                     goActivity();
                   }
@@ -380,6 +384,13 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 
+  /// 거래 한 건의 사진 · 영수증(A37)
+  void openPhotos(ServerTrade t) {
+    final uid = session.myUid;
+    if (uid == null) return;
+    _push(TradePhotosScreen(tradeId: t.id, title: t.title, myUid: uid, open: t.canAddPhoto));
+  }
+
   /// 진행 중인 부탁. 탭이 아니라 홈 배너·채팅에서 여는 전체화면이다.
   void goActivity() => _pushLive(
     () => ScreenFrame(
@@ -404,6 +415,14 @@ class _HomeShellState extends State<HomeShell> {
         openDealChat: (tradeId) {
           final t = session.tradeById(tradeId);
           if (t != null) openChat(t);
+        },
+        openPhotos: (requestId) {
+          final t = session.tradeFor(requestId);
+          if (t != null) openPhotos(t);
+        },
+        openDealPhotos: (tradeId) {
+          final t = session.tradeById(tradeId);
+          if (t != null) openPhotos(t);
         },
         openRequest: (id) {
           final it = session.items.where((i) => i.id == id).firstOrNull;

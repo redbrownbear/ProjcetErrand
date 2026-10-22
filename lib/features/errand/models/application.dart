@@ -100,6 +100,9 @@ class ServerTrade {
   final int? est;
   final String? spot;
 
+  /// 올린 사진 · 영수증 수(A37, 서버가 센다)
+  final int photoCount;
+
   const ServerTrade({
     required this.id,
     required this.requestId,
@@ -118,11 +121,15 @@ class ServerTrade {
     this.ask,
     this.est,
     this.spot,
+    this.photoCount = 0,
   });
 
   bool get isGoing => mode == 'going';
 
   bool get isOpenForChat => status != 'cancelled';
+
+  /// 사진 · 영수증을 올릴 수 있는 단계(서버 addTradePhoto와 같다)
+  bool get canAddPhoto => status == 'matched' || status == 'working' || status == 'confirmation';
   int unreadFor(String uid) => unread[uid] ?? 0;
 
   static ServerTrade? fromDoc(String id, Map<String, dynamic> m) {
@@ -152,6 +159,7 @@ class ServerTrade {
       ask: m['ask'] is String ? m['ask'] as String : null,
       est: m['est'] is int ? m['est'] as int : null,
       spot: m['spot'] is String ? m['spot'] as String : null,
+      photoCount: m['photoCount'] is int ? m['photoCount'] as int : 0,
     );
   }
 }

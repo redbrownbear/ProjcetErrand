@@ -35,6 +35,10 @@ class ActivityView extends StatefulWidget {
   final void Function(String tradeId)? openDealChat;
   final void Function(int requestId)? openRequest;
 
+  /// 거래 사진 · 영수증 열기(A37) — 부탁 id / 가는 김에 거래 id
+  final void Function(int requestId)? openPhotos;
+  final void Function(String tradeId)? openDealPhotos;
+
   /// 전체화면으로 띄울 때는 바깥 [ScreenFrame]이 제목을 그리므로 false를 준다.
   final bool showHeader;
   const ActivityView({
@@ -52,6 +56,8 @@ class ActivityView extends StatefulWidget {
     this.onDeal,
     this.openDealChat,
     this.openRequest,
+    this.openPhotos,
+    this.openDealPhotos,
     this.showHeader = true,
   });
   static void _noop(Application _) {}
@@ -349,6 +355,8 @@ class _ActivityViewState extends State<ActivityView> {
             ),
           if (widget.openChat != null && (widget.canChat?.call(it.id) ?? false))
             _link('상대방과 채팅하기', () => widget.openChat!(it.id)),
+          if (widget.openPhotos != null && (widget.canChat?.call(it.id) ?? false))
+            _link('사진 · 영수증', () => widget.openPhotos!(it.id)),
           if (requester && trade.status == 'confirmation') _link('보완 요청 · 진행 중으로 돌아가기', () => widget.updateTrade(it.id, 'revise')),
           if (trade.canCancel)
             cancelId == it.id
@@ -500,6 +508,8 @@ class _ActivityViewState extends State<ActivityView> {
             ),
           if (d.tradeId != null && t.status != 'cancelled' && widget.openDealChat != null)
             _link('상대방과 채팅하기', () => widget.openDealChat!(d.tradeId!)),
+          if (d.tradeId != null && t.status != 'cancelled' && widget.openDealPhotos != null)
+            _link('사진 · 영수증', () => widget.openDealPhotos!(d.tradeId!)),
           if (d.requester && t.status == 'confirmation' && widget.onDeal != null)
             _link('보완 요청 · 진행 중으로 돌아가기', () => widget.onDeal!(d, 'revise')),
           if (t.canCancel && widget.onDeal != null)

@@ -1,0 +1,30 @@
+rules_version = '2';
+
+// 겸사겸사 Storage 규칙 — 거래 사진(완료 인증 · 영수증, 개발 To-do A37)
+//
+// trades/{tradeId}/{uid}/{파일}
+//  - 읽기: 그 거래의 요청자 · 수행자만(Firestore trades 문서로 확인)
+//  - 올리기: 당사자 본인 폴더에만, 이미지(jpeg · png · webp · heic) 5MB까지, 새 파일만(덮어쓰기 · 지우기 없음)
+// 올린 뒤 서버 함수 addTradePhoto가 거래에 붙인다. 그 밖의 경로는 모두 막는다.
+// 배포: firebase deploy --project dev --only storage
+service firebase.storage {
+  match /b/{bucket}/o {
+    function party(tradeId) {
+      let t = firestore.get(/databases/(default)/documents/trades/$(tradeId)).data;
+      return request.auth != null && request.auth.uid in [t.requesterUid, t.helperUid];
+    }
+
+    match /trades/{tradeId}/{uid}/{file} {
+      allow read: if party(tradeId);
+      allow create: if party(tradeId)
+                    && request.auth.uid == uid
+                    && request.resource.size < 5 * 1024 * 1024
+                    && request.resource.contentType.matches('image/(jpeg|png|webp|heic)');
+      allow update, delete: if false;
+    }
+
+    match /{all=**} {
+      allow read, write: if false;
+    }
+  }
+}

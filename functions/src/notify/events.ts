@@ -17,7 +17,8 @@ export type NotifyKind =
   | 'trade.cancelled'
   | 'chat.message'
   | 'request.comment'
-  | 'request.hidden';
+  | 'request.hidden'
+  | 'trade.photo';
 
 export interface NotifyEvent {
   to: string;

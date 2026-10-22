@@ -173,6 +173,13 @@ service cloud.firestore {
       allow read: if signedIn()
                   && (resource.data.requesterUid == request.auth.uid || resource.data.helperUid == request.auth.uid);
 
+      // 완료 사진 · 영수증 목록(A37). 당사자만 읽고, 쓰기는 서버 함수 addTradePhoto만
+      match /photos/{photoId} {
+        allow read: if signedIn()
+                    && request.auth.uid in [get(/databases/$(database)/documents/trades/$(tradeId)).data.requesterUid,
+                                            get(/databases/$(database)/documents/trades/$(tradeId)).data.helperUid];
+      }
+
       // 최소 채팅(결정 5): 거래 당사자만 읽는다. 쓰기는 서버 함수 sendMessage만(연락처 가리기를 거친다)
       match /messages/{messageId} {
         allow read: if signedIn()

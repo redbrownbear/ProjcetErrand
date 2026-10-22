@@ -74,6 +74,7 @@ beforeEach(async () => {
     await setDoc(doc(f, 'requests', RID, 'applications', HELPER), { helperUid: HELPER, requesterUid: OWNER, status: 'pending' });
     await setDoc(doc(f, 'trades', 't1'), { requestId: RID, requesterUid: OWNER, helperUid: HELPER, status: 'matched' });
     await setDoc(doc(f, 'trades', 't1', 'messages', 'm1'), { senderUid: HELPER, text: '도착했어요' });
+    await setDoc(doc(f, 'trades', 't1', 'photos', 'p1'), { uid: HELPER, kind: 'receipt', amount: 4500, path: `trades/t1/${HELPER}/a.jpg` });
     await setDoc(doc(f, 'users', OWNER), { nickname: '요청자', points: 100 });
   });
 });
@@ -216,6 +217,15 @@ describe('사용자 문서', () => {
     await assertSucceeds(setDoc(doc(db(OWNER), 'users', OWNER, 'bookmarks', RID), { createdAt: serverTimestamp() }));
     await assertSucceeds(setDoc(doc(db(OWNER), 'users', OWNER, 'fcmTokens', 'tok'), { platform: 'android' }));
     await assertFails(setDoc(doc(db(STRANGER), 'users', OWNER, 'blocks', HELPER), { at: serverTimestamp() }));
+  });
+});
+
+describe('거래 사진', () => {
+  test('당사자만 읽고, 아무도 직접 쓰지 못한다', async () => {
+    await assertSucceeds(getDoc(doc(db(OWNER), 'trades', 't1', 'photos', 'p1')));
+    await assertSucceeds(getDoc(doc(db(HELPER), 'trades', 't1', 'photos', 'p1')));
+    await assertFails(getDoc(doc(db(STRANGER), 'trades', 't1', 'photos', 'p1')));
+    await assertFails(setDoc(doc(db(HELPER), 'trades', 't1', 'photos', 'p2'), { uid: HELPER, kind: 'proof', path: 'x' }));
   });
 });
 

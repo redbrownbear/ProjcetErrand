@@ -22,3 +22,4 @@ export { onApplicationWrite, onRequestWrite, onTradeWrite } from './notify/trigg
 export { adminResolveReport, adminSetSuspended } from './admin/callables';
 export { markChatRead, sendMessage } from './chat/callables';
 export { addComment } from './comment/callables';
+export { addTradePhoto } from './photo/callables';

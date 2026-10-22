@@ -141,6 +141,16 @@
 
 ## 기록
 
+### 2026-10-22 · 미커밋 · Claude (A37 완료 사진 · 영수증)
+- 추가(서버): Storage 규칙 `firebase/storage.rules`(`trades/{tradeId}/{uid}/…` — 거래 당사자만 읽기, 본인 폴더에 이미지 5MB까지 새 파일만),
+  `firebase.json`에 storage. 서버 함수 `addTradePhoto`(`functions/src/photo/`) — 진행 중 거래에만, 본인 폴더 경로만, 영수증은 금액 필수, 거래마다 20장,
+  `trades/{id}/photos` 기록 · `photoCount` · 상대방 알림(`trade.photo`). 규칙: photos는 당사자만 읽고 앱은 못 씀. 테스트 `test/emu/photo.test.ts`
+- 추가(앱): `firebase_storage` · `image_picker` 패키지, `errand/repositories/photo_repository.dart`, **사진 · 영수증 화면**(`trade_photos_screen.dart` —
+  영수증(금액) · 완료 사진 올리기, 영수증 합계, 크게 보기). 진행 중인 부탁 카드 · 가는 김에 거래 카드에 '사진 · 영수증' 줄, 사진 알림을 누르면 그 화면으로.
+  사진은 다운로드 링크 대신 규칙을 거치는 `getData`로 읽는다(링크는 누구나 열 수 있어서). iOS 카메라 · 사진 권한 문구
+- 할 일: **Firebase 콘솔 › Storage › 시작하기**(서울 리전 권장)로 버킷을 만든 뒤 `firebase deploy --project dev --only storage,functions,firestore`.
+  패키지 버전은 CI가 고른 뒤 고정(우선 `any`)
+
 ### 2026-10-22 · 4f61af0 외 · Claude (A35 App Check 앱 연결 · dev 배포)
 - 변경: dev에 함수 · 규칙 v2 · 색인 배포 완료(사용자, 2026-10-22). 다음 할 일의 'W3 앱 반영본 배포' 지움
 - 추가(A35): `firebase_app_check` 패키지, `core/backend/app_check.dart` — 출시 빌드 Play Integrity · App Attest, 디버그 빌드는 디버그 제공자.
