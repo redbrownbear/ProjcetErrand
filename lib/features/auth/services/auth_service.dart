@@ -1,8 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
 import 'package:flutter/foundation.dart';
 
 import '../../../core/backend/backend.dart';
+import '../../profile/models/consents.dart';
 
 /// 로그인·가입. Firebase가 초기화되지 않은 환경(데스크톱·오프라인)에서도
 /// **인스턴스를 만드는 것만으로 예외가 나면 안 된다.** 그래서 플러그인 객체를
@@ -45,7 +47,13 @@ class AuthService {
     await auth.signInWithEmailAndPassword(email: email, password: password);
   }
 
-  Future<void> signUp({required String email, required String password, required String nickname}) async {
+  /// [consents]는 가입 화면에서 고른 동의(필수 + 선택). 프로필 문서와 함께 저장하고 동의 기록을 남긴다.
+  Future<void> signUp({
+    required String email,
+    required String password,
+    required String nickname,
+    Map<String, bool> consents = const {},
+  }) async {
     final auth = _auth;
     if (auth == null) throw const ServerUnavailable();
     final cred = await auth.createUserWithEmailAndPassword(email: email, password: password);
@@ -54,18 +62,27 @@ class AuthService {
       // 프로필 문서 저장은 부가 기능 — Firestore가 아직 준비 안 됐거나 느려도
       // 계정 생성(로그인) 자체는 막지 않도록 타임아웃을 두고 실패를 삼킴.
       // (실패해도 다음 로그인 때 UserRepository.ensureProfile이 다시 만든다)
-      await _db
-          ?.collection('users')
-          .doc(cred.user!.uid)
-          .set({
-            'email': email,
-            'nickname': nickname,
-            'points': 0,
-            'verified': false,
-            'createdAt': FieldValue.serverTimestamp(),
-            'updatedAt': FieldValue.serverTimestamp(),
-          })
-          .timeout(const Duration(seconds: 8));
+      // 포인트 · 본인인증은 서버만 쓰는 필드라(보안 규칙 v2) 넣지 않는다
+      final db = _db;
+      if (db != null) {
+        final doc = db.collection('users').doc(cred.user!.uid);
+        final batch = db.batch();
+        final now = FieldValue.serverTimestamp();
+        batch.set(doc, {
+          'email': email,
+          'nickname': nickname,
+          if (consents.isNotEmpty)
+            'consents': {
+              for (final e in consents.entries) e.key: {'on': e.value, 'v': Consents.version, 'at': now},
+            },
+          'createdAt': now,
+          'updatedAt': now,
+        });
+        for (final e in consents.entries) {
+          batch.set(doc.collection('consentLog').doc(), {'key': e.key, 'on': e.value, 'v': Consents.version, 'at': now});
+        }
+        await batch.commit().timeout(const Duration(seconds: 8));
+      }
     } catch (_) {
       // ignore
     }

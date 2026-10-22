@@ -5,6 +5,7 @@ import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { getMessaging } from 'firebase-admin/messaging';
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 
+import { screenRequest } from '../safety/screen';
 import { deliver, PushSender } from './deliver';
 import { applicationEvents, NotifyEvent, tradeEvents } from './events';
 
@@ -43,4 +44,9 @@ export const onTradeWrite = onDocumentWritten('trades/{tradeId}', async (event) 
   const before = event.data?.before.data();
   const after = event.data?.after.data();
   await send(tradeEvents(event.params.tradeId, before, after), event.params.tradeId, stamp(after));
+});
+
+/** 부탁 글이 올라오거나 고쳐지면 금지 품목 · 물건값 상한을 본다(A20) */
+export const onRequestWrite = onDocumentWritten('requests/{requestId}', async (event) => {
+  await screenRequest(getFirestore(), event.params.requestId, event.data?.before.data(), event.data?.after.data(), fcm);
 });

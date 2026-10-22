@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/config/location_consent.dart';
 import '../../../core/net/api_client.dart';
 import '../../../core/net/coupang_partners_api.dart';
 import '../../../core/net/place_api.dart';
@@ -280,6 +281,12 @@ class MissionRunner {
   /// 날씨는 동네 중심 좌표로도 충분하지만 체크인은 그러면 안 되므로 구분한다.
   Future<(double, double, bool)> _coords({bool requirePrecise = false}) async {
     try {
+      // 위치 정보 이용(선택 동의)에 동의하지 않았으면 동네 중심으로 대신한다. 날씨처럼 대략이면 되는 곳은 묻지 않고,
+      // 체크인처럼 정확한 위치가 필요할 때만 동의를 묻는다(거절하면 체크인은 실패 처리)
+      if (!LocationConsent.allowed && (!requirePrecise || !await LocationConsent.ensure())) {
+        final center = centerOf(scope);
+        return (center.$1, center.$2, requirePrecise);
+      }
       var perm = await Geolocator.checkPermission();
       if (perm == LocationPermission.denied) perm = await Geolocator.requestPermission();
       if (perm != LocationPermission.denied && perm != LocationPermission.deniedForever) {

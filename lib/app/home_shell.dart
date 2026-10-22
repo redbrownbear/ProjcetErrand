@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/config/location_consent.dart';
 import '../core/navigation/screen_route.dart';
 import '../core/theme/colors.dart';
 import '../core/utils/formatters.dart';
@@ -31,7 +32,10 @@ import '../features/lucky/models/tickets.dart';
 import '../features/lucky/widgets/lucky_card.dart';
 import '../features/market/models/used_item.dart';
 import '../features/pay/screens/pay_screen.dart';
+import '../features/profile/models/consents.dart';
+import '../features/profile/screens/consent_screen.dart';
 import '../features/profile/screens/me_view.dart';
+import '../features/profile/widgets/consent_widgets.dart';
 import '../features/profile/screens/saved_screen.dart';
 import 'app_nav.dart';
 import 'app_session.dart';
@@ -104,6 +108,7 @@ class _HomeShellState extends State<HomeShell> {
     store.toast = session.flash;
     store.gate = requireLogin;
     store.addListener(_onSessionChanged);
+    LocationConsent.ask = _askLocation;
     Future.delayed(const Duration(milliseconds: 1600), () {
       if (mounted && splash) setState(() => splash = false);
     });
@@ -112,6 +117,7 @@ class _HomeShellState extends State<HomeShell> {
   @override
   void dispose() {
     session.removeListener(_onSessionChanged);
+    if (LocationConsent.ask == _askLocation) LocationConsent.ask = null;
     session.dispose();
     store.removeListener(_onSessionChanged);
     store.dispose();
@@ -119,7 +125,28 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   void _onSessionChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    setState(() {});
+    if (session.needsConsent && !_consentOpen) {
+      _consentOpen = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (mounted) {
+          await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ConsentGateScreen(session: session)));
+        }
+        _consentOpen = false;
+      });
+    }
+  }
+
+  /// 필수 동의 화면이 떠 있는 중
+  bool _consentOpen = false;
+
+  /// 지도 · 체크인이 위치를 쓰려 할 때. 동의하면 저장하고 true
+  Future<bool> _askLocation() async {
+    if (!mounted) return false;
+    final ok = await showLocationConsentSheet(context);
+    if (ok) session.setConsents({Consents.location: true});
+    return ok;
   }
 
   /// 출석·미션은 자체 적립 안내가 뜨므로 응모권 안내는 조용히 쌓는다.
@@ -528,6 +555,7 @@ class _HomeShellState extends State<HomeShell> {
         onOpenMine: () => _openFilteredList('내가 올린 부탁', (i) => i.isMine),
         onOpenActivity: goActivity,
         onRename: s.renameNickname,
+        onOpenConsents: () => _push(ConsentManageScreen(session: s)),
         serverIssue: s.serverIssue,
         syncing: s.syncing,
         lucky: LuckyCard(nav: social),

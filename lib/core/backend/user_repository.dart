@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../features/benefits/models/coupon.dart';
 import '../../features/errand/models/offer.dart';
 import '../../features/errand/models/trade.dart';
+import '../../features/profile/models/consents.dart';
 import '../../features/profile/models/user_profile.dart';
 import 'backend.dart';
 
@@ -50,7 +51,14 @@ class UserRepository {
         return profile;
       }
       final fresh = UserProfile.blank(uid: uid, email: email, nickname: nickname);
-      await _doc.set({...fresh.toMap(), 'createdAt': FieldValue.serverTimestamp(), 'updatedAt': FieldValue.serverTimestamp()});
+      // 포인트 · 본인인증은 서버만 쓰는 필드라(보안 규칙 v2) 만들 때 넣지 않는다
+      await _doc.set({
+        'email': fresh.email,
+        'nickname': fresh.nickname,
+        'region': ?fresh.region,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
       return fresh;
     }, null);
   }
@@ -66,6 +74,34 @@ class UserRepository {
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true)),
   );
+
+  // ── 동의 ────────────────────────────────────────────────────────────────
+
+  /// `users/{uid}.consents`. 문서가 없거나 못 읽으면 null(빈 값과 구분해 동의 화면을 띄울지 정한다).
+  Future<Consents?> loadConsents() => Backend.guard<Consents?>(() async {
+    final raw = (await _doc.get()).data()?['consents'];
+    if (raw is! Map) return const Consents();
+    return Consents.fromJson({
+      for (final e in raw.entries)
+        if (e.value is Map) '${e.key}': {...(e.value as Map), 'at': _date((e.value as Map)['at'])},
+    });
+  }, null);
+
+  static String? _date(Object? v) => v is Timestamp ? v.toDate().toIso8601String() : (v is String ? v : null);
+
+  /// 바뀐 항목만 현재 값으로 덮고, 바꾼 기록을 `consentLog`에 하나씩 남긴다(시각은 서버 시각).
+  Future<void> saveConsents(Consents c, List<String> changed) => Backend.push(() async {
+    if (changed.isEmpty) return;
+    final batch = Backend.db.batch();
+    final map = <String, Object?>{};
+    for (final k in changed) {
+      final v = c[k]!;
+      map[k] = {'on': v.on, 'v': v.version, 'at': FieldValue.serverTimestamp()};
+      batch.set(_sub('consentLog').doc(), {'key': k, 'on': v.on, 'v': v.version, 'at': FieldValue.serverTimestamp()});
+    }
+    batch.set(_doc, {'consents': map, 'updatedAt': FieldValue.serverTimestamp()}, SetOptions(merge: true));
+    await batch.commit();
+  });
 
   // ── 관심 저장 ───────────────────────────────────────────────────────────
 

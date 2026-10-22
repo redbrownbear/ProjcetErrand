@@ -49,6 +49,16 @@ service cloud.firestore {
         allow read: if isMe(uid);
         allow update: if isMe(uid) && changedOnly(['readAt']);
       }
+      // 동의 · 철회 기록(A21). 추가만 하고 고치거나 지우지 않는다. 시각은 서버 시각만 받는다
+      match /consentLog/{id} {
+        allow read: if isMe(uid);
+        allow create: if isMe(uid)
+          && onlyKeys(['key', 'on', 'v', 'at'])
+          && incoming().key in ['terms', 'privacy', 'age14', 'location', 'marketing', 'night']
+          && incoming().on is bool
+          && str(incoming().v, 1, 20)
+          && incoming().at == request.time;
+      }
       // 포인트 원장: 서버만 쓴다(W8)
       match /pointLedger/{id} { allow read: if isMe(uid); }
 
@@ -58,6 +68,12 @@ service cloud.firestore {
       match /coupons/{id} { allow read: if isMe(uid); }
       match /ledger/{id} { allow read: if isMe(uid); }
       match /payEntries/{id} { allow read: if isMe(uid); }
+    }
+
+    // 운영 설정(금지 품목 · 물건값 상한 등, A20). 앱은 읽기만, 고치는 건 콘솔 · 서버
+    match /config/{id} {
+      allow read: if signedIn();
+      allow write: if false;
     }
 
     // 다른 사람이 볼 수 있는 프로필. 서버가 users 문서에서 골라 만든다

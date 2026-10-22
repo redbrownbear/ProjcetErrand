@@ -17,21 +17,19 @@
 import { FieldValue, Firestore, Timestamp, Transaction } from 'firebase-admin/firestore';
 import { HttpsError } from 'firebase-functions/v2/https';
 
+import { blockedMessage, findBlocked, loadPolicy } from '../safety/policy';
 import { advance, isFinished, isTradeAction, TradeRole, TradeStatus } from '../domain/tradeMachine';
 
-export type RequestStatus = 'open' | 'matched' | 'done' | 'cancelled' | 'expired';
+/** hidden: 금지 품목 · 물건값 상한에 걸려 서버가 내린 글(safety/screen.ts) */
+export type RequestStatus = 'open' | 'matched' | 'done' | 'cancelled' | 'expired' | 'hidden';
 export type ApplicationStatus = 'pending' | 'accepted' | 'rejected' | 'withdrawn' | 'cancelled';
 
 export const LIMITS = {
   maxOfferPrice: 10_000_000,
   maxMsg: 300,
-  /** 가는 김에 '어! 나도' — 건당 물건값 상한(시안 v78) */
-  maxGoingItemPrice: 50_000,
   maxSpot: 20,
 } as const;
 
-/** 가는 김에로 부탁할 수 없는 물건 — 주류·담배·의약품(처방·수면제 등) */
-export const BLOCKED_ITEMS = /(술|소주|맥주|와인|막걸리|양주|주류|담배|전자담배|처방|마약|수면제|의약품)/;
 
 // ── 입력 검사 ─────────────────────────────────────────────────────────────
 
@@ -105,6 +103,7 @@ export async function applyToRequest(db: Firestore, uid: string, data: unknown) 
   // 가는 김에 '어! 나도': 예상 물건값·받는 곳 (일반 지원에는 없다)
   const est = input.est === undefined || input.est === null ? undefined : optPrice(input.est);
   const spot = typeof input.spot === 'string' && input.spot.trim() ? input.spot.trim().slice(0, LIMITS.maxSpot) : undefined;
+  const policy = await loadPolicy(db);
 
   return db.runTransaction(async (tx) => {
     const now = Timestamp.now();
@@ -117,9 +116,10 @@ export async function applyToRequest(db: Firestore, uid: string, data: unknown) 
     const giving = isGiving(req.get('mode'));
     if (giving) {
       if (!msg || msg.length < 2) throw new HttpsError('invalid-argument', '무엇을 부탁할지 적어 주세요.');
-      if (BLOCKED_ITEMS.test(msg)) throw new HttpsError('invalid-argument', '주류·담배·의약품 같은 물건은 부탁할 수 없어요.');
-      if (est !== undefined && est > LIMITS.maxGoingItemPrice) {
-        throw new HttpsError('invalid-argument', `물건값은 건당 ${LIMITS.maxGoingItemPrice.toLocaleString('ko-KR')}원까지 부탁할 수 있어요.`);
+      const word = findBlocked(msg, policy);
+      if (word) throw new HttpsError('invalid-argument', blockedMessage(word));
+      if (est !== undefined && est > policy.maxItemPrice) {
+        throw new HttpsError('invalid-argument', `물건값은 건당 ${policy.maxItemPrice.toLocaleString('ko-KR')}원까지 부탁할 수 있어요.`);
       }
       if (req.get('closed') === true) throw new HttpsError('failed-precondition', '부탁 접수가 마감됐어요.');
       const cap = req.get('capacity');

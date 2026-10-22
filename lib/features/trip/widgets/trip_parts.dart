@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../app/app_nav.dart';
+import '../../../core/compliance/safety_policy.dart';
 import '../../../core/theme/colors.dart';
 import '../../errand/models/task_item.dart';
 import '../../errand/screens/map/map_canvas.dart';
@@ -15,11 +16,8 @@ const tripKinds = ['사다주기', '물건 전달', '줄서기·예약', '사진
 /// 부탁 비용 추천 — 물건값 1만 원 미만 1,500원 · 5만 원 미만 3,000원 · 그 이상 5,000원
 int recommendedFee(int itemPrice) => itemPrice < 10000 ? 1500 : (itemPrice < 50000 ? 3000 : 5000);
 
-/// 건당 물건값 상한 (서버 LIMITS.maxGoingItemPrice와 같다)
-const tripMaxItemPrice = 50000;
-
-/// 주류·담배·의약품은 부탁할 수 없다 (서버 BLOCKED_ITEMS와 같은 목록)
-final tripBlocked = RegExp(r'(술|소주|맥주|와인|막걸리|양주|주류|담배|전자담배|처방|마약|수면제|의약품)');
+/// 건당 물건값 상한 (서버 config/safety 기본값과 같다, [SafetyPolicy])
+const tripMaxItemPrice = SafetyPolicy.maxItemPrice;
 
 DateTime _day0(DateTime d) => DateTime(d.year, d.month, d.day);
 

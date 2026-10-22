@@ -2,6 +2,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/colors.dart';
+import '../../profile/models/consents.dart';
+import '../../profile/widgets/consent_widgets.dart';
 import '../services/auth_service.dart';
 import '../widgets/auth_widgets.dart';
 
@@ -18,6 +20,9 @@ class _SignupScreenState extends State<SignupScreen> {
   final _passwordCtrl = TextEditingController();
   final _passwordCheckCtrl = TextEditingController();
   bool _loading = false;
+
+  /// 필수 · 선택 동의. 선택은 기본 꺼짐
+  Map<String, bool> _consents = const {};
   String? _error;
 
   @override
@@ -41,12 +46,22 @@ class _SignupScreenState extends State<SignupScreen> {
       setState(() => _error = '비밀번호가 일치하지 않아요.');
       return;
     }
+    if (!Consents.items.where((i) => i.required).every((i) => _consents[i.key] ?? false)) {
+      setState(() => _error = '필수 항목에 동의해 주세요.');
+      return;
+    }
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      await _auth.signUp(email: email, password: password, nickname: nickname);
+      await _auth.signUp(
+        email: email,
+        password: password,
+        nickname: nickname,
+        // 고르지 않은 선택 항목은 꺼짐으로 기록한다
+        consents: {for (final i in Consents.items) i.key: _consents[i.key] ?? false},
+      );
       // AuthGate가 홈으로 전환해줄 수 있도록, 로그인 화면 위에 쌓인 이 화면을 닫아줌.
       if (mounted) Navigator.of(context).pop();
     } on FirebaseAuthException catch (e) {
@@ -104,6 +119,8 @@ class _SignupScreenState extends State<SignupScreen> {
                 onSubmitted: (_) => _submit(),
                 decoration: authFieldDecoration('비밀번호를 한번 더 입력해주세요'),
               ),
+              _label('약관 동의'),
+              ConsentChecklist(values: _consents, onChanged: (v) => setState(() => _consents = v)),
               if (_error != null) AuthError(_error!),
               const SizedBox(height: 22),
               AuthSubmitButton(label: '가입하고 시작하기', loading: _loading, onPressed: _submit),

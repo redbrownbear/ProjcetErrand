@@ -41,6 +41,9 @@ class MeView extends StatelessWidget {
   final VoidCallback onOpenSaved, onOpenApplied, onOpenMine, onOpenActivity;
   final Future<void> Function(String) onRename;
 
+  /// 계정 › 동의 · 권한 관리
+  final VoidCallback? onOpenConsents;
+
   /// 서버에 붙지 못한 사유. null이면 정상 연결.
   final String? serverIssue;
 
@@ -72,6 +75,7 @@ class MeView extends StatelessWidget {
     required this.onOpenMine,
     required this.onOpenActivity,
     required this.onRename,
+    this.onOpenConsents,
     this.serverIssue,
     this.syncing = false,
     this.lucky,
@@ -140,7 +144,7 @@ class MeView extends StatelessWidget {
           rows: [
             MenuRow('신뢰 레벨', trailing: 'Lv.${trust.level}', onTap: () => showTrustSheet(context, trust)),
             MenuRow('본인인증', trailing: (profile?.verified ?? false) ? '완료' : '미완료'),
-            const MenuRow('설정', trailing: '준비 중'),
+            MenuRow('동의 · 권한 관리', onTap: onOpenConsents),
             MenuRow('로그아웃', onTap: () => AuthService().signOut(), danger: true),
           ],
         ),

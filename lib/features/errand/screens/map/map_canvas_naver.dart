@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:geolocator/geolocator.dart';
 
+import '../../../../core/config/location_consent.dart';
 import '../../../../core/config/naver_map_config.dart';
 import '../../../../core/theme/colors.dart';
 import '../../models/task_item.dart';
@@ -100,6 +101,9 @@ class _MapCanvasState extends State<MapCanvas> {
     // 사용자가 지도를 손으로 밀면 플러그인이 내부적으로 follow -> noFollow로 내리기 때문에,
     // 로컬 플래그만 믿으면 버튼은 켜져 있는데 실제로는 안 따라가는 상태가 된다.
     final turningOn = controller.locationTrackingMode != NLocationTrackingMode.follow;
+    // 위치 정보 이용(선택 동의)에 동의하지 않았으면 기기 권한도 묻지 않는다
+    if (turningOn && !await LocationConsent.ensure()) return;
+    if (!mounted) return;
     setState(() => _following = turningOn);
 
     if (!turningOn) {

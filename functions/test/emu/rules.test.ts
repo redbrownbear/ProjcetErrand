@@ -14,6 +14,7 @@ import {
   RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
 import {
+  collection,
   collectionGroup,
   deleteDoc,
   doc,
@@ -184,12 +185,46 @@ describe('사용자 문서', () => {
     await assertFails(setDoc(doc(db(OWNER), 'users', OWNER, 'payEntries', '1'), { amount: 100 }));
   });
 
+  test('가입 때 프로필은 포인트·인증 없이 만들고, 동의는 함께 저장한다', async () => {
+    const NEW = 'newbie';
+    await assertSucceeds(
+      setDoc(doc(db(NEW), 'users', NEW), {
+        email: 'n@x.com',
+        nickname: '새내기',
+        consents: { terms: { on: true, v: '2026-10-22', at: serverTimestamp() } },
+        createdAt: serverTimestamp(),
+      }),
+    );
+    await assertFails(setDoc(doc(db('other'), 'users', 'other'), { nickname: 'x', points: 0, verified: false }));
+  });
+
+  test('동의 기록은 본인이 서버 시각으로 추가만 한다', async () => {
+    const log = (uid: string) => doc(collection(db(uid), 'users', OWNER, 'consentLog'));
+    await assertSucceeds(setDoc(log(OWNER), { key: 'marketing', on: true, v: '2026-10-22', at: serverTimestamp() }));
+    await assertFails(setDoc(log(OWNER), { key: 'marketing', on: true, v: '2026-10-22', at: new Date(0) }));
+    await assertFails(setDoc(log(OWNER), { key: 'points', on: true, v: '2026-10-22', at: serverTimestamp() }));
+    await assertFails(setDoc(log(OWNER), { key: 'marketing', on: 'yes', v: '2026-10-22', at: serverTimestamp() }));
+    await assertFails(setDoc(log(STRANGER), { key: 'marketing', on: true, v: '2026-10-22', at: serverTimestamp() }));
+    await assertSucceeds(setDoc(doc(db(OWNER), 'users', OWNER, 'consentLog', 'fixed'), { key: 'night', on: false, v: '1', at: serverTimestamp() }));
+    await assertFails(updateDoc(doc(db(OWNER), 'users', OWNER, 'consentLog', 'fixed'), { on: true }));
+    await assertFails(deleteDoc(doc(db(OWNER), 'users', OWNER, 'consentLog', 'fixed')));
+  });
+
   test('차단·관심·토큰은 본인이 쓴다, 자기 자신 차단은 불가', async () => {
     await assertSucceeds(setDoc(doc(db(OWNER), 'users', OWNER, 'blocks', HELPER), { at: serverTimestamp() }));
     await assertFails(setDoc(doc(db(OWNER), 'users', OWNER, 'blocks', OWNER), { at: serverTimestamp() }));
     await assertSucceeds(setDoc(doc(db(OWNER), 'users', OWNER, 'bookmarks', RID), { createdAt: serverTimestamp() }));
     await assertSucceeds(setDoc(doc(db(OWNER), 'users', OWNER, 'fcmTokens', 'tok'), { platform: 'android' }));
     await assertFails(setDoc(doc(db(STRANGER), 'users', OWNER, 'blocks', HELPER), { at: serverTimestamp() }));
+  });
+});
+
+describe('운영 설정', () => {
+  test('로그인한 사람은 읽고, 아무도 앱에서 고치지 못한다', async () => {
+    await assertSucceeds(getDoc(doc(db(OWNER), 'config', 'safety')));
+    await assertFails(getDoc(doc(db(), 'config', 'safety')));
+    await assertFails(setDoc(doc(db(OWNER), 'config', 'safety'), { blockedWords: [] }));
+    await assertFails(setDoc(doc(db(OWNER, { role: 'admin' }), 'config', 'safety'), { blockedWords: [] }));
   });
 });
 

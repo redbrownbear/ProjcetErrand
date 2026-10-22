@@ -7,6 +7,7 @@ import '../core/backend/backend.dart';
 import '../core/backend/push_service.dart';
 import '../core/backend/server_api.dart';
 import '../core/backend/user_repository.dart';
+import '../core/config/location_consent.dart';
 import '../core/utils/formatters.dart';
 import '../features/auth/services/auth_service.dart';
 import '../features/benefits/data/point_rules.dart';
@@ -31,6 +32,7 @@ import '../features/pay/models/pay_entry.dart';
 import '../features/pay/pay_config.dart';
 import '../features/pay/repositories/pay_repository.dart';
 import '../features/profile/models/app_notice.dart';
+import '../features/profile/models/consents.dart';
 import '../features/profile/models/trust_level.dart';
 import '../features/profile/models/user_profile.dart';
 import '../features/profile/repositories/safety_repository.dart';
@@ -114,6 +116,12 @@ class AppSession extends ChangeNotifier {
   /// 내가 차단한 사용자 uid. 이 사람들의 부탁은 목록에서 숨긴다.
   Set<String> blocked = {};
 
+  /// 약관 · 개인정보 · 위치 · 혜택 알림 동의 (A21)
+  Consents consents = const Consents();
+
+  /// 이 계정의 서버 동의 값을 읽었는가. 읽은 뒤에야 [needsConsent]를 판단한다(오프라인이면 묻지 않는다)
+  bool _consentLoaded = false;
+
   final PushService _push = PushService();
   SafetyRepository? _safety;
   StreamSubscription<List<AppNotice>>? _noticeSub;
@@ -152,6 +160,8 @@ class AppSession extends ChangeNotifier {
     payEntries = _store.loadPay();
     points = _store.loadPoints();
     coupons = _store.loadCoupons();
+    consents = _store.loadConsents();
+    LocationConsent.allowed = consents.isOn(Consents.location);
 
     _requestSub = _requests.watchOpen().listen((list) => _update(() => _server = list));
     _authSub = AuthService().authStateChanges.listen(_bindUser);
@@ -329,6 +339,7 @@ class AppSession extends ChangeNotifier {
         _pay = null;
         profile = null;
         syncing = false;
+        _consentLoaded = false;
       });
       _markBound(null);
       return;
@@ -378,7 +389,10 @@ class AppSession extends ChangeNotifier {
       payEntries = [];
       points = 0;
       coupons = [];
+      consents = consents.forDevice();
+      _consentLoaded = false;
     });
+    _store.saveConsents(consents);
   }
 
   /// 첫 로그인 이관. 이 기기에 있던 부탁·관심을 계정으로 한 번 올린다.
@@ -403,7 +417,10 @@ class AppSession extends ChangeNotifier {
     final serverCoupons = await repo.loadCoupons();
     final serverLedger = await repo.loadLedger();
     final serverPay = await PayRepository(repo.uid).load();
+    final serverConsents = await repo.loadConsents();
     if (!_stillBound(user)) return;
+    // 서버에 동의 기록이 없는데 이 기기에 같은 계정의 필수 동의가 있으면(가입 때 저장 실패) 올려 둔다
+    final upload = serverConsents != null && serverConsents.isEmpty && consents.requiredDone;
 
     _update(() {
       profile = loaded;
@@ -414,6 +431,18 @@ class AppSession extends ChangeNotifier {
       if (serverBookmarks.isNotEmpty) bookmarks = serverBookmarks;
       if (serverCoupons.isNotEmpty) coupons = serverCoupons;
       if (serverPay.isNotEmpty) payEntries = serverPay;
+      if (serverConsents != null) {
+        _consentLoaded = true;
+        if (!serverConsents.isEmpty) {
+          // 위치는 이 기기 설정이라, 계정에 값이 없으면 이 기기 값을 그대로 둔다
+          final device = consents[Consents.location];
+          consents = Consents({
+            ...serverConsents.map,
+            if (serverConsents[Consents.location] == null && device != null) Consents.location: device,
+          });
+        }
+        LocationConsent.allowed = consents.isOn(Consents.location);
+      }
       if (serverLedger.isNotEmpty) {
         _rewards.restore(serverLedger);
         // 완료한 미션은 따로 저장하지 않고 원장에서 되살린다. 적립 기록이 곧 완료 기록이다.
@@ -431,6 +460,33 @@ class AppSession extends ChangeNotifier {
     _store.savePay(payEntries);
     _store.savePoints(points);
     _store.saveCoupons(coupons);
+    _store.saveConsents(consents);
+    if (upload) repo.saveConsents(consents, [for (final k in consents.map.keys) k]);
+  }
+
+  // ── 동의 ────────────────────────────────────────────────────────────────
+
+  /// 로그인한 계정이 지금 버전의 필수 동의를 아직 안 했다 → 셸이 동의 화면을 띄운다
+  bool get needsConsent => isLoggedIn && _consentLoaded && !consents.requiredDone;
+
+  /// 동의를 바꾼다. 이 기기와 계정(로그인 상태)에 저장하고, 혜택 알림 수신 결과는 날짜와 함께 알려 준다.
+  void setConsents(Map<String, bool> changes) {
+    final before = consents;
+    final next = consents.apply(changes, DateTime.now());
+    final changed = next.changedFrom(before);
+    if (changed.isEmpty) return;
+    _update(() => consents = next);
+    LocationConsent.allowed = next.isOn(Consents.location);
+    _store.saveConsents(next);
+    _user?.saveConsents(next, changed);
+    // 광고성 정보 수신 동의 · 철회는 처리 결과(날짜 · 내용)를 알려야 한다(정보통신망법 제50조 제8항)
+    if (changed.contains(Consents.marketing) || changed.contains(Consents.night)) {
+      final d = next[changed.contains(Consents.marketing) ? Consents.marketing : Consents.night]!.at!;
+      final day = '${d.year}.${d.month}.${d.day}';
+      final what = changed.contains(Consents.marketing) ? '혜택 · 이벤트 알림' : '밤 시간 혜택 알림';
+      final on = next.isOn(changed.contains(Consents.marketing) ? Consents.marketing : Consents.night);
+      flash('$day $what 수신에 ${on ? '동의' : '동의를 철회'}했어요');
+    }
   }
 
   // ── 포인트·쿠폰 ─────────────────────────────────────────────────────────
@@ -999,8 +1055,23 @@ class AppSession extends ChangeNotifier {
     if (!Backend.ready) return;
     final repo = SafetyRepository(uid);
     _safety = repo;
-    _noticeSub = repo.watchNotices().listen((v) => _update(() => notices = v));
+    _noticeSub = repo.watchNotices().listen((v) {
+      _update(() => notices = v);
+      _dropHidden(v);
+    });
     _blockSub = repo.watchBlocked().listen((v) => _update(() => blocked = v));
+  }
+
+  /// 서버가 금지 품목 · 물건값 상한으로 내린 내 글(알림 'request.hidden')은 이 기기 사본에서도 뺀다.
+  /// 안 빼면 남들에겐 안 보이는 글이 내 목록에만 모집 중으로 남는다.
+  void _dropHidden(List<AppNotice> list) {
+    final ids = {
+      for (final n in list)
+        if (n.kind == 'request.hidden' && n.requestId != null) int.tryParse(n.requestId!),
+    }..remove(null);
+    if (!created.any((i) => ids.contains(i.id))) return;
+    _update(() => created = [for (final i in created) if (!ids.contains(i.id)) i]);
+    _store.saveRequests(created);
   }
 
   void _stopSafetyWatch() {

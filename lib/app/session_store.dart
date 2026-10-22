@@ -4,6 +4,7 @@ import '../features/errand/models/offer.dart';
 import '../features/errand/models/task_item.dart';
 import '../features/errand/models/trade.dart';
 import '../features/pay/models/pay_entry.dart';
+import '../features/profile/models/consents.dart';
 
 /// 이 기기에 남기는 사본의 읽기·쓰기.
 ///
@@ -41,6 +42,10 @@ class SessionStore {
       LocalStore.remove(k);
     }
   }
+
+  /// 동의 값. 필수 · 혜택 알림은 계정 것이고, 위치는 이 기기 설정이다([Consents.forDevice]).
+  Consents loadConsents() => Consents.fromJson(LocalStore.read<Map<String, dynamic>>('consents', const {}));
+  void saveConsents(Consents c) => LocalStore.write('consents', c.toJson());
 
   // ── 읽기 ────────────────────────────────────────────────────────────────
 

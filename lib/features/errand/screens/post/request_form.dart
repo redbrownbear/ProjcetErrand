@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/compliance/safety_policy.dart';
 import '../../../../core/storage/local_store.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../benefits/data/point_rules.dart';
@@ -142,14 +143,23 @@ class RequestForm {
 
   /// [step]단계를 넘어갈 수 있는지
   bool readyAt(int step) => switch (step) {
-    0 => title.text.trim().length >= 2 && desc.text.trim().length >= 10,
+    0 => title.text.trim().length >= 2 && desc.text.trim().length >= 10 && _blocked == null,
     1 =>
       place.text.trim().length >= 2 &&
           delivery.text.trim().length >= 2 &&
           deadlineOk &&
           (!pickCountry || (cc.isNotEmpty && city.isNotEmpty)),
-    _ => price >= floor && completion.text.trim().length >= 5 && (going || payment == 'none' || budget > 0),
+    _ =>
+      price >= floor &&
+          completion.text.trim().length >= 5 &&
+          (going || payment == 'none' || (budget > 0 && budget <= _maxBudget)),
   };
+
+  /// 제목 · 설명에 든 금지 품목(서버가 최종 판단, [SafetyPolicy])
+  String? get _blocked => SafetyPolicy.findBlocked('${title.text} ${desc.text}');
+
+  /// 건당 물건값 상한 — 해외 10만 · 그 밖 5만
+  int get _maxBudget => sea ? SafetyPolicy.maxItemPriceSea : SafetyPolicy.maxItemPrice;
 
   bool get ready => [for (var i = 0; i < stepCount; i++) readyAt(i)].every((ok) => ok);
 
@@ -158,6 +168,8 @@ class RequestForm {
     if (readyAt(step)) return null;
     switch (step) {
       case 0:
+        final word = _blocked;
+        if (word != null) return SafetyPolicy.blockedMessage(word);
         return '제목은 2자, 설명은 10자 이상 적어주세요';
       case 1:
         if (going) return pickCountry ? '나라·도시, 들를 곳, 전달 장소와 언제까지 받을지 정해 주세요' : '가는 곳, 전달 장소와 언제까지 받을지 정해 주세요';
@@ -165,6 +177,7 @@ class RequestForm {
       default:
         if (price < floor) return '사례비를 ${nf(floor)}원 이상으로 정해주세요';
         if (!going && payment != 'none' && budget <= 0) return '물품 예산을 입력해 주세요';
+        if (!going && payment != 'none' && budget > _maxBudget) return '물건값은 건당 ${nf(_maxBudget)}원까지 부탁할 수 있어요';
         return '완료 확인 방법을 5자 이상 적어주세요';
     }
   }

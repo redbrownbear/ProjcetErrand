@@ -11,6 +11,7 @@ import { HttpsError } from 'firebase-functions/v2/https';
 
 import { maskContact } from '../chat/mask';
 import { deliver, PushSender } from '../notify/deliver';
+import { blockedMessage, findBlocked, loadPolicy } from '../safety/policy';
 
 export const MAX_COMMENT = 300;
 const MAX_NOTIFY = 10;
@@ -24,6 +25,10 @@ export async function addComment(db: Firestore, uid: string, data: unknown, push
   const raw = typeof input.text === 'string' ? input.text.trim() : '';
   if (!raw) throw new HttpsError('invalid-argument', '댓글을 입력해 주세요.');
   if (raw.length > MAX_COMMENT) throw new HttpsError('invalid-argument', `댓글은 ${MAX_COMMENT}자까지예요.`);
+
+  // 댓글로 금지 품목을 부탁하는 것도 막는다(A20)
+  const word = findBlocked(raw, await loadPolicy(db));
+  if (word) throw new HttpsError('invalid-argument', blockedMessage(word));
 
   const reqRef = db.collection('requests').doc(rid);
   const { text, masked } = maskContact(raw);

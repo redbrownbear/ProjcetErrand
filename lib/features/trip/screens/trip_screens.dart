@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../app/app_nav.dart';
+import '../../../core/compliance/safety_policy.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/kit.dart';
@@ -364,8 +365,8 @@ class _TripSheetState extends State<_TripSheet> {
     final what = item.text.trim();
     final problem = what.length < 2
         ? '부탁할 물건을 2자 이상 적어 주세요'
-        : tripBlocked.hasMatch(what)
-        ? '주류·담배·의약품 같은 물건은 부탁할 수 없어요'
+        : SafetyPolicy.findBlocked(what) != null
+        ? SafetyPolicy.blockedMessage(SafetyPolicy.findBlocked(what)!)
         : _price > tripMaxItemPrice
         ? '물건값은 건당 ${nf(tripMaxItemPrice)}원까지 부탁할 수 있어요'
         : null;
