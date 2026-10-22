@@ -88,13 +88,13 @@ class _PromoBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 표시 · 닫기는 말풍선 바깥으로 튀어나오면 눌리지 않아서(터치는 부모 영역 안에서만), 자리를 비워 두고 안에 놓는다
     return Stack(
-      clipBehavior: Clip.none,
       children: [
-        child,
+        Padding(padding: const EdgeInsets.only(top: 14, right: 6), child: child),
         Positioned(
-          right: -6,
-          top: -10,
+          right: 0,
+          top: 0,
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
