@@ -84,16 +84,7 @@ class PhotoRepository {
     int? amount,
     String note = '',
   }) async {
-    if (!Backend.ready) throw const ServerException('서버에 연결되지 않아 지금은 올릴 수 없어요.');
-    if (bytes.length >= maxBytes) throw const ServerException('사진이 너무 커요(5MB까지).');
-    final ext = contentType.split('/').last;
-    final path = 'trades/$tradeId/$uid/${DateTime.now().millisecondsSinceEpoch}.$ext';
-    try {
-      await FirebaseStorage.instance.ref(path).putData(bytes, SettableMetadata(contentType: contentType));
-    } on FirebaseException catch (e) {
-      debugPrint('사진 올리기 실패: ${e.code} ${e.message}');
-      throw const ServerException('사진을 올리지 못했어요. 잠시 후 다시 시도해 주세요.');
-    }
+    final path = await put(tradeId: tradeId, uid: uid, bytes: bytes, contentType: contentType);
     await ServerApi.call('addTradePhoto', {
       'tradeId': tradeId,
       'kind': kind,
@@ -101,6 +92,27 @@ class PhotoRepository {
       'amount': ?amount,
       if (note.isNotEmpty) 'note': note,
     });
+  }
+
+  /// Storage `trades/{tradeId}/{uid}/`에 파일만 올리고 경로를 돌려준다(거래 사진 · 채팅 사진 공용). 실패하면 [ServerException]
+  static Future<String> put({
+    required String tradeId,
+    required String uid,
+    required Uint8List bytes,
+    String contentType = 'image/jpeg',
+    String prefix = '',
+  }) async {
+    if (!Backend.ready) throw const ServerException('서버에 연결되지 않아 지금은 올릴 수 없어요.');
+    if (bytes.length >= maxBytes) throw const ServerException('사진이 너무 커요(5MB까지).');
+    final ext = contentType.split('/').last;
+    final path = 'trades/$tradeId/$uid/$prefix${DateTime.now().millisecondsSinceEpoch}.$ext';
+    try {
+      await FirebaseStorage.instance.ref(path).putData(bytes, SettableMetadata(contentType: contentType));
+    } on FirebaseException catch (e) {
+      debugPrint('사진 올리기 실패: ${e.code} ${e.message}');
+      throw const ServerException('사진을 올리지 못했어요. 잠시 후 다시 시도해 주세요.');
+    }
+    return path;
   }
 
   /// 사진 내용. 못 읽으면 null

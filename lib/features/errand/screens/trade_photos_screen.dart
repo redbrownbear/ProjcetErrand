@@ -2,7 +2,6 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../../core/backend/server_api.dart';
 import '../../../core/theme/app_theme.dart';
@@ -10,6 +9,7 @@ import '../../../core/theme/colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/kit.dart';
 import '../repositories/photo_repository.dart';
+import '../widgets/photo_pick.dart';
 
 /// 거래 한 건의 사진 · 영수증 (A37). 거래 당사자 둘만 본다.
 ///
@@ -37,27 +37,6 @@ class _TradePhotosScreenState extends State<TradePhotosScreen> {
   late final Stream<List<TradePhoto>> stream = repo.watch();
   bool sending = false;
   String? note;
-
-  Future<ImageSource?> _source() => showSheet<ImageSource>(
-    context,
-    (ctx) => SheetFrame(
-      title: '사진 고르기',
-      child: Column(
-        children: [
-          ListTile(
-            leading: const Icon(Icons.photo_camera_outlined),
-            title: const Text('카메라로 찍기'),
-            onTap: () => Navigator.pop(ctx, ImageSource.camera),
-          ),
-          ListTile(
-            leading: const Icon(Icons.photo_library_outlined),
-            title: const Text('앨범에서 고르기'),
-            onTap: () => Navigator.pop(ctx, ImageSource.gallery),
-          ),
-        ],
-      ),
-    ),
-  );
 
   Future<int?> _askAmount() async {
     final ctrl = TextEditingController();
@@ -93,26 +72,20 @@ class _TradePhotosScreenState extends State<TradePhotosScreen> {
       if (amount == null) return;
     }
     if (!mounted) return;
-    final src = await _source();
-    if (src == null) return;
-    final XFile? file;
+    final PickedPhoto? photo;
     try {
-      // 긴 변 1600px · 품질 80으로 줄여 올린다(보통 1MB 안쪽)
-      file = await ImagePicker().pickImage(source: src, maxWidth: 1600, maxHeight: 1600, imageQuality: 80);
+      photo = await pickPhoto(context);
     } catch (_) {
       setState(() => note = '사진을 가져오지 못했어요. 카메라 · 사진 권한을 확인해 주세요.');
       return;
     }
-    if (file == null) return;
+    if (photo == null) return;
     setState(() {
       sending = true;
       note = null;
     });
     try {
-      final bytes = await file.readAsBytes();
-      final name = file.name.toLowerCase();
-      final type = name.endsWith('.png') ? 'image/png' : (name.endsWith('.webp') ? 'image/webp' : 'image/jpeg');
-      await repo.upload(uid: widget.myUid, bytes: bytes, kind: kind, contentType: type, amount: amount);
+      await repo.upload(uid: widget.myUid, bytes: photo.bytes, kind: kind, contentType: photo.contentType, amount: amount);
       note = kind == 'receipt' ? '영수증을 올렸어요. 상대방에게 알림이 가요.' : '사진을 올렸어요. 상대방에게 알림이 가요.';
     } on ServerException catch (e) {
       note = e.message;
@@ -209,28 +182,6 @@ class _PhotoTile extends StatefulWidget {
 class _PhotoTileState extends State<_PhotoTile> {
   late final Future<Uint8List?> bytes = PhotoRepository.load(widget.photo.path);
 
-  void _open(Uint8List data) => showDialog<void>(
-    context: context,
-    builder: (ctx) => Dialog(
-      insetPadding: const EdgeInsets.all(12),
-      backgroundColor: Colors.black,
-      child: Stack(
-        children: [
-          InteractiveViewer(child: Center(child: Image.memory(data, fit: BoxFit.contain))),
-          Positioned(
-            right: 4,
-            top: 4,
-            child: IconButton(
-              tooltip: '닫기',
-              onPressed: () => Navigator.pop(ctx),
-              icon: const Icon(Icons.close_rounded, color: Colors.white),
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-
   @override
   Widget build(BuildContext context) {
     final p = widget.photo;
@@ -260,7 +211,7 @@ class _PhotoTileState extends State<_PhotoTile> {
                       child: Center(child: Text('사진을 못 불러왔어요', style: AppType.meta)),
                     );
                   }
-                  return InkWell(onTap: () => _open(data), child: Image.memory(data, fit: BoxFit.cover));
+                  return InkWell(onTap: () => showPhotoViewer(context, data), child: Image.memory(data, fit: BoxFit.cover));
                 },
               ),
             ),

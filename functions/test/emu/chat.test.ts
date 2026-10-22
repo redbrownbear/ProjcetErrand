@@ -54,4 +54,25 @@ describe('채팅', () => {
     await core.advanceTrade(db, 'helper', { tradeId, action: 'cancel' });
     await rejectsWith(chat.sendMessage(db, 'owner', { tradeId, text: '왜 취소하셨어요?' }), 'failed-precondition');
   });
+
+  test('사진 — 내 폴더 경로만, 글 없이도 보내고, 거래마다 상한', async () => {
+    const path = `trades/${tradeId}/helper/chat_1.jpg`;
+    const r = await chat.sendMessage(db, 'helper', { tradeId, photoPath: path });
+    const m = (await db.collection('trades').doc(tradeId).collection('messages').doc(r.id).get()).data()!;
+    assert.equal(m.photoPath, path);
+    assert.equal(m.text, '');
+    const t = (await db.collection('trades').doc(tradeId).get()).data()!;
+    assert.equal(t.lastMessage.text, '사진');
+    assert.equal(t.chatPhotoCount, 1);
+
+    await rejectsWith(chat.sendMessage(db, 'helper', { tradeId, photoPath: `trades/${tradeId}/owner/x.jpg` }), 'invalid-argument');
+    await rejectsWith(chat.sendMessage(db, 'helper', { tradeId, photoPath: `trades/${tradeId}/helper/a/x.jpg` }), 'invalid-argument');
+    await rejectsWith(chat.sendMessage(db, 'helper', { tradeId, photoPath: `trades/other/helper/x.jpg` }), 'invalid-argument');
+    await rejectsWith(chat.sendMessage(db, 'helper', { tradeId, photoPath: 7 }), 'invalid-argument');
+
+    await db.collection('trades').doc(tradeId).update({ chatPhotoCount: chat.CHAT_PHOTO_LIMIT });
+    await rejectsWith(chat.sendMessage(db, 'owner', { tradeId, photoPath: `trades/${tradeId}/owner/y.jpg` }), 'resource-exhausted');
+    // 글은 상한과 상관없다
+    await chat.sendMessage(db, 'owner', { tradeId, text: '사진 잘 봤어요' });
+  });
 });

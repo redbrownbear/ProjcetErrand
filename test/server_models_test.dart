@@ -57,6 +57,10 @@ void main() {
     final m = ChatMessage.fromDoc('m1', {'senderUid': 'h', 'text': '[전화번호 가림]로 연락', 'masked': true})!;
     expect(m.masked, isTrue);
     expect(ChatMessage.fromDoc('m2', {'text': 'x'}), isNull);
+    final photo = ChatMessage.fromDoc('m3', {'senderUid': 'h', 'text': '', 'photoPath': 'trades/t/h/chat_1.jpg'})!;
+    expect(photo.photoPath, 'trades/t/h/chat_1.jpg');
+    expect(photo.text, isEmpty);
+    expect(m.photoPath, isNull);
   });
 
   test('알림: readAt이 있으면 읽음', () {
