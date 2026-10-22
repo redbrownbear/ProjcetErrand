@@ -3,13 +3,131 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../theme/colors.dart';
 import 'app_icon.dart';
+import 'bubble_quota.dart';
 import 'gyeomi.dart';
 
 /// 탭 맨 위의 겸이 카드 (시안 v33 `.h2.h3`).
 ///
 /// 부탁하기 · 돈벌기 · 해외 부탁하기 · 해외 돈벌기가 모두 같은 틀에 문구만 다르다.
 /// [blue]면 해외 톤(파란 바탕·파란 버튼)이 된다.
-class HeroCard extends StatelessWidget {
+class HeroCard extends StatefulWidget {
+  final String sub;
+  final String title;
+  final String? liveBold;
+  final String? liveRest;
+  final List<String> floats;
+  final String cta;
+  final String ctaIcon;
+  final VoidCallback onCta;
+  final String note;
+  final bool blue;
+  final bool compact;
+
+  /// 겸이 오른쪽 위 말풍선 (v77 — 이달의 럭키드로우). 이벤트 · 혜택 안내라 [BubbleQuota] 상한 안에서만 보이고,
+  /// '이벤트' 표시와 닫기(×)가 붙는다(A24).
+  final Widget? bubble;
+
+  const HeroCard({
+    super.key,
+    required this.sub,
+    required this.title,
+    this.liveBold,
+    this.liveRest,
+    required this.floats,
+    required this.cta,
+    required this.ctaIcon,
+    required this.onCta,
+    required this.note,
+    this.blue = false,
+    this.compact = false,
+    this.bubble,
+  });
+
+  @override
+  State<HeroCard> createState() => _HeroCardState();
+}
+
+class _HeroCardState extends State<HeroCard> {
+  /// 이 카드가 처음 그려질 때 한 번만 정한다(다시 그릴 때마다 상한을 쓰지 않게)
+  late bool bubbleOn = widget.bubble != null && BubbleQuota.take();
+
+  @override
+  Widget build(BuildContext context) {
+    final w = widget;
+    final bubble = w.bubble;
+    return _HeroBody(
+      sub: w.sub,
+      title: w.title,
+      liveBold: w.liveBold,
+      liveRest: w.liveRest,
+      floats: w.floats,
+      cta: w.cta,
+      ctaIcon: w.ctaIcon,
+      onCta: w.onCta,
+      note: w.note,
+      blue: w.blue,
+      compact: w.compact,
+      bubble: bubbleOn && bubble != null
+          ? _PromoBubble(
+              onClose: () {
+                BubbleQuota.dismiss();
+                setState(() => bubbleOn = false);
+              },
+              child: bubble,
+            )
+          : null,
+    );
+  }
+}
+
+/// 말풍선에 '이벤트' 표시와 닫기를 붙인다(광고성 안내 구분)
+class _PromoBubble extends StatelessWidget {
+  final Widget child;
+  final VoidCallback onClose;
+  const _PromoBubble({required this.child, required this.onClose});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        child,
+        Positioned(
+          right: -6,
+          top: -10,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                decoration: BoxDecoration(color: AppColors.ink2, borderRadius: BorderRadius.circular(6)),
+                child: const Text('이벤트', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: Colors.white)),
+              ),
+              const SizedBox(width: 2),
+              Semantics(
+                button: true,
+                label: '말풍선 닫기',
+                child: GestureDetector(
+                  key: const Key('hero-bubble-close'),
+                  onTap: onClose,
+                  child: Container(
+                    width: 20,
+                    height: 20,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(color: AppColors.card, shape: BoxShape.circle, border: Border.all(color: AppColors.line)),
+                    child: const Icon(Icons.close_rounded, size: 12, color: AppColors.sub),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HeroBody extends StatelessWidget {
   /// 맨 위 작은 문구
   final String sub;
 
@@ -32,10 +150,10 @@ class HeroCard extends StatelessWidget {
   /// 돈벌기처럼 마스코트를 조금 작게 그릴 때
   final bool compact;
 
-  /// 겸이 오른쪽 위 말풍선 (v77 — 이달의 럭키드로우). 있으면 겸이가 왼쪽으로 비켜 선다.
+  /// 겸이 오른쪽 위 말풍선. 있으면 겸이가 왼쪽으로 비켜 선다.
   final Widget? bubble;
 
-  const HeroCard({
+  const _HeroBody({
     super.key,
     required this.sub,
     required this.title,

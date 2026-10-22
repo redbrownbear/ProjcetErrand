@@ -141,6 +141,12 @@
 
 ## 기록
 
+### 2026-10-23 · 미커밋 · Claude (A24 겸이 말풍선 노출 상한)
+- 변경: 홈 · 해외 위 겸이 카드(`HeroCard`)의 말풍선(이달의 럭키드로우 안내)은 이제 상한 안에서만 보인다 — 앱을 켠 동안 3번까지, 한 번 보인 뒤 3분 안엔 다른 탭에서 다시 안 띄움,
+  닫기(×)를 누르면 하루 동안 안 보임(이 기기에 기억). 광고성 안내라 말풍선에 '이벤트' 표시. `core/widgets/bubble_quota.dart`, `HeroCard`를 상태 위젯으로(속은 `_HeroBody` 그대로).
+  테스트 `test/bubble_quota_test.dart`
+- 아직: 응모권 · 럭키드로우는 1차 출시 빌드에서 숨길 예정(결정 6)이라, 그때는 말풍선 자체가 빠진다
+
 ### 2026-10-23 · a721a00 · Claude (A33 공지 · 업데이트)
 - 추가(서버): Firestore `notices/{id}`(title · body · kind notice/update/event · pinned · hidden · publishedAt) — 누구나 읽고 앱은 못 씀(규칙 테스트).
   올리기 · 내리기 스크립트 `functions/scripts/post-notice.js`(예약 시각 `--at`, 고정 `--pin`, `--hide`). 운영 방법은 설계 문서 W5 운영 방법 5
