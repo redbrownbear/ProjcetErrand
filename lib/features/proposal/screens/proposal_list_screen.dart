@@ -37,7 +37,7 @@ class _ProposalListScreenState extends State<ProposalListScreen> {
           final me = widget.store.joined.contains(p.id);
           return switch (filter) {
             0 => true,
-            1 => !p.expired && !p.isFull(me),
+            1 => p.openFor(me),
             2 => isNearDay(p.day),
             _ => (widget.abroad ? countryOf(p.cc).name : p.from) == labels[filter],
           };

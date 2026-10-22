@@ -36,12 +36,17 @@ class _ProposeFormState extends State<ProposeForm> {
   final fee = TextEditingController();
   final note = TextEditingController();
   bool receiptOk = false;
+
+  /// 전달 방식 — each(구매자마다 따로) · meet(정한 장소 · 시간에 한꺼번에)
+  String delivery = 'each';
+  final meetPlace = TextEditingController();
+  final meetTime = TextEditingController();
   int max = 5;
   bool unlimited = false;
 
   @override
   void dispose() {
-    for (final c in [city, item, spec, price, fee, note]) {
+    for (final c in [city, item, spec, price, fee, note, meetPlace, meetTime]) {
       c.dispose();
     }
     super.dispose();
@@ -59,6 +64,7 @@ class _ProposeFormState extends State<ProposeForm> {
     }
     if (item.text.trim().isEmpty) return '무엇을 사 올지 적어 주세요';
     if (_price <= 0) return '물건 가격을 적어 주세요';
+    if (delivery == 'meet' && meetPlace.text.trim().isEmpty) return '한꺼번에 받을 장소를 적어 주세요';
     if (!receiptOk) return '영수증 안내를 확인해 주세요';
     return null;
   }
@@ -86,7 +92,7 @@ class _ProposeFormState extends State<ProposeForm> {
       context: context,
       initialDate: day,
       firstDate: DateTime(now.year, now.month, now.day),
-      lastDate: now.add(const Duration(days: 90)),
+      lastDate: now.add(const Duration(days: 60)), // 서버도 60일까지(functions/src/proposal)
     );
     if (d != null) setState(() => day = d);
   }
@@ -110,6 +116,9 @@ class _ProposeFormState extends State<ProposeForm> {
         area: widget.area,
         note: note.text.trim(),
         mine: true,
+        delivery: delivery,
+        meetPlace: delivery == 'meet' ? meetPlace.text.trim() : null,
+        meetTime: delivery == 'meet' && meetTime.text.trim().isNotEmpty ? meetTime.text.trim() : null,
       ),
     );
     Navigator.pop(context);
@@ -327,6 +336,41 @@ class _ProposeFormState extends State<ProposeForm> {
           const Padding(
             padding: EdgeInsets.only(top: 6),
             child: Text('정원이 차면 자동으로 마감돼요 (1~15명)', style: TextStyle(fontSize: 12, color: AppColors.sub)),
+          ),
+          const FieldLabel('어떻게 전해 드릴까요?'),
+          Row(
+            children: [
+              _toggle('구매자마다 따로', delivery == 'each', () => setState(() => delivery = 'each')),
+              const SizedBox(width: 8),
+              _toggle('한꺼번에 받기', delivery == 'meet', () => setState(() => delivery = 'meet')),
+            ],
+          ),
+          if (delivery == 'meet') ...[
+            const SizedBox(height: 8),
+            TextField(
+              key: const Key('propose-meet-place'),
+              controller: meetPlace,
+              maxLength: 60,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(hintText: '받는 장소 예) 강남역 11번 출구', counterText: ''),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: meetTime,
+              maxLength: 30,
+              decoration: const InputDecoration(hintText: '받는 시간 (선택) 예) 도착한 날 저녁 7시', counterText: ''),
+            ),
+          ],
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              delivery == 'meet' ? '신청한 이웃이 정한 곳 · 시간에 와서 받아요' : '신청한 이웃과 채팅으로 만날 곳을 정해요',
+              style: const TextStyle(fontSize: 12, color: AppColors.sub),
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.only(top: 6),
+            child: Text('인원이 다 안 차도 날짜 전에 진행할지 취소할지 정할 수 있어요', style: TextStyle(fontSize: 12, color: AppColors.sub)),
           ),
           const FieldLabel('한마디', hint: '선택'),
           TextField(

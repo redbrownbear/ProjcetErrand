@@ -21,7 +21,11 @@ export type NotifyKind =
   | 'trade.photo'
   | 'match.route'
   | 'report.warned'
-  | 'report.resolved';
+  | 'report.resolved'
+  | 'proposal.join'
+  | 'proposal.leave'
+  | 'proposal.proceed'
+  | 'proposal.cancelled';
 
 export interface NotifyEvent {
   to: string;
@@ -30,6 +34,8 @@ export interface NotifyEvent {
   body: string;
   requestId: string;
   tradeId?: string;
+  /** 제안하기(A15) 알림이면 제안 id */
+  proposalId?: string;
 }
 
 type Doc = Record<string, unknown> | undefined;

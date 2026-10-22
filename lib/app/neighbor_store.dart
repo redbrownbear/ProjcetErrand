@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../core/storage/local_store.dart';
@@ -8,13 +10,16 @@ import '../features/lucky/models/tickets.dart';
 import '../features/market/models/used_item.dart';
 import '../features/proposal/data/proposals.dart';
 import '../features/proposal/models/proposal.dart';
+import '../features/proposal/repositories/proposal_repository.dart';
+import '../core/backend/server_api.dart';
 import '../core/utils/stable_sort.dart';
 
 /// v77에서 새로 생긴 이웃 활동(제안 · 커뮤니티 이야기 · 가는 김에 · 중고 · 응모권)을 한곳에 둔다.
 ///
 /// 부탁·거래·포인트·겸사페이는 원래대로 [HomeShell]이 들고 있고, 여기는 그 바깥의
 /// 새 기능만 맡는다. 화면은 이 객체를 듣고([ListenableBuilder]) 다시 그린다.
-/// 전부 이 기기에만 보관된다(`LocalStore`). '가는 김에'는 부탁과 같은 흐름이라 여기 없다(AppSession · requests).
+/// 이 기기에 보관된다(`LocalStore`). 제안은 서버에 연결되면 서버에 올라간다([attachServer], A15).
+/// '가는 김에'는 부탁과 같은 흐름이라 여기 없다(AppSession · requests).
 class NeighborStore extends ChangeNotifier {
   NeighborStore() {
     _load();
@@ -97,10 +102,52 @@ class NeighborStore extends ChangeNotifier {
 
   // ── 제안 ────────────────────────────────────────────────────────────────
 
-  List<Proposal> get proposals => [...myProposals, ..._seedProposals];
+  /// 서버 제안(A15). 로그인해서 서버에 붙었을 때만 쓴다 — 그때는 이 기기에만 있는 옛 제안을 섞지 않는다
+  ProposalRepository? proposalRepo;
+  List<Proposal> serverProposals = [];
+  StreamSubscription<List<Proposal>>? _proposalSub;
+  StreamSubscription<Set<int>>? _joinSub;
+
+  /// 로그인한 uid가 바뀔 때 셸이 부른다. null이면 서버 구독을 끊고 이 기기 제안으로 돌아간다
+  void attachServer(String? uid, {ProposalRepository Function(String uid)? repo}) {
+    if (proposalRepo?.uid == uid) return;
+    _proposalSub?.cancel();
+    _joinSub?.cancel();
+    _proposalSub = null;
+    _joinSub = null;
+    serverProposals = [];
+    if (uid == null) {
+      proposalRepo = null;
+      joined = LocalStore.read<List<dynamic>>('joinedProposals', const []).whereType<int>().toSet();
+    } else {
+      final r = proposalRepo = (repo ?? ProposalRepository.new)(uid);
+      joined = {};
+      _proposalSub = r.watch().listen((list) {
+        serverProposals = list;
+        notifyListeners();
+      });
+      _joinSub = r.watchMyJoins().listen((ids) {
+        joined = ids;
+        notifyListeners();
+      });
+    }
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _proposalSub?.cancel();
+    _joinSub?.cancel();
+    super.dispose();
+  }
+
+  List<Proposal> get proposals => [...(proposalRepo != null ? serverProposals : myProposals), ..._seedProposals];
+
+  /// 내가 올린 제안 (마이 · 제안 목록)
+  List<Proposal> get mine => proposals.where((p) => p.mine).toList();
 
   List<Proposal> board({required bool abroad}) {
-    int closed(Proposal p) => p.expired || p.isFull(joined.contains(p.id)) ? 1 : 0;
+    int closed(Proposal p) => p.openFor(joined.contains(p.id)) ? 0 : 1;
     // 열린 것 먼저, 마감은 아래로. 같은 칸 안에서는 올린 순서를 지킨다.
     return proposals.where((p) => p.abroad == abroad).toList()..sortStable((a, b) => closed(a) - closed(b));
   }
@@ -113,21 +160,52 @@ class NeighborStore extends ChangeNotifier {
   }
 
   void addProposal(Proposal p) => _run(() {
+    final r = proposalRepo;
+    if (r != null) {
+      _server(() => r.create(p), '제안을 올렸어요 · 원하는 이웃이 구매를 누르면 알려드려요');
+      return;
+    }
     myProposals = [p, ...myProposals];
     LocalStore.write('proposals', [for (final x in myProposals) x.toJson()]);
     notifyListeners();
-    toast?.call('제안을 올렸어요 · 원하는 이웃이 구매를 누르면 알려드려요');
+    toast?.call('제안을 올렸어요 · 이 기기에만 저장돼요(서버 연결 전)');
   });
+
+  /// 서버 함수를 부르고 결과를 토스트로. 실패 문구는 서버가 보낸 한국어 그대로
+  Future<void> _server(Future<void> Function() job, String done) async {
+    try {
+      await job();
+      toast?.call(done);
+    } on ServerException catch (e) {
+      toast?.call(e.message);
+    }
+  }
+
+  /// 제안자의 결정 — proceed(지금 인원으로 진행) · cancel(제안 취소)
+  Future<void> decideProposal(Proposal p, String action) async {
+    final r = proposalRepo;
+    if (r == null || !p.onServer) return;
+    await _server(() => r.decide(p.id, action), action == 'cancel' ? '제안을 취소했어요 · 신청한 이웃에게 알렸어요' : '진행하기로 했어요 · 신청한 이웃에게 알렸어요');
+  }
 
   /// '저 구매할래요!' 누르기 / 취소하기
   void toggleJoin(Proposal p) => _run(() {
     final on = joined.contains(p.id);
-    if (!on && (p.expired || p.isFull(false))) {
-      toast?.call('정원이 찼어요 · 다른 제안을 둘러보세요');
+    if (!on && !p.openFor(false)) {
+      toast?.call(p.proceeding ? '모집이 끝난 제안이에요' : '정원이 찼어요 · 다른 제안을 둘러보세요');
       return;
     }
     if (p.mine) {
       toast?.call('내가 올린 제안이에요');
+      return;
+    }
+    final r = proposalRepo;
+    if (r != null) {
+      if (!p.onServer) {
+        toast?.call('예시 제안이라 구매 요청을 보낼 수 없어요');
+        return;
+      }
+      _server(() => on ? r.leave(p.id) : r.join(p.id), on ? '구매 요청을 취소했어요' : '구매 요청을 보냈어요 · 제안자에게 알렸어요');
       return;
     }
     joined = on ? ({...joined}..remove(p.id)) : {...joined, p.id};

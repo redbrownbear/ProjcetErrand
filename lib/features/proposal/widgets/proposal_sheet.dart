@@ -8,6 +8,7 @@ import '../../../core/widgets/surface.dart';
 import '../../community/models/com_post.dart';
 import '../../errand/data/countries.dart';
 import '../models/proposal.dart';
+import '../repositories/proposal_repository.dart';
 import 'live_board.dart';
 
 /// 제안 상세 시트 (시안 v43~v44).
@@ -58,12 +59,16 @@ class ProposalSheet extends StatelessWidget {
       builder: (context, _) {
         final me = store.joined.contains(p.id);
         final count = p.countWith(me);
-        final closed = p.expired || p.isFull(me) && !me;
+        final closed = !p.openFor(me) && !me;
+        // 서버 제안의 주인은 신청을 받는 대신 진행 · 취소를 정한다(A15)
+        final owner = p.mine && p.onServer;
         final stories = store.related(p).take(2).toList();
         final storyTitle = p.abroad ? '${countryOf(p.cc).name} 이웃 이야기' : '${p.from} · ${p.to} 이웃 이야기';
 
         return SheetFrame(
-          bottom: Row(
+          bottom: owner
+              ? _OwnerBar(store: store, p: p)
+              : Row(
             children: [
               Expanded(
                 flex: 2,
@@ -93,11 +98,13 @@ class ProposalSheet extends StatelessWidget {
               Expanded(
                 flex: 3,
                 child: BigButton(
-                  label: me ? '구매 요청 취소' : (closed ? '마감됐어요' : (p.mine ? '내가 올린 제안' : '저 구매할래요!')),
+                  label: me
+                      ? (p.proceeding ? '진행이 정해졌어요' : '구매 요청 취소')
+                      : (p.proceeding ? '모집이 끝났어요' : (closed ? '마감됐어요' : (p.mine ? '내가 올린 제안' : '저 구매할래요!'))),
                   bg: me ? AppColors.card : AppColors.ink,
                   fg: me ? AppColors.ink : Colors.white,
                   height: 54,
-                  onTap: (closed && !me) || p.mine ? null : () => store.toggleJoin(p),
+                  onTap: (closed && !me) || p.mine || (me && p.proceeding) ? null : () => store.toggleJoin(p),
                 ),
               ),
             ],
@@ -188,13 +195,15 @@ class ProposalSheet extends StatelessWidget {
                 style: const TextStyle(color: AppColors.ink),
               ),
               const SizedBox(height: 8),
-              const _CheckLine('영수증 기준 가격이에요 · 실제 금액보다 높게 적은 부분은 환불돼요', color: AppColors.sub),
+              const _CheckLine('영수증 기준 가격이에요 · 실제보다 높게 적은 부분은 제안자가 돌려주기로 했어요', color: AppColors.sub),
               const SizedBox(height: 12),
               _row('1명당', p.fee > 0 ? '물건값 ${won(p.price)} + 심부름료 ${won(p.fee)}' : '물건값 ${won(p.price)} · 심부름료 없음'),
               _row('사 오는 물건', [p.item, ?p.spec].join(' · ')),
               _row(p.abroad ? '출국하는 날' : '이동하는 날', '${p.day.month}/${p.day.day}'),
               _row('모집 인원', p.unlimited ? '$count명 · 제한 없음' : '$count/${p.max}명 · ${p.left(me)}자리 남음'),
-              _row('결제', '만나서 직접 주고받아요 · 앱 결제는 준비 중'),
+              _row('전달', p.deliveryLabel),
+              _row('결제', '만나서 직접 주고받아요 · 앱 안의 결제는 없어요'),
+              if (p.proceeding) _row('진행', '제안자가 사 오기로 했어요 · 새 신청은 받지 않아요'),
               if (p.note.isNotEmpty) _row('한마디', p.note),
               const SizedBox(height: 14),
               const Text(
@@ -202,7 +211,9 @@ class ProposalSheet extends StatelessWidget {
                 style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.sub),
               ),
               const SizedBox(height: 8),
-              if (count == 0)
+              if (owner && store.proposalRepo != null)
+                _JoinerNames(store: store, p: p)
+              else if (count == 0)
                 const Text('아직 요청한 이웃이 없어요', style: TextStyle(fontSize: 13, color: AppColors.faint))
               else
                 Wrap(
@@ -267,7 +278,7 @@ class ProposalSheet extends StatelessWidget {
                 child: TextLink(label: '이야기 더 보기', onTap: onMoreStories),
               ),
               const SizedBox(height: 10),
-              const _CheckLine('영수증을 확인한 뒤 정산돼요 · 정원이 차면 자동으로 마감돼요', color: AppColors.green, bold: true),
+              const _CheckLine('만나서 영수증을 보여 주고 금액을 주고받아요 · 정원이 차면 새 신청은 마감돼요', color: AppColors.green, bold: true),
             ],
           ),
         );
@@ -333,6 +344,97 @@ class ProposalSheet extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// 내 서버 제안의 아래 버튼 — 지금 인원으로 진행 · 제안 취소
+class _OwnerBar extends StatelessWidget {
+  final NeighborStore store;
+  final Proposal p;
+  const _OwnerBar({required this.store, required this.p});
+
+  Future<void> _cancel(BuildContext context) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('제안을 취소할까요?'),
+        content: const Text('신청한 이웃의 구매 요청도 모두 취소되고 알림이 가요.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('아니요')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.red),
+            child: const Text('제안 취소'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) {
+      await store.decideProposal(p, 'cancel');
+      if (context.mounted) Navigator.pop(context);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final n = p.countWith(false);
+    return Row(
+      children: [
+        Expanded(
+          flex: 2,
+          child: BigButton(
+            key: const Key('proposal-cancel'),
+            label: '제안 취소',
+            bg: AppColors.page,
+            fg: AppColors.red,
+            height: 54,
+            onTap: () => _cancel(context),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          flex: 3,
+          child: BigButton(
+            key: const Key('proposal-proceed'),
+            label: p.proceeding ? '진행하기로 했어요' : (n == 0 ? '아직 신청이 없어요' : '$n명으로 진행하기'),
+            bg: AppColors.ink,
+            fg: Colors.white,
+            height: 54,
+            onTap: p.proceeding || n == 0 ? null : () => store.decideProposal(p, 'proceed'),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// 내 제안에 신청한 이웃 이름 (제안자만 볼 수 있다)
+class _JoinerNames extends StatefulWidget {
+  final NeighborStore store;
+  final Proposal p;
+  const _JoinerNames({required this.store, required this.p});
+
+  @override
+  State<_JoinerNames> createState() => _JoinerNamesState();
+}
+
+class _JoinerNamesState extends State<_JoinerNames> {
+  late final Stream<List<ProposalJoiner>> joiners = widget.store.proposalRepo!.watchJoiners(widget.p.id);
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<ProposalJoiner>>(
+      stream: joiners,
+      builder: (context, snap) {
+        final list = snap.data ?? const <ProposalJoiner>[];
+        if (list.isEmpty) return const Text('아직 요청한 이웃이 없어요', style: TextStyle(fontSize: 13, color: AppColors.faint));
+        return Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [for (final j in list) StatusBadge(j.name, bg: AppColors.yellowSoft, fg: AppColors.ink)],
+        );
+      },
     );
   }
 }

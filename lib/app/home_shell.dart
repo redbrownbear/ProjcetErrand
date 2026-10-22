@@ -146,6 +146,7 @@ class _HomeShellState extends State<HomeShell> {
   void _onSessionChanged() {
     if (!mounted) return;
     _checkAdmin();
+    store.attachServer(session.myUid);
     setState(() {});
     if (session.needsConsent && !_consentOpen) {
       _consentOpen = true;
@@ -355,6 +356,8 @@ class _HomeShellState extends State<HomeShell> {
                     _openRequestById(rid);
                   } else if (photoTrade != null) {
                     openPhotos(photoTrade);
+                  } else if (n.kind.startsWith('proposal.')) {
+                    social.openProposalList(context, abroad: false);
                   } else if (n.kind.startsWith('report.')) {
                     // 신고 경고 · 처리 알림은 알림 문구가 전부다
                   } else {
@@ -623,7 +626,7 @@ class _HomeShellState extends State<HomeShell> {
         syncing: s.syncing,
         lucky: LuckyCard(nav: social),
         onOpenProposals: () => social.openProposalList(context, abroad: false),
-        proposalCount: store.myProposals.length + store.joined.length,
+        proposalCount: store.mine.length + store.joined.length,
       ),
     };
   }

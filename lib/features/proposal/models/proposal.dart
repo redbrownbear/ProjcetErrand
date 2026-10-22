@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 /// 제안 — "가는 김에 사다 드려요".
 ///
 /// 부탁(요청자가 먼저 올림)과 반대 방향이다. 이동하는 이웃이 먼저
@@ -5,6 +7,9 @@
 /// 원하는 이웃이 '저 구매할래요!'를 눌러 자리를 잡는다. (시안 v43~v44)
 ///
 /// 국내는 다른 지역으로 이동할 때만 올릴 수 있다(예: 대전 → 서울).
+///
+/// 서버에 연결되면 `proposals/{id}`에 올라가고 신청 · 취소 · 진행 결정은 서버 함수가 한다(A15, functions/src/proposal).
+/// 서버 연결 전에는 이 기기에만 저장된다(예전 방식).
 class Proposal {
   final int id;
 
@@ -50,6 +55,20 @@ class Proposal {
   /// 내가 올린 제안
   final bool mine;
 
+  /// 서버 제안의 주인 uid. 이 기기에만 있는 제안 · 예시는 null
+  final String? ownerUid;
+
+  /// 전달 방식 — each(구매자마다 따로 전달) · meet(정한 장소 · 시간에 한꺼번에 받기)
+  final String delivery;
+  final String? meetPlace;
+  final String? meetTime;
+
+  /// open(모집 중) · proceeding(제안자가 진행하기로 함 — 새 신청 안 받음) · cancelled
+  final String state;
+
+  /// 서버가 센 신청 인원(나 포함). 서버 제안에만 있다 — 있으면 [joined] 대신 쓴다
+  final int? serverCount;
+
   const Proposal({
     required this.id,
     required this.abroad,
@@ -69,14 +88,34 @@ class Proposal {
     this.note = '',
     this.departVerified = false,
     this.mine = false,
+    this.ownerUid,
+    this.delivery = 'each',
+    this.meetPlace,
+    this.meetTime,
+    this.state = 'open',
+    this.serverCount,
   });
+
+  /// 서버에 올라간 제안
+  bool get onServer => ownerUid != null;
+
+  /// 예시 제안(체험용) — 서버에 연결된 뒤에는 신청할 수 없다
+  bool get sample => !onServer && !mine;
+
+  bool get cancelled => state == 'cancelled';
+  bool get proceeding => state == 'proceeding';
+
+  /// 전달 방식 한 줄
+  String get deliveryLabel => delivery == 'meet'
+      ? '한꺼번에 받기 · ${[meetPlace, meetTime].where((s) => s != null && s.isNotEmpty).join(' · ')}'
+      : '구매자마다 따로 전달 · 채팅으로 정해요';
 
   bool get unlimited => max == 0;
 
   /// 1명이 내는 돈 = 물건값 + 심부름료
   int get total => price + fee;
 
-  int countWith(bool meJoined) => joined + (meJoined ? 1 : 0);
+  int countWith(bool meJoined) => serverCount ?? joined + (meJoined ? 1 : 0);
 
   int left(bool meJoined) => unlimited ? 999 : (max - countWith(meJoined)).clamp(0, max);
 
@@ -88,8 +127,13 @@ class Proposal {
     return day.isBefore(DateTime(now.year, now.month, now.day));
   }
 
+  /// 지금 신청할 수 있는가
+  bool openFor(bool meJoined) => !cancelled && !proceeding && !expired && !isFull(meJoined);
+
   /// 보드 행의 오른쪽 상태 — '3/5' · '1자리' · '2명' · '마감'
   String status(bool meJoined) {
+    if (cancelled) return '취소';
+    if (proceeding) return '진행';
     if (expired || isFull(meJoined)) return '마감';
     if (unlimited) return '${countWith(meJoined)}명';
     if (left(meJoined) == 1) return '1자리';
@@ -121,7 +165,66 @@ class Proposal {
     'who': who,
     'area': area,
     'note': note,
+    'delivery': delivery,
+    'meetPlace': meetPlace,
+    'meetTime': meetTime,
   };
+
+  /// 서버 함수 createProposal에 보낼 값. 날짜는 한국 날짜 'YYYY-MM-DD'
+  Map<String, Object?> toServer() => {
+    'abroad': abroad,
+    'from': from,
+    if (!abroad) 'to': to,
+    if (abroad) 'cc': cc,
+    'item': item,
+    'spec': spec ?? '',
+    'price': price,
+    'fee': fee,
+    'day': '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}',
+    'max': max,
+    'delivery': delivery,
+    if (delivery == 'meet') 'meetPlace': meetPlace ?? '',
+    if (delivery == 'meet') 'meetTime': meetTime ?? '',
+    'note': note,
+    'area': area,
+  };
+
+  /// 서버 문서(`proposals/{id}`). [myUid]와 주인이 같으면 내 제안
+  static Proposal? fromDoc(String docId, Map<String, dynamic> m, {String? myUid}) {
+    final id = int.tryParse(docId);
+    final dayStr = m['day'];
+    final day = dayStr is String ? DateTime.tryParse(dayStr) : null;
+    final owner = m['ownerUid'];
+    if (id == null || day == null || owner is! String || m['item'] is! String || m['price'] is! int) return null;
+    String? s(String k) => m[k] is String && (m[k] as String).isNotEmpty ? m[k] as String : null;
+    int n(String k) => m[k] is int ? m[k] as int : 0;
+    final abroad = m['abroad'] == true;
+    final created = m['createdAt'];
+    return Proposal(
+      id: id,
+      abroad: abroad,
+      from: s('from') ?? '',
+      to: abroad ? '한국' : (s('to') ?? '서울'),
+      cc: s('cc'),
+      item: m['item'] as String,
+      spec: s('spec'),
+      price: m['price'] as int,
+      fee: n('fee'),
+      day: day,
+      max: n('max'),
+      who: s('who') ?? '이웃',
+      area: s('area') ?? '',
+      ago: created is Timestamp ? agoLabel(created.toDate()) : '',
+      note: s('note') ?? '',
+      mine: myUid != null && owner == myUid,
+      ownerUid: owner,
+      delivery: m['delivery'] == 'meet' ? 'meet' : 'each',
+      meetPlace: s('meetPlace'),
+      meetTime: s('meetTime'),
+      state: s('status') ?? 'open',
+      serverCount: n('joinedCount'),
+    );
+  }
 
   static Proposal? fromJson(dynamic j) {
     if (j is! Map) return null;
@@ -143,6 +246,9 @@ class Proposal {
       area: '${j['area'] ?? ''}',
       note: '${j['note'] ?? ''}',
       mine: true,
+      delivery: j['delivery'] == 'meet' ? 'meet' : 'each',
+      meetPlace: j['meetPlace'] is String ? j['meetPlace'] as String : null,
+      meetTime: j['meetTime'] is String ? j['meetTime'] as String : null,
     );
   }
 }
@@ -155,6 +261,15 @@ String dayTag(DateTime d) {
   if (diff == 0) return '오늘';
   if (diff == 1) return '내일';
   return '${d.month}/${d.day}';
+}
+
+/// '방금' · '20분 전' · '3시간 전' · '2일 전'
+String agoLabel(DateTime t, [DateTime? now]) {
+  final d = (now ?? DateTime.now()).difference(t);
+  if (d.inMinutes < 1) return '방금';
+  if (d.inHours < 1) return '${d.inMinutes}분 전';
+  if (d.inDays < 1) return '${d.inHours}시간 전';
+  return '${d.inDays}일 전';
 }
 
 bool isNearDay(DateTime d) {

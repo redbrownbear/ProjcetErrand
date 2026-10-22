@@ -221,6 +221,24 @@ service cloud.firestore {
       }
     }
 
+    // ── 제안하기(A15) ─────────────────────────────────────────────────────
+    // 누구나 보고, 쓰기는 서버 함수(createProposal · joinProposal · leaveProposal · decideProposal)만
+    match /proposals/{proposalId} {
+      allow read: if true;
+      allow write: if false;
+      // 신청: 본인과 제안자만 읽는다
+      match /joins/{uid} {
+        allow read: if signedIn()
+                    && (request.auth.uid == uid
+                        || get(/databases/$(database)/documents/proposals/$(proposalId)).data.ownerUid == request.auth.uid);
+        allow write: if false;
+      }
+    }
+    // 내가 신청한 제안 목록(collectionGroup)
+    match /{path=**}/joins/{uid} {
+      allow read: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+
     // ── 신고 ──────────────────────────────────────────────────────────────
     match /reports/{reportId} {
       allow create: if signedIn()

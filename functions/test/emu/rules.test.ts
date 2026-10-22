@@ -314,3 +314,22 @@ describe('가는 김에 · 댓글', () => {
     await assertSucceeds(getDoc(doc(db(), 'requests', RID, 'comments', 'c1')));
   });
 });
+
+describe('제안하기', () => {
+  test('누구나 읽고 앱은 못 쓴다, 신청은 본인과 제안자만 읽는다', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const f = ctx.firestore();
+      await setDoc(doc(f, 'proposals', '9'), { ownerUid: OWNER, item: '갓김치', status: 'open' });
+      await setDoc(doc(f, 'proposals', '9', 'joins', HELPER), { uid: HELPER, proposalId: '9', status: 'joined' });
+    });
+    await assertSucceeds(getDoc(doc(db(), 'proposals', '9')));
+    await assertFails(setDoc(doc(db(OWNER), 'proposals', '10'), { ownerUid: OWNER, item: 'x' }));
+    await assertFails(updateDoc(doc(db(OWNER), 'proposals', '9'), { joinedCount: 3 }));
+    await assertFails(setDoc(doc(db(STRANGER), 'proposals', '9', 'joins', STRANGER), { uid: STRANGER, status: 'joined' }));
+    await assertSucceeds(getDoc(doc(db(HELPER), 'proposals', '9', 'joins', HELPER)));
+    await assertSucceeds(getDocs(collection(db(OWNER), 'proposals', '9', 'joins')));
+    await assertFails(getDoc(doc(db(STRANGER), 'proposals', '9', 'joins', HELPER)));
+    await assertSucceeds(getDocs(query(collectionGroup(db(HELPER), 'joins'), where('uid', '==', HELPER))));
+    await assertFails(getDocs(query(collectionGroup(db(STRANGER), 'joins'), where('uid', '==', HELPER))));
+  });
+});
