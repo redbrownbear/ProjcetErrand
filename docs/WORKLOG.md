@@ -141,6 +141,14 @@
 
 ## 기록
 
+### 2026-10-23 · 미커밋 · Claude (A11 여행 · 출국 일정)
+- 추가(서버): `users/{uid}/travels/{id}` 규칙 — 본인만, 나라 코드 · 도시(30자) · 출국/귀국일('YYYY-MM-DD', 귀국 ≥ 출국) · 해외 부탁 받을 생각(`takeAsks`) · 메모(60자). 규칙 테스트
+- 추가(앱): 마이 › 나의 활동 › **내 여행 일정**(`features/travel/` — 모델 `TravelPlan` · `TravelRepository` · `travel_screens.dart`).
+  목록(여행 중 → 다가오는 일정 D-n → 지난 여행), 추가/고치기: 나라 칩 → 도시 칩 · 직접 적기 → 출국일 · 귀국일 → '해외 부탁을 받아 볼 생각이 있어요' → 메모.
+  한 사람 10개, 2년 안 출국, 한 번 365일까지(앱에서 확인). 다른 사람에게 보이지 않는다. 테스트 `test/travel_test.dart`
+- 아직: 가입 중 '출국 예정 있으세요?' 단계는 기준 시안(C03) 뒤(동선 온보딩과 같이). 해외 사다주기(B04)가 열리기 전까지 일정은 모아 두기만 한다
+- 할 일: `firebase deploy --project dev --only firestore`(규칙)
+
 ### 2026-10-23 · 17c0c0d · Claude (A38 채팅 사진 전송)
 - 추가(서버): `sendMessage`에 `photoPath` — 내 폴더(`trades/{id}/{uid}/`, 거래 사진과 같은 Storage 규칙)에 올린 파일만, 글 없이도 보냄, 거래마다 30장(`chatPhotoCount`).
   마지막 메시지 · 푸시는 '사진'. 테스트 `test/emu/chat.test.ts`

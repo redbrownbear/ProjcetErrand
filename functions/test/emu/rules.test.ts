@@ -266,6 +266,39 @@ describe('정기 동선', () => {
   });
 });
 
+describe('여행 · 출국 일정', () => {
+  const travel = (extra: Record<string, unknown> = {}) => ({
+    cc: 'jp',
+    city: '오사카',
+    depart: '2026-11-03',
+    back: '2026-11-07',
+    takeAsks: true,
+    note: '',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    ...extra,
+  });
+  const ref = (uid: string, id = 't1') => doc(db(uid), 'users', OWNER, 'travels', id);
+
+  test('본인만 읽고 쓴다', async () => {
+    await assertSucceeds(setDoc(ref(OWNER), travel()));
+    await assertSucceeds(getDoc(ref(OWNER)));
+    await assertFails(getDoc(ref(STRANGER)));
+    await assertFails(setDoc(ref(STRANGER, 't2'), travel()));
+    await assertSucceeds(updateDoc(ref(OWNER), { back: '2026-11-08', updatedAt: serverTimestamp() }));
+    await assertSucceeds(deleteDoc(ref(OWNER)));
+  });
+
+  test('귀국이 출국보다 이르거나 · 날짜 모양 · 나라 코드 · 모르는 칸은 거부', async () => {
+    await assertFails(setDoc(ref(OWNER, 'a'), travel({ back: '2026-11-01' })));
+    await assertFails(setDoc(ref(OWNER, 'b'), travel({ depart: '2026-13-01', back: '2026-13-05' })));
+    await assertFails(setDoc(ref(OWNER, 'c'), travel({ cc: 'JPN' })));
+    await assertFails(setDoc(ref(OWNER, 'd'), travel({ flight: 'KE123' })));
+    await assertFails(setDoc(ref(OWNER, 'e'), travel({ takeAsks: 'yes' })));
+    await assertSucceeds(setDoc(ref(OWNER, 'f'), travel({ depart: '2026-11-03', back: '2026-11-03' })));
+  });
+});
+
 describe('운영 설정', () => {
   test('로그인한 사람은 읽고, 아무도 앱에서 고치지 못한다', async () => {
     await assertSucceeds(getDoc(doc(db(OWNER), 'config', 'safety')));

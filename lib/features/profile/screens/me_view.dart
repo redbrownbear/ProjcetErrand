@@ -47,6 +47,9 @@ class MeView extends StatelessWidget {
   /// 나의 활동 › 내 동선(A08)
   final VoidCallback? onOpenRoutes;
 
+  /// 나의 활동 › 내 여행 일정(A11)
+  final VoidCallback? onOpenTravels;
+
   /// 운영 › 신고 처리(A36). 운영자 계정일 때만 셸이 넣는다.
   final VoidCallback? onOpenAdmin;
 
@@ -83,6 +86,7 @@ class MeView extends StatelessWidget {
     required this.onRename,
     this.onOpenConsents,
     this.onOpenRoutes,
+    this.onOpenTravels,
     this.onOpenAdmin,
     this.serverIssue,
     this.syncing = false,
@@ -136,6 +140,7 @@ class MeView extends StatelessWidget {
             MenuRow('내가 올린 부탁', trailing: '${stats.requested}건', onTap: onOpenMine),
             MenuRow('관심 저장', trailing: '${stats.saved}건', onTap: onOpenSaved),
             if (onOpenRoutes != null) MenuRow('내 동선', trailing: '최대 6개', onTap: onOpenRoutes),
+            if (onOpenTravels != null) MenuRow('내 여행 일정', trailing: '출국 예정', onTap: onOpenTravels),
             if (onOpenProposals != null) MenuRow('내 제안 · 구매 요청', trailing: '$proposalCount건', onTap: onOpenProposals),
             const MenuRow('내 후기', trailing: '준비 중'),
           ],

@@ -47,6 +47,17 @@ service cloud.firestore {
           && m.active is bool;
     }
 
+    // 여행 · 출국 일정(A11). 날짜는 'YYYY-MM-DD' 문자열이라 글자 순서 = 날짜 순서
+    function ymd(v) { return v is string && v.matches('^20[0-9]{2}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$'); }
+    function travelValid(m) {
+      return m.cc is string && m.cc.matches('^[a-z]{2}$')
+          && str(m.city, 0, 30)
+          && ymd(m.depart) && ymd(m.back) && m.back >= m.depart
+          && m.takeAsks is bool
+          && optStr(m, 'note', 60);
+    }
+    function travelKeys() { return ['cc', 'city', 'depart', 'back', 'takeAsks', 'note', 'createdAt', 'updatedAt']; }
+
     // 서버만 쓰는 필드: 포인트 사본, 본인인증, 운영자 역할, 이용 정지, 집계
     function serverUserFields() { return ['points', 'verified', 'role', 'suspended', 'stats']; }
 
@@ -75,6 +86,14 @@ service cloud.firestore {
           && onlyKeys(['name', 'from', 'to', 'days', 'window', 'mode', 'radiusM', 'active', 'createdAt', 'updatedAt']);
         allow update: if isMe(uid) && routeValid(incoming())
           && !incoming().diff(resource.data).affectedKeys().hasAny(['cells', 'overLimit', 'cellsAt', 'createdAt']);
+      }
+
+      // 여행 · 출국 일정(A11). 본인만. 해외 사다주기(B04)가 열리기 전까지는 모아 두기만 한다
+      match /travels/{id} {
+        allow read, delete: if isMe(uid);
+        allow create: if isMe(uid) && travelValid(incoming()) && onlyKeys(travelKeys());
+        allow update: if isMe(uid) && travelValid(incoming()) && onlyKeys(travelKeys())
+          && incoming().createdAt == resource.data.createdAt;
       }
 
       // 내 동선에 맞는 부탁(A13). 서버가 만들고, 본인은 읽고 지운다(관심 없음)
