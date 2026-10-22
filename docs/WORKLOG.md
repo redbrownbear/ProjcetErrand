@@ -141,11 +141,11 @@
 
 ## 기록
 
-### 2026-10-23 · 미커밋 · Claude (A14 폰 캘린더 → 동선)
+### 2026-10-23 · 36a9666 외 · Claude (A14 폰 캘린더 → 동선)
 - 추가(앱): 마이 › 내 동선 › **캘린더 일정에서 동선 찾기**(`route/screens/calendar_import_screen.dart`) — 안내(제목 · 참석자 · 메모는 읽지 않음, 캘린더 내용은 저장 안 함) →
   '캘린더 읽기 허용'(OS 권한) → 앞으로 2주 안 장소가 적힌 일정만(종일 일정 · 장소 없음 제외, 같은 일정 하나로) → 고르면 장소 검색(키가 있을 때)이나 장소 고르기로 좌표를 찾아
   동선 입력 화면에 도착 · 그 요일 · 도착 한 시간 전~도착 시각을 채움(`RouteDraft`) → 사용자가 확인하고 저장. 캘린더 읽기는 `route/services/calendar_source.dart`(`device_calendar`)
-- 추가: `device_calendar` 패키지(버전은 CI가 고른 것으로 고정 예정), Android `READ_CALENDAR`, iOS 캘린더 권한 문구. 테스트 `test/calendar_import_test.dart`
+- 추가: `device_calendar` 패키지(CI가 고른 `^4.3.3`으로 고정, 안드로이드 빌드 통과), Android `READ_CALENDAR`, iOS 캘린더 권한 문구. 테스트 `test/calendar_import_test.dart`
 - 추가(CI): `android` 워크플로 — pubspec · android/를 바꾸면 `flutter build apk --debug`로 PC 빌드가 깨지지 않는지 확인(러너에 CMake 3.22.1 설치)
 - 할 일: PC에서 pull 뒤 `flutter pub get`
 
