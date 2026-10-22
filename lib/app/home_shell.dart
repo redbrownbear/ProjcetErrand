@@ -41,6 +41,7 @@ import '../features/profile/screens/me_view.dart';
 import '../features/profile/widgets/consent_widgets.dart';
 import '../features/route/screens/route_screens.dart';
 import '../features/travel/screens/travel_screens.dart';
+import '../features/notice/screens/notice_screens.dart';
 import '../features/profile/screens/saved_screen.dart';
 import 'app_nav.dart';
 import 'app_session.dart';
@@ -630,6 +631,7 @@ class _HomeShellState extends State<HomeShell> {
           }
           _push(TravelListScreen(uid: uid));
         },
+        onOpenNotices: () => _push(const NoticeListScreen()),
         onOpenAdmin: _isAdmin ? () => _push(AdminReportsScreen(onOpenRequest: _openRequestById)) : null,
         serverIssue: s.serverIssue,
         syncing: s.syncing,

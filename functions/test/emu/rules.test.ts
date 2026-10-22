@@ -299,6 +299,16 @@ describe('여행 · 출국 일정', () => {
   });
 });
 
+describe('공지', () => {
+  test('누구나 읽고, 앱은 운영자라도 못 쓴다', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'notices', 'n1'), { title: '점검 안내', body: '...', kind: 'notice', publishedAt: Timestamp.now() });
+    });
+    await assertSucceeds(getDoc(doc(db(), 'notices', 'n1')));
+    await assertFails(setDoc(doc(db(OWNER, { role: 'admin' }), 'notices', 'n2'), { title: 'x' }));
+  });
+});
+
 describe('공개 완료 기록', () => {
   test('누구나 읽고, 앱은 못 쓴다', async () => {
     await env.withSecurityRulesDisabled(async (ctx) => {

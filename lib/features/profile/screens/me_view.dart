@@ -50,6 +50,9 @@ class MeView extends StatelessWidget {
   /// 나의 활동 › 내 여행 일정(A11)
   final VoidCallback? onOpenTravels;
 
+  /// 공지 · 업데이트(A33). 로그인 전에도 연다
+  final VoidCallback? onOpenNotices;
+
   /// 운영 › 신고 처리(A36). 운영자 계정일 때만 셸이 넣는다.
   final VoidCallback? onOpenAdmin;
 
@@ -87,6 +90,7 @@ class MeView extends StatelessWidget {
     this.onOpenConsents,
     this.onOpenRoutes,
     this.onOpenTravels,
+    this.onOpenNotices,
     this.onOpenAdmin,
     this.serverIssue,
     this.syncing = false,
@@ -160,6 +164,7 @@ class MeView extends StatelessWidget {
             MenuRow('신뢰 레벨', trailing: 'Lv.${trust.level}', onTap: () => showTrustSheet(context, trust)),
             MenuRow('본인인증', trailing: (profile?.verified ?? false) ? '완료' : '미완료'),
             MenuRow('동의 · 권한 관리', onTap: onOpenConsents),
+            if (onOpenNotices != null) MenuRow('공지 · 업데이트', onTap: onOpenNotices),
             MenuRow('로그아웃', onTap: () => AuthService().signOut(), danger: true),
           ],
         ),
@@ -193,6 +198,13 @@ class MeView extends StatelessWidget {
             child: Text('미션·공구 둘러보기 ›', style: AppType.meta.copyWith(fontWeight: AppType.w600)),
           ),
         ),
+        if (onOpenNotices != null)
+          Center(
+            child: TextButton(
+              onPressed: onOpenNotices,
+              child: Text('공지 · 업데이트 ›', style: AppType.meta.copyWith(fontWeight: AppType.w600)),
+            ),
+          ),
       ],
     );
   }

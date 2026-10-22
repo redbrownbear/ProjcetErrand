@@ -141,6 +141,13 @@
 
 ## 기록
 
+### 2026-10-23 · 미커밋 · Claude (A33 공지 · 업데이트)
+- 추가(서버): Firestore `notices/{id}`(title · body · kind notice/update/event · pinned · hidden · publishedAt) — 누구나 읽고 앱은 못 씀(규칙 테스트).
+  올리기 · 내리기 스크립트 `functions/scripts/post-notice.js`(예약 시각 `--at`, 고정 `--pin`, `--hide`). 운영 방법은 설계 문서 W5 운영 방법 5
+- 추가(앱): 마이 › 계정 › **공지 · 업데이트**(로그인 전 화면에도 링크) — `features/notice/`(모델 `Notice` · `NoticeRepository` · `notice_screens.dart`).
+  고정 먼저 · 최신 순, 예약 공지는 그 시각부터, 마지막으로 연 뒤 올라온 글엔 '새 글'(본 시각은 이 기기에만), 상세는 올린 본문 그대로 · 길게 눌러 복사. 테스트 `test/notice_test.dart`
+- 할 일: `firebase deploy --project dev --only firestore`(규칙)
+
 ### 2026-10-23 · 6bc29a4 · Claude (A23 LIVE 보드 실데이터 · 완료 티커)
 - 추가(서버): 거래가 완료되면 공개 완료 기록 `activity/{tradeId}` — 동네(`area`) · 종류(`cat`) · 방식(`mode`) · 나라(`cc`) · 시각만(이름 · 제목 · 금액 · 위치 없음, `completionRecord`).
   규칙: 누구나 읽고 앱은 못 씀. 테스트 `test/emu/core.test.ts` · 규칙 테스트

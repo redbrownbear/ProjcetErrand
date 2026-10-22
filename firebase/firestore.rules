@@ -122,6 +122,12 @@ service cloud.firestore {
       match /payEntries/{id} { allow read: if isMe(uid); }
     }
 
+    // 공지 · 업데이트(A33). 누구나 읽고, 올리기는 콘솔 · 스크립트(functions/scripts/post-notice.js)로만
+    match /notices/{id} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // 공개 완료 기록(A23, LIVE 보드 티커). 서버가 거래 완료 때 동네 · 종류 · 시각만 쓴다
     match /activity/{id} {
       allow read: if true;
