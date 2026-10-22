@@ -48,6 +48,7 @@ dependencies:
   http: ^1.6.0
   crypto: ^3.0.7
   url_launcher: ^6.3.2
+  device_calendar: any
 
 dev_dependencies:
   flutter_test:

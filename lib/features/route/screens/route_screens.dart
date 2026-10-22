@@ -11,6 +11,7 @@ import '../data/route_places.dart';
 import '../models/commute_route.dart';
 import '../repositories/match_repository.dart';
 import '../repositories/route_repository.dart';
+import 'calendar_import_screen.dart';
 
 /// 마이 › 내 동선 (개발 To-do A08). 정기 동선 목록 · 켜기/끄기 · 고치기 · 지우기, 최대 6개.
 /// 등록한 동선은 서버가 약 1km 격자로 바꿔 '내 동선에 맞는 부탁' 추천(A13)에 쓴다. 정확한 좌표는 저장하지 않는다.
@@ -52,6 +53,18 @@ class RouteListScreen extends StatelessWidget {
                 '위치는 약 1km 칸으로만 저장하고 실시간 위치는 모으지 않아요.',
                 style: AppType.meta.copyWith(fontSize: 13, height: 1.55),
               ),
+              if (!full)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: LineButton(
+                    label: '캘린더 일정에서 동선 찾기',
+                    height: 40,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(builder: (_) => CalendarImportScreen(repo: r, count: list.length)),
+                    ),
+                  ),
+                ),
               if (list.isNotEmpty) _MatchList(repo: matches ?? MatchRepository(uid), onOpen: onOpenRequest),
               const SizedBox(height: 14),
               if (snap.connectionState == ConnectionState.waiting && list.isEmpty)
@@ -208,19 +221,25 @@ class RouteEditScreen extends StatefulWidget {
 
   /// 지금 등록된 동선 수(새로 만들 때 상한 확인)
   final int count;
-  const RouteEditScreen({super.key, required this.repo, this.route, this.count = 0});
+
+  /// 캘린더 일정에서 채운 새 동선(A14) — 도착 · 요일 · 시간. 사용자가 확인하고 저장한다
+  final RouteDraft? draft;
+  const RouteEditScreen({super.key, required this.repo, this.route, this.count = 0, this.draft});
 
   @override
   State<RouteEditScreen> createState() => _RouteEditScreenState();
 }
 
 class _RouteEditScreenState extends State<RouteEditScreen> {
-  late final TextEditingController name = TextEditingController(text: widget.route?.name ?? '출근');
+  late final TextEditingController name = TextEditingController(text: widget.route?.name ?? widget.draft?.name ?? '출근');
   late RoutePoint? from = widget.route?.from;
-  late RoutePoint? to = widget.route?.to;
-  late Set<int> days = {...?widget.route?.days, if (widget.route == null) ...[1, 2, 3, 4, 5]};
-  late TimeOfDay start = _parse(widget.route?.start ?? '08:00');
-  late TimeOfDay end = _parse(widget.route?.end ?? '09:00');
+  late RoutePoint? to = widget.route?.to ?? widget.draft?.to;
+  late Set<int> days = {
+    ...?widget.route?.days,
+    if (widget.route == null) ...(widget.draft?.days ?? const [1, 2, 3, 4, 5]),
+  };
+  late TimeOfDay start = _parse(widget.route?.start ?? widget.draft?.start ?? '08:00');
+  late TimeOfDay end = _parse(widget.route?.end ?? widget.draft?.end ?? '09:00');
   late String mode = widget.route?.mode ?? 'transit';
   late int radius = widget.route?.radiusM ?? 500;
   bool saving = false;
@@ -418,6 +437,16 @@ class _RouteEditScreenState extends State<RouteEditScreen> {
       ),
     );
   }
+}
+
+/// 동선 입력에 미리 채울 값(캘린더 일정에서 — A14)
+class RouteDraft {
+  final String name;
+  final RoutePoint? to;
+  final List<int> days;
+  final String start;
+  final String end;
+  const RouteDraft({required this.name, this.to, required this.days, required this.start, required this.end});
 }
 
 /// 고른 장소. 좌표를 어떻게 저장할지(격자로 줄일지)는 부르는 쪽이 정한다

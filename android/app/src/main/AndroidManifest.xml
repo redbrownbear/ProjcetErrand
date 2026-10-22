@@ -4,6 +4,8 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <!-- 내 동선 › 캘린더에서 찾기(A14). 읽기만 -->
+    <uses-permission android:name="android.permission.READ_CALENDAR"/>
     <application
         android:label="겸사겸사"
         android:name="${applicationName}"

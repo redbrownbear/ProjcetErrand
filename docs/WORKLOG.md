@@ -141,6 +141,14 @@
 
 ## 기록
 
+### 2026-10-23 · 미커밋 · Claude (A14 폰 캘린더 → 동선)
+- 추가(앱): 마이 › 내 동선 › **캘린더 일정에서 동선 찾기**(`route/screens/calendar_import_screen.dart`) — 안내(제목 · 참석자 · 메모는 읽지 않음, 캘린더 내용은 저장 안 함) →
+  '캘린더 읽기 허용'(OS 권한) → 앞으로 2주 안 장소가 적힌 일정만(종일 일정 · 장소 없음 제외, 같은 일정 하나로) → 고르면 장소 검색(키가 있을 때)이나 장소 고르기로 좌표를 찾아
+  동선 입력 화면에 도착 · 그 요일 · 도착 한 시간 전~도착 시각을 채움(`RouteDraft`) → 사용자가 확인하고 저장. 캘린더 읽기는 `route/services/calendar_source.dart`(`device_calendar`)
+- 추가: `device_calendar` 패키지(버전은 CI가 고른 것으로 고정 예정), Android `READ_CALENDAR`, iOS 캘린더 권한 문구. 테스트 `test/calendar_import_test.dart`
+- 추가(CI): `android` 워크플로 — pubspec · android/를 바꾸면 `flutter build apk --debug`로 PC 빌드가 깨지지 않는지 확인(러너에 CMake 3.22.1 설치)
+- 할 일: PC에서 pull 뒤 `flutter pub get`
+
 ### 2026-10-23 · ecf5ef2 외 · Claude (A24 겸이 말풍선 노출 상한)
 - 변경: 홈 · 해외 위 겸이 카드(`HeroCard`)의 말풍선(이달의 럭키드로우 안내)은 이제 상한 안에서만 보인다 — 앱을 켠 동안 3번까지, 한 번 보인 뒤 3분 안엔 다른 탭에서 다시 안 띄움,
   닫기(×)를 누르면 하루 동안 안 보임(이 기기에 기억). 광고성 안내라 말풍선에 '이벤트' 표시. `core/widgets/bubble_quota.dart`, `HeroCard`를 상태 위젯으로(속은 `_HeroBody` 그대로).
