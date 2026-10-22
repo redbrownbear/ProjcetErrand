@@ -47,6 +47,9 @@ class MeView extends StatelessWidget {
   /// 나의 활동 › 내 동선(A08)
   final VoidCallback? onOpenRoutes;
 
+  /// 운영 › 신고 처리(A36). 운영자 계정일 때만 셸이 넣는다.
+  final VoidCallback? onOpenAdmin;
+
   /// 서버에 붙지 못한 사유. null이면 정상 연결.
   final String? serverIssue;
 
@@ -80,6 +83,7 @@ class MeView extends StatelessWidget {
     required this.onRename,
     this.onOpenConsents,
     this.onOpenRoutes,
+    this.onOpenAdmin,
     this.serverIssue,
     this.syncing = false,
     this.lucky,
@@ -144,6 +148,7 @@ class MeView extends StatelessWidget {
             MenuRow('매일의 혜택', onTap: goPointsHub),
           ],
         ),
+        if (onOpenAdmin != null) MenuGroup(title: '운영', rows: [MenuRow('신고 처리', onTap: onOpenAdmin)]),
         MenuGroup(
           title: '계정',
           rows: [

@@ -7,6 +7,8 @@ import '../core/utils/formatters.dart';
 import '../core/widgets/kit.dart';
 import '../core/widgets/screen_frame.dart';
 import '../features/activity/screens/activity_view.dart';
+import '../features/admin/screens/admin_reports_screen.dart';
+import '../features/auth/services/auth_service.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/benefits/models/partner_mission.dart';
 import '../features/benefits/models/point_wallet.dart';
@@ -126,8 +128,24 @@ class _HomeShellState extends State<HomeShell> {
     super.dispose();
   }
 
+  /// 운영자 계정이면 마이에 '운영 › 신고 처리'가 보인다. 계정이 바뀔 때만 다시 확인한다.
+  String? _adminUid;
+  bool _isAdmin = false;
+
+  void _checkAdmin() {
+    final uid = session.myUid;
+    if (uid == _adminUid) return;
+    _adminUid = uid;
+    _isAdmin = false;
+    if (uid == null) return;
+    AuthService().isAdmin().then((v) {
+      if (mounted && _adminUid == uid && v != _isAdmin) setState(() => _isAdmin = v);
+    });
+  }
+
   void _onSessionChanged() {
     if (!mounted) return;
+    _checkAdmin();
     setState(() {});
     if (session.needsConsent && !_consentOpen) {
       _consentOpen = true;
@@ -337,6 +355,8 @@ class _HomeShellState extends State<HomeShell> {
                     _openRequestById(rid);
                   } else if (photoTrade != null) {
                     openPhotos(photoTrade);
+                  } else if (n.kind.startsWith('report.')) {
+                    // 신고 경고 · 처리 알림은 알림 문구가 전부다
                   } else {
                     goActivity();
                   }
@@ -598,6 +618,7 @@ class _HomeShellState extends State<HomeShell> {
           }
           _push(RouteListScreen(uid: uid, onOpenRequest: _openRequestById));
         },
+        onOpenAdmin: _isAdmin ? () => _push(AdminReportsScreen(onOpenRequest: _openRequestById)) : null,
         serverIssue: s.serverIssue,
         syncing: s.syncing,
         lucky: LuckyCard(nav: social),

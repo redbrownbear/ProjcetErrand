@@ -41,6 +41,17 @@ class AuthService {
     }
   }
 
+  /// 운영자 계정인지(Auth custom claim role=admin — functions/scripts/set-admin.js). 지정 뒤 다시 로그인해야 반영된다.
+  Future<bool> isAdmin() async {
+    try {
+      final token = await currentUser?.getIdTokenResult();
+      return token?.claims?['role'] == 'admin';
+    } catch (e) {
+      debugPrint('운영자 확인 실패: $e');
+      return false;
+    }
+  }
+
   Future<void> signIn({required String email, required String password}) async {
     final auth = _auth;
     if (auth == null) throw const ServerUnavailable();

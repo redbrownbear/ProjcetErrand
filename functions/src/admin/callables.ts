@@ -2,6 +2,7 @@ import { Firestore, getFirestore } from 'firebase-admin/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 
 import { ENFORCE_APP_CHECK } from '../config';
+import { fcm } from '../notify/triggers';
 import * as core from './core';
 
 function adminCallable(handler: (db: Firestore, uid: string, data: unknown) => Promise<unknown>) {
@@ -13,4 +14,5 @@ function adminCallable(handler: (db: Firestore, uid: string, data: unknown) => P
 }
 
 export const adminSetSuspended = adminCallable(core.setSuspended);
-export const adminResolveReport = adminCallable(core.resolveReport);
+export const adminResolveReport = adminCallable((db, uid, data) => core.resolveReport(db, uid, data, fcm));
+export const adminSetRequestHidden = adminCallable((db, uid, data) => core.setRequestHidden(db, uid, data, fcm));

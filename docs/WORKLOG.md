@@ -43,7 +43,7 @@
 - [ ] W4·W5 배포·실기기 확인 — 알림 권한 허용 → 지원·수락·단계 변경마다 상대 기기에 푸시와 알림함, 신고 접수, 차단 후 목록에서 사라짐.
       운영자 지정은 [1차_백엔드_설계.md › W5 운영 방법](1차_백엔드_설계.md)
 - [ ] 채팅 실기기 확인 — 수락 뒤 채팅 탭에 대화방, 메시지 주고받기, 전화번호를 쓰면 가려지는지, 상대 기기 푸시·안 읽은 수
-- [ ] W6 동선 구조화 · W7 추천 v0 · 운영자용 신고 처리 화면
+- [ ] 운영자 신고 처리 화면 배포 · 실기기 확인 — set-admin.js로 지정한 계정 다시 로그인 → 마이 › 운영 › 신고 처리, 경고 · 정지 · 글 내리기
 - [ ] 포인트·미션·출석·응모권을 1차 출시 빌드에서 숨기기(결정 6). 포인트 서버 이전(W8)은 그다음 업데이트
 
 - [ ] '가는 김에(어! 나도)' 배포·실기기 확인 — 계정 두 개로: 나 여기 가요(지도에 찍기) → 다른 계정 지도·탭에 핀·일정 → '어! 나도!' →
@@ -140,6 +140,17 @@
   바꾼 뒤엔 Android Studio를 완전히 종료 후 재시작.
 
 ## 기록
+
+### 2026-10-23 · 미커밋 · Claude (A36 운영자 신고 처리 화면)
+- 추가(앱): 마이 › **운영 › 신고 처리**(`features/admin/` — `AdminReportsScreen` · `AdminReportDetailScreen` · `AdminRepository` · 모델 `admin_report.dart`).
+  운영자 계정(custom claim `role=admin`, `AuthService.isAdmin`)에만 메뉴가 보인다. 처리 전/처리됨 목록(최근 200건, 같은 사람이 받은 신고 수),
+  한 건 화면: 신고 내용 · 신고된 사람(정지 상태 · 정지 풀기) · 신고한 사람 · 신고된 부탁 글(글 보기 · 내리기 · 되돌리기) → 운영 메모 + 문제 없음 · 경고 · 이용 정지(확인 창).
+  테스트 `test/admin_reports_test.dart`
+- 추가(서버): `adminSetRequestHidden` — 운영자가 부탁 글을 내리고(status `hidden` · `hiddenBy: 'admin'` · 원래 상태 `hiddenFrom`) 글쓴이에게 알림, 되돌리기는 운영자가 내린 글만
+  (금지 품목 검사로 내려간 글은 거부. 되돌린 글은 `onRequestWrite`가 다시 검사).
+  `adminResolveReport`가 경고면 대상에게 `report.warned`, 처리하면 신고자에게 `report.resolved` 알림(신고마다 한 번). 테스트 `test/emu/notify_admin.test.ts`
+- 변경: 알림함에서 신고 알림(`report.*`)을 눌러도 진행 중인 부탁으로 넘어가지 않는다. 설계 문서 W5 운영 방법을 앱 화면 기준으로
+- 할 일: `firebase deploy --project dev --only functions` (새 함수 `adminSetRequestHidden`)
 
 ### 2026-10-22 · f012f56 · Claude (A13 동선 기반 추천 v0 — W7)
 - 추가(서버): `functions/src/route/match.ts` · 트리거 `onRequestPlaced` — 부탁의 정확한 위치(`private/detail`)가 처음 저장될 때 **한 번만** 계산.

@@ -68,4 +68,45 @@ describe('운영자', () => {
     await rejectsWith(admin.resolveReport(db, 'ops', { reportId: 'rp', resolution: 'ban' }), 'invalid-argument');
     await rejectsWith(admin.resolveReport(db, 'ops', { reportId: 'none', resolution: 'dismissed' }), 'not-found');
   });
+
+  test('신고 처리 알림: 경고는 대상에게, 처리됨은 신고자에게 한 번만', async () => {
+    await db.collection('reports').doc('rw').set({ reporterUid: 'a', targetUid: 'b', requestId: '7', reason: '욕설', createdAt: Timestamp.now() });
+    const sent: PushMessage[] = [];
+    const send = async (m: PushMessage) => {
+      sent.push(m);
+      return [];
+    };
+    await admin.resolveReport(db, 'ops', { reportId: 'rw', resolution: 'warned' }, send);
+    await admin.resolveReport(db, 'ops', { reportId: 'rw', resolution: 'warned' }, send);
+    const nb = await db.collection('users').doc('b').collection('notifications').get();
+    assert.deepEqual(nb.docs.map((d) => d.get('kind')), ['report.warned']);
+    assert.equal(nb.docs[0].get('requestId'), '7');
+    const na = await db.collection('users').doc('a').collection('notifications').get();
+    assert.deepEqual(na.docs.map((d) => d.get('kind')), ['report.resolved']);
+    assert.equal((await db.collection('users').doc('b').get()).get('suspended'), undefined);
+  });
+
+  test('운영자 글 내리기 · 되돌리기, 금지 품목으로 내려간 글은 못 되돌린다', async () => {
+    await seedRequest(db, '9', 'owner');
+    const send = async () => [];
+    const r1 = await admin.setRequestHidden(db, 'ops', { requestId: '9', hidden: true, reason: '사기 의심' }, send);
+    assert.equal(r1.changed, true);
+    let doc = (await db.collection('requests').doc('9').get()).data()!;
+    assert.equal(doc.status, 'hidden');
+    assert.equal(doc.hiddenBy, 'admin');
+    assert.equal(doc.hiddenReason, '사기 의심');
+    assert.equal((await admin.setRequestHidden(db, 'ops', { requestId: '9', hidden: true })).changed, false);
+    const n = await db.collection('users').doc('owner').collection('notifications').get();
+    assert.deepEqual(n.docs.map((d) => d.get('kind')), ['request.hidden']);
+
+    await admin.setRequestHidden(db, 'ops', { requestId: '9', hidden: false });
+    doc = (await db.collection('requests').doc('9').get()).data()!;
+    assert.equal(doc.status, 'open');
+    assert.equal(doc.hiddenBy, null);
+
+    await db.collection('requests').doc('9').update({ status: 'hidden', hiddenReason: '금지 품목' });
+    await rejectsWith(admin.setRequestHidden(db, 'ops', { requestId: '9', hidden: false }), 'failed-precondition');
+    await rejectsWith(admin.setRequestHidden(db, 'ops', { requestId: 'none', hidden: true }), 'not-found');
+    await rejectsWith(admin.setRequestHidden(db, 'ops', { requestId: '9' }), 'invalid-argument');
+  });
 });

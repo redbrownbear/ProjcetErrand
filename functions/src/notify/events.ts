@@ -19,7 +19,9 @@ export type NotifyKind =
   | 'request.comment'
   | 'request.hidden'
   | 'trade.photo'
-  | 'match.route';
+  | 'match.route'
+  | 'report.warned'
+  | 'report.resolved';
 
 export interface NotifyEvent {
   to: string;

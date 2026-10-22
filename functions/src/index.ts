@@ -19,7 +19,7 @@ export {
 } from './errand/callables';
 
 export { onApplicationWrite, onRequestPlaced, onRequestWrite, onRouteWrite, onTradeWrite } from './notify/triggers';
-export { adminResolveReport, adminSetSuspended } from './admin/callables';
+export { adminResolveReport, adminSetRequestHidden, adminSetSuspended } from './admin/callables';
 export { markChatRead, sendMessage } from './chat/callables';
 export { addComment } from './comment/callables';
 export { addTradePhoto } from './photo/callables';
