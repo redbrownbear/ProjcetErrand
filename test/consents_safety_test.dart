@@ -82,8 +82,8 @@ void main() {
       await tester.tap(find.text('전체 동의'));
       await tester.pump();
       expect(values.values.every((v) => !v), isTrue);
-      await tester.ensureVisible(find.text(Consents.item(Consents.night).title));
-      await tester.tap(find.text(Consents.item(Consents.night).title));
+      await tester.ensureVisible(find.textContaining(Consents.item(Consents.night).title));
+      await tester.tap(find.textContaining(Consents.item(Consents.night).title));
       await tester.pump();
       expect(values[Consents.night], isTrue);
       expect(values[Consents.marketing], isTrue);
