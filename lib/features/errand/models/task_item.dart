@@ -51,6 +51,9 @@ class TaskItem {
   final int joinMax;
   final List<Comment> comments;
   final double? lat, lng;
+
+  /// 공개 문서의 약 1km 격자(geohash 6자리). 정확한 좌표 대신 서버가 붙인다(A13) — 남의 동네 부탁을 지도 칸에 찍을 때 쓴다(A31)
+  final String? cell;
   // 거래 조건. 기존 샘플에는 없는 정보라 null이면 화면에서 "확인 필요"로 보여준다.
   final DateTime? deadline;
   final String? deliveryPlace;
@@ -117,6 +120,7 @@ class TaskItem {
     this.comments = const [],
     this.lat,
     this.lng,
+    this.cell,
     this.deadline,
     this.deliveryPlace,
     this.budget = 0,
@@ -175,6 +179,7 @@ class TaskItem {
     comments: comments,
     lat: lat,
     lng: lng,
+    cell: cell,
     deadline: deadline,
     deliveryPlace: deliveryPlace ?? this.deliveryPlace,
     budget: budget,
@@ -260,6 +265,7 @@ class TaskItem {
     'closed': closed,
     'lat': lat,
     'lng': lng,
+    'cell': cell,
     'deadline': deadline?.toIso8601String(),
     'deliveryPlace': deliveryPlace,
     'budget': budget,
@@ -306,6 +312,7 @@ class TaskItem {
       closed: json['closed'] == true,
       lat: json['lat'] is num ? (json['lat'] as num).toDouble() : null,
       lng: json['lng'] is num ? (json['lng'] as num).toDouble() : null,
+      cell: s('cell'),
       deadline: DateTime.tryParse(s('deadline') ?? ''),
       deliveryPlace: s('deliveryPlace'),
       budget: n('budget'),

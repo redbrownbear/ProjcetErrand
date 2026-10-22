@@ -134,6 +134,7 @@ class RequestRepository {
       city: str('city'),
       lat: dbl('lat') ?? dbl('pinLat'),
       lng: dbl('lng') ?? dbl('pinLng'),
+      cell: str('cell'),
       distM: dbl('distM'),
       mins: whole('mins'),
       price: whole('price'),

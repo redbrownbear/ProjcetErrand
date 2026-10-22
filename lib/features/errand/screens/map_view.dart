@@ -8,6 +8,7 @@ import '../models/task_item.dart';
 import '../navigation/errand_actions.dart';
 import 'map/map_canvas.dart';
 import 'map/map_centers.dart';
+import 'map/map_spots.dart';
 
 class MapView extends StatefulWidget {
   final List<TaskItem> items;
@@ -24,13 +25,13 @@ class _MapViewState extends State<MapView> {
 
   bool _inScope(TaskItem i) => widget.scope == '전국' || i.region == widget.scope;
 
-  List<TaskItem> get _pinItems => widget.items
-      .where((i) => i.mode != 'sea' && i.lat != null && i.lng != null && _inScope(i))
-      .where((i) => filter == 'all' ? true : i.mode == filter)
-      .toList();
+  /// 좌표가 없는 남의 부탁은 공개 격자(약 1km 칸) 가운데에 찍힌다 — [mapSpots]
+  List<MapSpot> get _spots => mapSpots(
+    widget.items.where((i) => i.mode != 'sea' && _inScope(i)).where((i) => filter == 'all' ? true : i.mode == filter),
+  );
 
   List<MapPin> get _pins => [
-    for (final it in _pinItems) MapPin(item: it, lat: it.lat!, lng: it.lng!, label: _markerLabel(it), color: _markerColor(it)),
+    for (final s in _spots) MapPin(item: s.item, lat: s.lat, lng: s.lng, label: _markerLabel(s.item), color: _markerColor(s.item)),
   ];
 
   Color _markerColor(TaskItem it) {
@@ -245,6 +246,11 @@ class _MapPreview extends StatelessWidget {
             ),
             const SizedBox(height: 5),
             Text(metaOf(it), style: const TextStyle(fontSize: 12.5, color: AppColors.sub)),
+            if (it.lat == null && it.cell != null)
+              const Padding(
+                padding: EdgeInsets.only(top: 3),
+                child: Text('지도 위치는 약 1km 범위예요 · 정확한 장소는 수락되면 보여요', style: TextStyle(fontSize: 11.5, color: AppColors.faint)),
+              ),
             const SizedBox(height: 14),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,

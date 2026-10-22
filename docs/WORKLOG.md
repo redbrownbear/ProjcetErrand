@@ -141,6 +141,13 @@
 
 ## 기록
 
+### 2026-10-23 · 미커밋 · Claude (A31 지도에 서버 부탁 핀)
+- 추가: `errand/screens/map/map_spots.dart`(`mapSpots`) — 좌표가 있으면 그 자리(내 글 · 가는 김에 핀 · 예시), 없으면 공개 문서의 약 1km 격자 `cell`(A13에서 서버가 붙임) 가운데에 핀.
+  같은 칸에 여러 건이면 가운데를 둘러 약 150m 원에 id 순으로 나눠 찍는다. `TaskItem.cell`(서버 문서 · 이 기기 사본에 저장). 테스트 `test/map_spots_test.dart`
+- 변경: 지도 화면(`MapView`)과 홈 지도 보기(`nearby_section`)가 `mapSpots`를 쓴다 — 이제 다른 계정이 올린 동네 부탁도 지도에 보인다(위치를 고른 글만).
+  칸 가운데에 찍힌 부탁은 미리보기에 '지도 위치는 약 1km 범위예요 · 정확한 장소는 수락되면 보여요'
+- 변경(버그): 지도 핀 글자의 '급' 표시가 깨진 글자(`ê¸`)로 들어가 있던 것
+
 ### 2026-10-23 · 7474cb6 · Claude (A36 운영자 신고 처리 화면)
 - 추가(앱): 마이 › **운영 › 신고 처리**(`features/admin/` — `AdminReportsScreen` · `AdminReportDetailScreen` · `AdminRepository` · 모델 `admin_report.dart`).
   운영자 계정(custom claim `role=admin`, `AuthService.isAdmin`)에만 메뉴가 보인다. 처리 전/처리됨 목록(최근 200건, 같은 사람이 받은 신고 수),

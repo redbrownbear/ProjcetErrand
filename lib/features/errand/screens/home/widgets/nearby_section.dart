@@ -12,6 +12,7 @@ import '../../../models/task_item.dart';
 import '../../../widgets/task_card.dart';
 import '../../map/map_canvas.dart';
 import '../../map/map_centers.dart';
+import '../../map/map_spots.dart';
 import '../../../services/nearby_query.dart';
 import '../../../../../core/widgets/select_box.dart';
 
@@ -185,9 +186,11 @@ class _NearbySectionState extends State<NearbySection> {
     );
   }
 
-  /// 좌표가 없는 부탁(방금 올린 부탁 등)은 지도에 찍을 수 없어서 개수를 따로 알려 준다.
+  /// 위치가 없는 부탁(위치를 고르지 않은 글 등)은 지도에 찍을 수 없어서 개수를 따로 알려 준다.
+  /// 남의 부탁은 정확한 장소 대신 약 1km 칸 가운데에 찍힌다([mapSpots]).
   Widget _map() {
-    final located = widget.tasks.where((i) => i.lat != null && i.lng != null).toList();
+    final spots = mapSpots(widget.tasks);
+    final located = [for (final s in spots) s.item];
     final selected = located.where((i) => i.id == _pinned).firstOrNull ?? located.firstOrNull;
     final center = centerOf(widget.scope);
 
@@ -196,7 +199,10 @@ class _NearbySectionState extends State<NearbySection> {
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
           child: Text(
-            located.length == widget.tasks.length ? '목록과 같은 조건의 결과예요' : '좌표가 있는 ${located.length}건만 지도에 표시돼요',
+            [
+              located.length == widget.tasks.length ? '목록과 같은 조건의 결과예요' : '위치가 있는 ${located.length}건만 지도에 표시돼요',
+              if (spots.any((s) => s.approx)) '이웃 부탁은 약 1km 범위로 보여요',
+            ].join(' · '),
             textAlign: TextAlign.center,
             style: AppType.caption,
           ),
@@ -208,13 +214,13 @@ class _NearbySectionState extends State<NearbySection> {
           decoration: BoxDecoration(color: AppColors.page, borderRadius: BorderRadius.circular(AppRadius.tile)),
           child: MapCanvas(
             pins: [
-              for (final it in located)
+              for (final s in spots)
                 MapPin(
-                  item: it,
-                  lat: it.lat!,
-                  lng: it.lng!,
-                  label: (it.hot ? '급 ' : '') + kwon(it.price),
-                  color: _pinColor(it, selected),
+                  item: s.item,
+                  lat: s.lat,
+                  lng: s.lng,
+                  label: (s.item.hot ? '급 ' : '') + kwon(s.item.price),
+                  color: _pinColor(s.item, selected),
                 ),
             ],
             selectedId: selected?.id,
