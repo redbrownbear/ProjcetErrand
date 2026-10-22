@@ -22,6 +22,9 @@ jobs:
         with:
           channel: stable
           cache: true
+      # 러너 SDK의 CMake가 Flutter가 찾는 버전(3.22.1)과 달라서 깔아 둔다
+      - name: CMake 3.22.1
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "cmake;3.22.1" > /dev/null
       - run: flutter pub get
       - name: flutter build apk --debug
         run: |
