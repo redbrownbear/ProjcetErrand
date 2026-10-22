@@ -141,7 +141,7 @@
 
 ## 기록
 
-### 2026-10-23 · 미커밋 · Claude (A29 제안자에게 따로 부탁)
+### 2026-10-23 · 7bf4c9f · Claude (A29 제안자에게 따로 부탁)
 - 추가(서버): `askProposer` — 제안에 없는 물건을 제안자에게 1:1로 부탁(`proposals/{id}/asks/{uid}`: 물건 40자 · 예상 물건값(선택, 물건값 상한) · 한마디 200자,
   금지 품목 · 차단 · 취소/지난 제안 거부, 다시 보내면 내용만 바뀜). `answerProposerAsk` — 제안자가 수락하면 거래(`trades`, `mode: 'proposal'`, requestId `proposal:{id}`,
   부탁한 사람 = 요청자 · 제안자 = 수행자, 바로 `matched`)가 생겨 채팅이 열리고, 거절하면 알림만. 알림 `proposal.ask · askAccepted · askRejected`.
