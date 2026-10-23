@@ -13,12 +13,13 @@ import 'backend.dart';
 /// 보안 규칙을 "본인만"으로 한 줄로 끝낼 수 있기 때문이다.
 ///
 /// ```
-/// users/{uid}                프로필 (닉네임·지역·포인트·본인인증)
+/// users/{uid}                프로필 (닉네임·지역 · 포인트 · 본인인증은 서버만 씀)
 ///   bookmarks/{requestId}    관심 저장
 ///   trades/{requestId}       지원·거래 단계와 시각
 ///   offers/{requestId}       내가 보낸 가격 제안
-///   coupons/{couponId}       교환한 쿠폰
-///   ledger/{rewardKey}       포인트 적립 원장 (중복 지급 방지)
+///   coupons/{couponId}       교환한 쿠폰 (서버만 씀 — 읽기만)
+///   pointLedger/{id}         포인트 원장 (서버만 씀, functions/src/points)
+///   ledger/{rewardKey}       예전에 앱이 쓰던 적립 기록 (읽기만)
 /// ```
 ///
 /// 모든 호출은 [Backend.guard]를 지난다. 서버가 없거나 느리면 빈 값으로 돌아오고,
@@ -62,9 +63,6 @@ class UserRepository {
       return fresh;
     }, null);
   }
-
-  Future<void> savePoints(int points) =>
-      Backend.push(() => _doc.set({'points': points, 'updatedAt': FieldValue.serverTimestamp()}, SetOptions(merge: true)));
 
   Future<void> saveProfileFields({String? nickname, String? region, bool? verified}) => Backend.push(
     () => _doc.set({
@@ -200,31 +198,19 @@ class UserRepository {
     ];
   }, const []);
 
-  /// 쿠폰을 저장한다. 목록 순서를 정하는 `createdAt`은 [isNew]일 때만 찍는다.
-  /// 사용 처리 때마다 다시 찍으면 쓴 쿠폰이 목록 맨 위로 올라간다.
-  Future<void> saveCoupon(Coupon c, {bool isNew = false}) => Backend.push(
-    () => _sub('coupons').doc('${c.id}').set({
-      'brandK': c.brandK,
-      'name': c.name,
-      'points': c.points,
-      'exp': c.exp,
-      'code': c.code,
-      'used': c.used,
-      if (isNew) 'createdAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true)),
-  );
-
   // ── 포인트 적립 원장 ────────────────────────────────────────────────────
 
-  /// key -> 받은 날짜('YYYY-MM-DD') 또는 '*'(1회성)
+  /// key -> 받은 날짜('YYYY-MM-DD') 또는 '*'(1회성). 서버 원장(`pointLedger`, B09)의 적립 줄과
+  /// 앱이 직접 쓰던 예전 기록(`ledger`, 이제 읽기만)을 합친다 — 출석 달력이 예전 날짜도 그린다
   Future<Map<String, String>> loadLedger() => Backend.guard<Map<String, String>>(() async {
-    final snap = await _sub('ledger').get();
-    return {for (final d in snap.docs) d.id: '${d.data()['on'] ?? '*'}'};
+    final old = await _sub('ledger').get();
+    final server = await _sub('pointLedger').where('type', isEqualTo: 'earn').get();
+    return {
+      for (final d in old.docs) d.id: '${d.data()['on'] ?? '*'}',
+      for (final d in server.docs)
+        if (d.id != 'opening') d.id: d.data()['daily'] == true ? '${d.data()['day'] ?? '*'}' : '*',
+    };
   }, const {});
-
-  Future<void> saveLedgerEntry(String key, String value, int amount, String label) => Backend.push(
-    () => _sub('ledger').doc(key).set({'on': value, 'amount': amount, 'label': label, 'claimedAt': FieldValue.serverTimestamp()}),
-  );
 
   // ── 첫 로그인 이관 ──────────────────────────────────────────────────────
 

@@ -16,6 +16,7 @@ import '../features/benefits/models/coupon.dart';
 import '../features/benefits/models/partner_mission.dart';
 import '../features/benefits/models/reward_ledger.dart';
 import '../features/benefits/models/reward_product.dart';
+import '../features/benefits/repositories/point_repository.dart';
 import '../features/benefits/services/mission_tracker.dart';
 import '../features/errand/models/application.dart';
 import '../features/errand/models/going_deal.dart';
@@ -499,8 +500,18 @@ class AppSession extends ChangeNotifier {
 
   // ── 포인트·쿠폰 ─────────────────────────────────────────────────────────
 
+  /// 포인트 서버 함수(B09). 로그인 + 서버 연결 상태면 포인트 · 쿠폰은 전부 서버가 바꾼다
+  PointRepository pointRepo = const PointRepository();
+
   /// [key]가 같은 보상은 한 번만 지급된다. [daily]면 한국 시간 기준 하루에 한 번, 아니면 계정당 한 번.
+  ///
+  /// 서버에 붙은 계정에는 서버가 확인한 적립만 쌓인다(지금은 출석 — [checkIn]). 광고 · 제휴 미션 · 공동구매는
+  /// 광고 회사 · 제휴사의 확인이 서버에 붙기 전까지 체험이라 포인트를 주지 않는다.
   void earn(int amount, String label, {required String key, bool daily = true}) {
+    if (_serverMode) {
+      flash('체험이라 포인트는 쌓이지 않아요 · 실제 적립은 제휴 확인이 붙은 뒤 열려요');
+      return;
+    }
     final mark = _rewards.claimValue(key, daily: daily);
     if (mark == null) {
       flash(daily ? '오늘은 이미 받았어요' : '이미 받은 적립이에요');
@@ -509,24 +520,61 @@ class AppSession extends ChangeNotifier {
     _update(() => points += amount);
     _store.saveLedger(_rewards.entries);
     _store.savePoints(points);
-    _user?.saveLedgerEntry(key, mark, amount, label);
-    _user?.savePoints(points);
     flash('+${amount}P 적립됐어요 · $label');
   }
 
-  /// 오늘 출석 도장. 연속·월 누적 보너스까지 한 번에 받는다.
-  void checkIn() {
+  /// 오늘 출석 도장. 연속·월 누적 보너스까지 한 번에 받는다. 서버에 붙은 계정은 금액도 서버가 정한다.
+  Future<void> checkIn() async {
     final today = attendance;
     if (today.attendedToday) {
       flash('오늘은 이미 받았어요');
+      return;
+    }
+    if (_serverMode) {
+      try {
+        final r = await pointRepo.attend();
+        _rewards.restore({..._rewards.entries, r.key: '*'});
+        _update(() => points = r.balance);
+        _store.saveLedger(_rewards.entries);
+        _store.savePoints(points);
+        flash(r.amount > 0 ? '+${r.amount}P 적립됐어요 · 출석 적립' : '오늘은 이미 받았어요');
+        if (r.amount > 0) onTicket?.call(TicketRules.attend);
+      } on ServerException catch (e) {
+        flash(e.message);
+      }
       return;
     }
     earn(today.todayReward, '출석 적립', key: Attendance.keyFor(today.today), daily: false);
     if (attendance.attendedToday) onTicket?.call(TicketRules.attend);
   }
 
-  /// 상품 교환. 교환됐으면 true.
-  bool redeem(RewardProduct p) {
+  /// 상품 교환. 교환됐으면 true. 서버에 붙은 계정은 서버가 잔액을 확인하고 쿠폰을 만든다.
+  Future<bool> redeem(RewardProduct p) async {
+    if (points < p.points) {
+      flash('보유 포인트가 부족해요');
+      return false;
+    }
+    if (_serverMode) {
+      try {
+        final balance = await pointRepo.redeem(p.id);
+        final fresh = await _user?.loadCoupons() ?? coupons;
+        _update(() {
+          points = balance;
+          coupons = fresh;
+        });
+        _store.savePoints(points);
+        _store.saveCoupons(coupons);
+        return true;
+      } on ServerException catch (e) {
+        flash(e.message);
+        return false;
+      }
+    }
+    return _redeemLocal(p);
+  }
+
+  /// 로그아웃 · 서버 연결 전 체험 교환 (이 기기에만)
+  bool _redeemLocal(RewardProduct p) {
     if (points < p.points) {
       flash('보유 포인트가 부족해요');
       return false;
@@ -547,18 +595,23 @@ class AppSession extends ChangeNotifier {
     });
     _store.savePoints(points);
     _store.saveCoupons(coupons);
-    _user?.saveCoupon(coupon, isNew: true);
-    _user?.savePoints(points);
     return true;
   }
 
-  void useCoupon(int id) {
+  Future<void> useCoupon(int id) async {
     final index = coupons.indexWhere((c) => c.id == id);
     if (index < 0) return;
+    if (_serverMode) {
+      try {
+        await pointRepo.useCoupon(id);
+      } on ServerException catch (e) {
+        flash(e.message);
+        return;
+      }
+    }
     final used = coupons[index].copyWith(used: true);
     _update(() => coupons = [...coupons]..[index] = used);
     _store.saveCoupons(coupons);
-    _user?.saveCoupon(used);
   }
 
   void completeMission(PartnerMission m) {

@@ -1,0 +1,115 @@
+{
+  "_comment": "포인트 서버 표(B09). 앱 표(lib/features/benefits/models/attendance.dart AttendRules · data/reward_products.dart)와 같아야 한다 — test/point_catalog_test.dart가 비교한다",
+  "attend": {
+    "daily": 1,
+    "streakEvery": 7,
+    "streakBonus": 10,
+    "monthTarget": 20,
+    "monthBonus": 100
+  },
+  "products": [
+    {
+      "id": "r1",
+      "brand": "starbucks",
+      "name": "아이스 아메리카노 T",
+      "points": 4500
+    },
+    {
+      "id": "r2",
+      "brand": "starbucks",
+      "name": "카페라떼 T",
+      "points": 5000
+    },
+    {
+      "id": "r3",
+      "brand": "mega",
+      "name": "아메리카노",
+      "points": 2000
+    },
+    {
+      "id": "r4",
+      "brand": "compose",
+      "name": "아메리카노",
+      "points": 2200
+    },
+    {
+      "id": "r5",
+      "brand": "ediya",
+      "name": "아메리카노",
+      "points": 3200
+    },
+    {
+      "id": "r6",
+      "brand": "twosome",
+      "name": "아메리카노 + 조각케이크",
+      "points": 9500
+    },
+    {
+      "id": "r7",
+      "brand": "bbq",
+      "name": "황금올리브치킨 + 콜라",
+      "points": 23000
+    },
+    {
+      "id": "r8",
+      "brand": "baskin",
+      "name": "싱글레귤러",
+      "points": 3900
+    },
+    {
+      "id": "r9",
+      "brand": "baskin",
+      "name": "파인트",
+      "points": 9800
+    },
+    {
+      "id": "r10",
+      "brand": "cu",
+      "name": "5,000원 모바일 상품권",
+      "points": 5000
+    },
+    {
+      "id": "r11",
+      "brand": "gs25",
+      "name": "10,000원 모바일 상품권",
+      "points": 10000
+    },
+    {
+      "id": "r12",
+      "brand": "paris",
+      "name": "5,000원 모바일 상품권",
+      "points": 5000
+    },
+    {
+      "id": "r13",
+      "brand": "tlj",
+      "name": "5,000원 모바일 상품권",
+      "points": 5000
+    },
+    {
+      "id": "r14",
+      "brand": "moms",
+      "name": "싸이버거 세트",
+      "points": 8500
+    },
+    {
+      "id": "r15",
+      "brand": "lotteria",
+      "name": "불고기버거 세트",
+      "points": 8000
+    },
+    {
+      "id": "r16",
+      "brand": "burgerking",
+      "name": "와퍼 세트",
+      "points": 9500
+    },
+    {
+      "id": "r17",
+      "brand": "oliveyoung",
+      "name": "10,000원 상품권",
+      "points": 10000
+    }
+  ],
+  "couponDays": 365
+}

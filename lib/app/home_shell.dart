@@ -200,9 +200,9 @@ class _HomeShellState extends State<HomeShell> {
 
   /// 교환됐으면 true. 로그인을 취소했거나 포인트가 모자라면 false.
   Future<bool> redeem(RewardProduct p) async {
-    var ok = false;
+    Future<bool>? ok;
     await requireLogin(() => ok = session.redeem(p));
-    return ok;
+    return await ok ?? false;
   }
 
   void useCoupon(int id) => requireLogin(() => session.useCoupon(id));

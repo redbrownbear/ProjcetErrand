@@ -56,8 +56,8 @@
 - [ ] 로그인 상태의 마이 화면을 실제 기기에서 확인 (브라우저에선 로그아웃 상태만 확인함)
 - [ ] 실제 기기에서 계정 전환 확인 — 로그아웃·다른 계정 로그인 때 앞사람 자료가 지워지는지, 로그인 직후 출석이 서버 값에 덮이지 않는지
       (2026-10-16 리뷰에서 고침. 브라우저 로그아웃 상태와 테스트로만 확인함)
-- [ ] 포인트 적립·차감을 서버(Cloud Functions)로 옮기기 — 설계는 [백엔드_연결.md › 10. 포인트](백엔드_연결.md#10-포인트).
-      광고 보상을 실제로 열기 전에 끝내야 한다
+- [ ] 포인트 서버 이전(B09) 배포 · 실기기 확인 — `firebase deploy --project dev --only functions,firestore` 뒤 로그인 계정으로 출석 → 잔액 · 달력,
+      다른 기기에서 같은 계정 출석 이어짐. 광고 · 제휴 적립과 상품 교환은 서버에서 아직 닫혀 있다(아래 보류)
 
 ### 출시 준비 (구글 플레이 먼저)
 
@@ -114,8 +114,9 @@
 
 ### 조건부
 
-- **포인트 적립·차감 서버 이전** — 조건: 광고 보상 등 실제 재원이 붙기 전. 설계는 [백엔드_연결.md › 10. 포인트](백엔드_연결.md#10-포인트)
-  (지금은 `다음 할 일`에도 올라가 있음)
+- **서버 포인트 적립 늘리기 · 교환 열기** — 출석만 서버가 준다(B09). 광고는 광고 회사의 시청 확인 콜백, 제휴 미션 · 공동구매는 제휴사 확인이,
+  상품 교환은 상품권 발급 제휴(쿠폰 번호)가 붙어야 연다. 조건이 채워지면 `functions/src/points/core.ts` `earnPoints`에 종류를 더하고 `config/points.shopOpen`을 켠다.
+  포인트 유효기간(`config/points.expireDays`, 0 = 끔)은 약관에 기간이 정해진 뒤 켠다
 - **오퍼월 (애드팝콘·버즈빌)** — 조건: 사업자 등록 + 매체 계약. 적립은 제휴사 → 우리 서버 콜백이라 Cloud Functions 수신부가 함께 필요
   ([제휴_API_연동.md](제휴_API_연동.md) '오퍼월은 목록을 우리가 못 만든다')
 - **겸사페이 실제 충전·출금** — 조건: PG 계약 + 본인 계좌 인증 + 전자금융거래법(선불전자지급수단) 검토.
@@ -139,6 +140,17 @@
   바꾼 뒤엔 Android Studio를 완전히 종료 후 재시작.
 
 ## 기록
+
+### 2026-10-23 · 미커밋 · Claude (B09 포인트 서버 이전)
+- 추가(서버): `functions/src/points/` — `earnPoints`(지금은 출석만: 한국 시간 하루 한 번, 연속 · 월 누적 보너스를 서버가 계산, `users/{uid}.attend`),
+  `redeemPoints`(잔액 확인 · 먼저 쌓인 포인트부터 차감 · 쿠폰 `users/{uid}/coupons`, 번호는 발급 제휴 전이라 빈 값 · `issuing`), `useCoupon`,
+  예약 실행 `expirePoints`(매일 4시, `config/points.expireDays`가 0이면 끔). 원장 `users/{uid}/pointLedger`(적립마다 남은 양 `left`, 처음엔 기존 잔액을 '이전 잔액' 한 줄로).
+  금액 표 `functions/src/points/catalog.json` — 앱 표와 같은지 `test/point_catalog_test.dart`가 본다. 광고 적립 · 상품 교환(`config/points.shopOpen`, 기본 꺼짐)은 서버가 거부.
+  규칙: pointLedger · coupons는 본인 읽기만, `users`의 `attend` · `pointsOpenedAt`도 앱 쓰기 금지. 색인(collectionGroup pointLedger). 테스트 `test/unit/points.test.ts` · `test/emu/points.test.ts` · 규칙 테스트
+- 변경(앱): 로그인해서 서버에 붙으면 출석은 서버 함수(`PointRepository`), 출석 달력은 서버 원장에서도 복원. 광고 · 제휴 미션 · 공동구매 같은 체험 적립은
+  서버 계정엔 포인트를 주지 않고 '체험이라 포인트는 쌓이지 않아요'. 교환 · 쿠폰 사용도 서버로. 내 쿠폰의 빈 번호는 '발급 준비 중'. 로그아웃 체험은 예전처럼 이 기기에만
+- 제거: `UserRepository.savePoints` · `saveCoupon` · `saveLedgerEntry` — 규칙이 앱의 포인트 · 쿠폰 · 원장 쓰기를 막아 늘 실패하던 저장이고, 이제 서버가 쓴다
+- 할 일: `firebase deploy --project dev --only functions,firestore`(새 함수 4개 · 규칙 · 색인)
 
 ### 2026-10-23 · 27b6c7c · Claude (A26 주석 정리 2차)
 - 변경: 주석 약 55곳 — '예전엔 ~였다' · '개편 전' 같은 지난 작업 이야기를 지금 동작과 이유로 고쳐 쓰고, 지난 시안 참조(`gyumsa-refined` 컴포넌트 이름 · v9/v33 CSS 클래스)를 뺐다.

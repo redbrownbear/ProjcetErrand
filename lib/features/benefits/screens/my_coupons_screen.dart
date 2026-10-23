@@ -252,7 +252,7 @@ class _CouponDetail extends StatelessWidget {
                         Padding(
                           padding: const EdgeInsets.only(top: 8),
                           child: Text(
-                            c.code,
+                            c.code.isEmpty ? '발급 준비 중' : c.code,
                             style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
@@ -269,7 +269,9 @@ class _CouponDetail extends StatelessWidget {
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(color: AppColors.page, borderRadius: BorderRadius.circular(10)),
-                    child: Column(children: [_row('쿠폰번호', c.code), _row('유효기간', c.exp), _row('상태', c.used ? '사용 완료' : '사용 가능')]),
+                    child: Column(children: [_row('쿠폰번호', c.code.isEmpty ? '발급 준비 중' : c.code),
+                      _row('유효기간', c.exp),
+                      _row('상태', c.used ? '사용 완료' : (c.code.isEmpty ? '발급 준비 중' : '사용 가능')),]),
                   ),
                   if (!c.used)
                     SizedBox(

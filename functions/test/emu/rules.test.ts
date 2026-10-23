@@ -175,12 +175,15 @@ describe('사용자 문서', () => {
     await assertFails(updateDoc(doc(db(OWNER), 'users', OWNER), { points: 99999 }));
     await assertFails(updateDoc(doc(db(OWNER), 'users', OWNER), { verified: true }));
     await assertFails(updateDoc(doc(db(OWNER), 'users', OWNER), { role: 'admin' }));
+    await assertFails(updateDoc(doc(db(OWNER), 'users', OWNER), { attend: { last: '2026-10-23', streak: 6 } }));
+    await assertFails(updateDoc(doc(db(OWNER), 'users', OWNER), { pointsOpenedAt: null }));
     await assertFails(setDoc(doc(db(HELPER), 'users', HELPER), { nickname: 'x', suspended: false }));
     await assertFails(getDoc(doc(db(STRANGER), 'users', OWNER)));
   });
 
   test('포인트 원장 · 알림 생성 · 프로토타입 기록은 앱이 쓰지 못한다', async () => {
     await assertFails(setDoc(doc(db(OWNER), 'users', OWNER, 'pointLedger', 'x'), { amount: 100 }));
+    await assertFails(setDoc(doc(db(OWNER), 'users', OWNER, 'coupons', '1'), { name: '공짜 쿠폰', used: false }));
     await assertFails(setDoc(doc(db(OWNER), 'users', OWNER, 'notifications', 'n'), { title: '가짜' }));
     await assertFails(setDoc(doc(db(OWNER), 'users', OWNER, 'trades', RID), { status: 'completed' }));
     await assertFails(setDoc(doc(db(OWNER), 'users', OWNER, 'payEntries', '1'), { amount: 100 }));
