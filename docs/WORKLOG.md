@@ -149,7 +149,7 @@
 
 ## 기록
 
-### 2026-10-24 · 미커밋 · Claude (서버 함수 리팩토링)
+### 2026-10-24 · 438254b · Claude (서버 함수 리팩토링)
 - 추가: `functions/src/shared/` — `callable.ts`(로그인 · App Check 껍데기, 운영자 확인은 옵션 — 5곳의 복사본을 하나로), `input.ts`(`fields` · `docId` · `ownPhotoPath` — 6곳),
   `guards.ts`(정지 확인 · 양쪽 차단 확인 · 닉네임 — 거래 · 댓글 · 제안 · 채팅 · 포인트), `kst.ts`(한국 시간 — 3곳). 테스트 `test/unit/shared.test.ts`
 - 변경: 푸시 `fcm`을 `notify/triggers.ts`에서 `notify/fcm.ts`로 — 함수 파일들이 트리거 파일 전체를 불러오던 것. 동작 · 문구 · 함수 이름은 그대로(에뮬레이터 테스트 92개 통과)
