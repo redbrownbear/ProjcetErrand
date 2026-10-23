@@ -11,6 +11,7 @@ import { Firestore, Timestamp } from 'firebase-admin/firestore';
 
 import { deliver, PushSender } from '../notify/deliver';
 import { findBlocked, loadPolicy } from '../safety/policy';
+import { C } from '../shared/paths';
 
 export type ReportCategory = 'prohibited' | 'fraud' | 'noshow' | 'abuse' | 'offplatform' | 'other';
 export type ReportPriority = 'urgent' | 'high' | 'normal';
@@ -96,7 +97,7 @@ export function firstReply(t: Triage): { title: string; body: string } {
 
 /** 새 신고 한 건을 분류하고 1차 안내를 보낸다. 이미 분류한 신고는 건너뛴다 */
 export async function triageReport(db: Firestore, reportId: string, push?: PushSender, now = Date.now()) {
-  const ref = db.collection('reports').doc(reportId);
+  const ref = db.collection(C.reports).doc(reportId);
   const snap = await ref.get();
   if (!snap.exists || snap.get('triagedAt')) return null;
   const reason = typeof snap.get('reason') === 'string' ? (snap.get('reason') as string) : '기타';
@@ -107,7 +108,7 @@ export async function triageReport(db: Firestore, reportId: string, push?: PushS
   let repeatCount = 1;
   if (typeof target === 'string' && target) {
     const since = now - REPEAT_DAYS * 86_400_000;
-    const recent = await db.collection('reports').where('targetUid', '==', target).limit(200).get();
+    const recent = await db.collection(C.reports).where('targetUid', '==', target).limit(200).get();
     const who = new Set<string>();
     for (const d of recent.docs) {
       const at = d.get('createdAt');

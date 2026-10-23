@@ -7,6 +7,7 @@
 import { Firestore, Timestamp } from 'firebase-admin/firestore';
 
 import { corridorCells, isGeohash } from './geohash';
+import { C } from '../shared/paths';
 
 export const MAX_ROUTES = 6;
 export const MIN_RADIUS_M = 100;
@@ -26,14 +27,14 @@ function needsCells(before: Doc, after: Doc): boolean {
 
 export async function computeRouteCells(db: Firestore, uid: string, routeId: string, before: Doc, after: Doc): Promise<string[] | null> {
   if (!needsCells(before, after)) return null;
-  const ref = db.collection('users').doc(uid).collection('routes').doc(routeId);
+  const ref = db.collection(C.users).doc(uid).collection(C.routes).doc(routeId);
   const from = cellOf(after!.from), to = cellOf(after!.to);
   if (!isGeohash(from) || !isGeohash(to)) {
     await ref.update({ cells: [], cellsAt: Timestamp.now() });
     return [];
   }
   // 한 사람당 개수 제한: 만든 순서로 MAX_ROUTES개 안에 들어야 매칭에 쓴다
-  const all = await db.collection('users').doc(uid).collection('routes').orderBy('createdAt').limit(MAX_ROUTES + 1).get();
+  const all = await db.collection(C.users).doc(uid).collection(C.routes).orderBy('createdAt').limit(MAX_ROUTES + 1).get();
   const rank = all.docs.findIndex((d) => d.id === routeId);
   if (rank < 0 || rank >= MAX_ROUTES) {
     await ref.update({ cells: [], overLimit: true, cellsAt: Timestamp.now() });

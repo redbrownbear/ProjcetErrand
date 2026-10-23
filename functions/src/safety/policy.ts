@@ -16,6 +16,7 @@
  * 앱도 같은 기본값으로 올리기 전에 미리 막는다(lib/core/compliance/safety_policy.dart) — 최종 판단은 여기다.
  */
 import { Firestore } from 'firebase-admin/firestore';
+import { C } from '../shared/paths';
 
 export interface SafetyPolicy {
   blockedWords: string[];
@@ -59,7 +60,7 @@ export async function loadPolicy(db: Firestore): Promise<SafetyPolicy> {
   if (cache && Date.now() - cache.at < CACHE_MS) return cache.policy;
   let policy = DEFAULT_POLICY;
   try {
-    const d = (await db.collection('config').doc('safety').get()).data();
+    const d = (await db.collection(C.config).doc('safety').get()).data();
     if (d) {
       policy = {
         blockedWords: words(d.blockedWords) ?? DEFAULT_POLICY.blockedWords,

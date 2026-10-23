@@ -14,6 +14,7 @@ import { Firestore, Timestamp } from 'firebase-admin/firestore';
 import { deliver, PushSender } from '../notify/deliver';
 import { KST_MS, kstDay } from '../shared/kst';
 import { decode, encode } from './geohash';
+import { C } from '../shared/paths';
 
 export interface MatchPolicy {
   extraMinutes: number;
@@ -38,7 +39,7 @@ export async function loadMatchPolicy(db: Firestore): Promise<MatchPolicy> {
   if (cache && Date.now() - cache.at < 5 * 60 * 1000) return cache.policy;
   let policy = DEFAULT_MATCH;
   try {
-    const d = (await db.collection('config').doc('matching').get()).data();
+    const d = (await db.collection(C.config).doc('matching').get()).data();
     const num = (v: unknown, lo: number, hi: number, dflt: number) => (typeof v === 'number' && v >= lo && v <= hi ? v : dflt);
     if (d) {
       policy = {
@@ -123,7 +124,7 @@ export async function matchRequest(
   push?: PushSender,
   now = new Date(),
 ): Promise<MatchResult | null> {
-  const reqRef = db.collection('requests').doc(requestId);
+  const reqRef = db.collection(C.requests).doc(requestId);
   const req = (await reqRef.get()).data();
   if (!req || req.status !== 'open') return null;
   const cell = encode(lat, lng, 6);
@@ -137,7 +138,7 @@ export async function matchRequest(
   const deadline = req.deadline instanceof Timestamp ? req.deadline.toDate() : null;
   if (deadline && deadline.getTime() <= now.getTime()) return { cell, matched: [], pushed: [] };
 
-  const snap = await db.collectionGroup('routes').where('cells', 'array-contains', cell).limit(policy.maxCandidates).get();
+  const snap = await db.collectionGroup(C.routes).where('cells', 'array-contains', cell).limit(policy.maxCandidates).get();
   // 사람마다 가장 짧게 들르는 동선 하나
   const best = new Map<string, { routeId: string; name: string; extra: number }>();
   for (const d of snap.docs) {
@@ -153,7 +154,7 @@ export async function matchRequest(
   if (!best.size) return { cell, matched: [], pushed: [] };
 
   // 차단 관계 빼기: 글쓴이가 막은 사람, 글쓴이를 막은 사람
-  const ownerBlocks = new Set((await db.collection('users').doc(owner).collection('blocks').get()).docs.map((d) => d.id));
+  const ownerBlocks = new Set((await db.collection(C.users).doc(owner).collection(C.blocks).get()).docs.map((d) => d.id));
   const matched: string[] = [];
   const pushed: string[] = [];
   const quiet = isQuiet(now, policy);
@@ -163,9 +164,9 @@ export async function matchRequest(
 
   for (const [uid, m] of best) {
     if (ownerBlocks.has(uid)) continue;
-    const user = db.collection('users').doc(uid);
-    if ((await user.collection('blocks').doc(owner).get()).exists) continue;
-    await user.collection('matches').doc(requestId).set({
+    const user = db.collection(C.users).doc(uid);
+    if ((await user.collection(C.blocks).doc(owner).get()).exists) continue;
+    await user.collection(C.matches).doc(requestId).set({
       requestId,
       title,
       price: typeof req.price === 'number' ? req.price : 0,
@@ -180,7 +181,7 @@ export async function matchRequest(
 
     if (!push || quiet || policy.dailyPushLimit <= 0) continue;
     // 하루 상한 — 사람별 카운터를 트랜잭션으로 올린다
-    const meta = user.collection('meta').doc('matchPush');
+    const meta = user.collection(C.meta).doc('matchPush');
     const ok = await db.runTransaction(async (tx) => {
       const cur = (await tx.get(meta)).data();
       const count = cur?.day === day && typeof cur?.count === 'number' ? cur.count : 0;

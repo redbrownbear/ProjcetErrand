@@ -21,6 +21,7 @@ import { blockedMessage, findBlocked, loadPolicy } from '../safety/policy';
 import { activeUser, assertNotBlocked, nicknameOf } from '../shared/guards';
 import { docId, fields } from '../shared/input';
 import { advance, isFinished, isTradeAction, TradeRole, TradeStatus } from '../domain/tradeMachine';
+import { C } from '../shared/paths';
 
 /** hidden: 금지 품목 · 물건값 상한에 걸려 서버가 내린 글(safety/screen.ts) */
 export type RequestStatus = 'open' | 'matched' | 'done' | 'cancelled' | 'expired' | 'hidden';
@@ -53,10 +54,10 @@ function optMsg(v: unknown): string | undefined {
 // ── 공통 조회 ─────────────────────────────────────────────────────────────
 
 const paths = {
-  request: (db: Firestore, rid: string) => db.collection('requests').doc(rid),
+  request: (db: Firestore, rid: string) => db.collection(C.requests).doc(rid),
   application: (db: Firestore, rid: string, helperUid: string) =>
-    db.collection('requests').doc(rid).collection('applications').doc(helperUid),
-  trade: (db: Firestore, tid: string) => db.collection('trades').doc(tid),
+    db.collection(C.requests).doc(rid).collection(C.applications).doc(helperUid),
+  trade: (db: Firestore, tid: string) => db.collection(C.trades).doc(tid),
 };
 
 /** 글쓴이가 도움을 주는 글인가(신청자가 요청자가 된다) */
@@ -174,9 +175,9 @@ export async function acceptApplication(db: Firestore, uid: string, data: unknow
         throw new HttpsError('failed-precondition', '받기로 한 건수가 다 찼어요.');
       }
     }
-    const others = giving ? null : await tx.get(reqRef.collection('applications').where('status', '==', 'pending'));
+    const others = giving ? null : await tx.get(reqRef.collection(C.applications).where('status', '==', 'pending'));
 
-    const tradeRef = db.collection('trades').doc();
+    const tradeRef = db.collection(C.trades).doc();
     const offer = app.get('offerPrice');
     const msg = app.get('msg');
     tx.set(tradeRef, {
@@ -239,7 +240,7 @@ export async function cancelRequest(db: Firestore, uid: string, data: unknown) {
     if (req.get('status') !== 'open') {
       throw new HttpsError('failed-precondition', '모집 중일 때만 취소할 수 있어요. 진행 중인 거래는 거래 화면에서 취소해 주세요.');
     }
-    const pending = await tx.get(reqRef.collection('applications').where('status', '==', 'pending'));
+    const pending = await tx.get(reqRef.collection(C.applications).where('status', '==', 'pending'));
     tx.update(reqRef, { status: 'cancelled', applicantCount: 0, updatedAt: now });
     for (const d of pending.docs) tx.update(d.ref, { status: 'rejected', updatedAt: now });
     return { status: 'cancelled' as const };
@@ -294,7 +295,7 @@ export async function advanceTrade(db: Firestore, uid: string, data: unknown) {
     }
     if (next === 'completed' && req?.exists) {
       // 공개 완료 기록(A23, LIVE 보드 티커) — 누가 · 무엇을은 빼고 동네 · 종류 · 시각만
-      tx.set(db.collection('activity').doc(tid), completionRecord(req, now));
+      tx.set(db.collection(C.activity).doc(tid), completionRecord(req, now));
     }
     if (next === 'cancelled' && req?.exists) {
       // 시작 전 취소: 부탁을 다시 모집 중으로 돌린다(마감이 지났으면 만료). 정책은 1차 기본값.
@@ -330,7 +331,7 @@ export function completionRecord(req: { get(field: string): unknown }, at: Times
 
 export async function expireOpenRequests(db: Firestore, now = Timestamp.now(), batchLimit = 300): Promise<number> {
   const due = await db
-    .collection('requests')
+    .collection(C.requests)
     .where('status', '==', 'open')
     .where('deadline', '<', now)
     .limit(batchLimit)
@@ -340,7 +341,7 @@ export async function expireOpenRequests(db: Firestore, now = Timestamp.now(), b
     const changed = await db.runTransaction(async (tx) => {
       const fresh = await tx.get(doc.ref);
       if (fresh.get('status') !== 'open') return false; // 그사이 수락·취소됨
-      const pending = await tx.get(doc.ref.collection('applications').where('status', '==', 'pending'));
+      const pending = await tx.get(doc.ref.collection(C.applications).where('status', '==', 'pending'));
       tx.update(doc.ref, { status: 'expired', applicantCount: 0, updatedAt: now });
       for (const d of pending.docs) tx.update(d.ref, { status: 'rejected', updatedAt: now });
       return true;

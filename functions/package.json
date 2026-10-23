@@ -8,11 +8,14 @@
   },
   "scripts": {
     "build": "tsc",
+    "build:watch": "tsc --watch",
+    "typecheck": "tsc --noEmit",
     "test:unit": "node --import tsx --test test/unit/*.test.ts",
     "test:emu": "node --import tsx --test --test-concurrency=1 test/emu/*.test.ts",
     "test": "firebase emulators:exec --only firestore --project demo-gyeomsa \"npm run test:unit && npm run test:emu\"",
-    "serve": "npm run build && firebase emulators:start --only functions,firestore,auth",
-    "deploy:dev": "firebase deploy --project dev --only functions,firestore:indexes"
+    "dev": "npm run build && firebase emulators:start --only auth,functions,firestore,storage --project projecterrand",
+    "seed": "tsx scripts/seed.ts",
+    "deploy:dev": "firebase deploy --project dev --only functions,firestore"
   },
   "dependencies": {
     "firebase-admin": "13.10.0",

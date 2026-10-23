@@ -10,6 +10,7 @@ import { deliver, PushSender } from '../notify/deliver';
 import { assertNotSuspended, userRef } from '../shared/guards';
 import { docId, fields, ownPhotoPath } from '../shared/input';
 import { maskContact } from './mask';
+import { C } from '../shared/paths';
 
 export const MAX_MESSAGE = 1000;
 /** 거래마다 채팅 사진 상한 */
@@ -24,7 +25,7 @@ export async function sendMessage(db: Firestore, uid: string, data: unknown, pus
   if (!raw && !photo) throw new HttpsError('invalid-argument', '메시지를 입력해 주세요.');
   if (raw.length > MAX_MESSAGE) throw new HttpsError('invalid-argument', `메시지는 ${MAX_MESSAGE}자까지예요.`);
 
-  const tradeRef = db.collection('trades').doc(tradeId);
+  const tradeRef = db.collection(C.trades).doc(tradeId);
   const { text, masked } = maskContact(raw);
 
   const sent = await db.runTransaction(async (tx) => {
@@ -41,7 +42,7 @@ export async function sendMessage(db: Firestore, uid: string, data: unknown, pus
     }
 
     const now = Timestamp.now();
-    const msgRef = tradeRef.collection('messages').doc();
+    const msgRef = tradeRef.collection(C.messages).doc();
     tx.create(msgRef, { senderUid: uid, text, masked, ...(photo ? { photoPath: photo } : {}), createdAt: now });
     tx.update(tradeRef, {
       lastMessage: { text: text ? text.slice(0, 60) : '사진', by: uid, at: now },
@@ -72,7 +73,7 @@ export async function sendMessage(db: Firestore, uid: string, data: unknown, pus
 /** 내가 읽었음을 표시 — 상대 메시지 개수 표시를 0으로 */
 export async function markChatRead(db: Firestore, uid: string, data: unknown) {
   const tradeId = docId(fields(data).tradeId, 'tradeId');
-  const ref = db.collection('trades').doc(tradeId);
+  const ref = db.collection(C.trades).doc(tradeId);
   const trade = await ref.get();
   if (!trade.exists) throw new HttpsError('not-found', '거래를 찾을 수 없어요.');
   if (uid !== trade.get('requesterUid') && uid !== trade.get('helperUid')) throw new HttpsError('permission-denied', '이 거래의 당사자가 아니에요.');

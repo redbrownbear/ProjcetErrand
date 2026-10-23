@@ -7,6 +7,7 @@ import { Firestore, Timestamp } from 'firebase-admin/firestore';
 
 import { deliver, PushSender } from '../notify/deliver';
 import { loadPolicy, requestViolation } from './policy';
+import { C } from '../shared/paths';
 
 type Doc = Record<string, unknown> | undefined;
 
@@ -18,7 +19,7 @@ export async function screenRequest(db: Firestore, requestId: string, before: Do
   const reason = requestViolation(after, await loadPolicy(db));
   if (!reason) return null;
 
-  const ref = db.collection('requests').doc(requestId);
+  const ref = db.collection(C.requests).doc(requestId);
   const hidden = await db.runTransaction(async (tx) => {
     const cur = await tx.get(ref);
     if (!cur.exists || cur.get('status') !== 'open') return false;

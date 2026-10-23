@@ -7,6 +7,7 @@
 import { Firestore, Timestamp } from 'firebase-admin/firestore';
 
 import { NotifyEvent } from './events';
+import { C } from '../shared/paths';
 
 export interface PushMessage {
   tokens: string[];
@@ -29,10 +30,10 @@ export async function deliver(
   opts: { store?: boolean } = {},
 ): Promise<boolean> {
   if (!ev.to) return false;
-  const user = db.collection('users').doc(ev.to);
+  const user = db.collection(C.users).doc(ev.to);
   if (opts.store !== false) {
     try {
-      await user.collection('notifications').doc(eventId).create({
+      await user.collection(C.notifications).doc(eventId).create({
         kind: ev.kind,
         title: ev.title,
         body: ev.body,
@@ -48,7 +49,7 @@ export async function deliver(
     }
   }
 
-  const tokens = (await user.collection('fcmTokens').get()).docs.map((d) => d.id);
+  const tokens = (await user.collection(C.fcmTokens).get()).docs.map((d) => d.id);
   if (!tokens.length) return true;
   const bad = await send({
     tokens,
@@ -56,6 +57,6 @@ export async function deliver(
     body: ev.body,
     data: { kind: ev.kind, requestId: ev.requestId, ...(ev.tradeId ? { tradeId: ev.tradeId } : {}), ...(ev.proposalId ? { proposalId: ev.proposalId } : {}) },
   });
-  await Promise.all(bad.map((t) => user.collection('fcmTokens').doc(t).delete()));
+  await Promise.all(bad.map((t) => user.collection(C.fcmTokens).doc(t).delete()));
   return true;
 }

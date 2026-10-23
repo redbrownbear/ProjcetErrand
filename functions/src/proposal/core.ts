@@ -29,6 +29,7 @@ import { blockedMessage, findBlocked, loadPolicy } from '../safety/policy';
 import { activeUser, assertNotBlocked, nicknameOf } from '../shared/guards';
 import { docId, fields } from '../shared/input';
 import { KST_MS, kstDay } from '../shared/kst';
+import { C } from '../shared/paths';
 
 export const MAX_PEOPLE = 15;
 export const MAX_FEE = 100_000;
@@ -62,9 +63,9 @@ function pid(v: unknown): string {
   return v;
 }
 
-const proposalRef = (db: Firestore, id: string) => db.collection('proposals').doc(id);
-const joinRef = (db: Firestore, id: string, uid: string) => proposalRef(db, id).collection('joins').doc(uid);
-const askRef = (db: Firestore, id: string, uid: string) => proposalRef(db, id).collection('asks').doc(uid);
+const proposalRef = (db: Firestore, id: string) => db.collection(C.proposals).doc(id);
+const joinRef = (db: Firestore, id: string, uid: string) => proposalRef(db, id).collection(C.joins).doc(uid);
+const askRef = (db: Firestore, id: string, uid: string) => proposalRef(db, id).collection(C.asks).doc(uid);
 
 /** 정지 확인 + 닉네임 */
 async function nickname(tx: Transaction, db: Firestore, uid: string): Promise<string> {
@@ -147,7 +148,7 @@ type Waiter = { uid: string; at: number };
 
 /** 대기 중인 사람을 먼저 온 순서로 (트랜잭션 안에서, 쓰기 전에 읽는다) */
 async function waiters(tx: Transaction, db: Firestore, id: string): Promise<Waiter[]> {
-  const snap = await tx.get(proposalRef(db, id).collection('joins').where('status', '==', 'waiting'));
+  const snap = await tx.get(proposalRef(db, id).collection(C.joins).where('status', '==', 'waiting'));
   const at = (v: unknown) => (v instanceof Timestamp ? v.toMillis() : 0);
   return snap.docs.map((d) => ({ uid: d.id, at: at(d.get('waitedAt')) })).sort((a, b) => a.at - b.at || (a.uid < b.uid ? -1 : 1));
 }
@@ -309,7 +310,7 @@ export async function decideProposal(db: Firestore, uid: string, data: unknown, 
   const action = input.action;
   if (action !== 'proceed' && action !== 'cancel') throw new HttpsError('invalid-argument', 'action 값이 올바르지 않아요.');
   const ref = proposalRef(db, id);
-  const all = await ref.collection('joins').where('status', 'in', ['joined', 'waiting']).get();
+  const all = await ref.collection(C.joins).where('status', 'in', ['joined', 'waiting']).get();
   const joins = all.docs.filter((d) => d.get('status') === 'joined');
   const waits = all.docs.filter((d) => d.get('status') === 'waiting');
   const res = await db.runTransaction(async (tx) => {
@@ -414,7 +415,7 @@ export async function answerProposerAsk(db: Firestore, uid: string, data: unknow
       return { item, tradeId: null as string | null };
     }
     await nickname(tx, db, uid); // 정지된 제안자는 수락하지 못한다
-    const tradeRef = db.collection('trades').doc();
+    const tradeRef = db.collection(C.trades).doc();
     const note = a.get('note') as string;
     tx.set(tradeRef, {
       requestId: proposalTradeKey(id),

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import 'core/backend/app_check.dart';
 import 'core/backend/backend.dart';
+import 'core/backend/emulator.dart';
 import 'core/config/naver_map_init.dart';
 import 'core/storage/local_store.dart';
 import 'core/theme/app_theme.dart';
@@ -28,8 +29,10 @@ void main() async {
   // 이 기기의 LocalStore로 갈아탄다. (core/backend/backend.dart 참고)
   try {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    // EMULATOR_HOST를 주면 PC의 에뮬레이터로(개발용, core/backend/emulator.dart)
+    await connectEmulators();
     Backend.markReady();
-    await activateAppCheck();
+    if (!useEmulator) await activateAppCheck();
     // 로그인 유지 설정 (웹에서만 의미가 있다 — AuthService.configurePersistence 참고)
     await AuthService().configurePersistence();
   } catch (e) {

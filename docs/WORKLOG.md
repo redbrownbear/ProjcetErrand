@@ -151,6 +151,16 @@
 
 ## 기록
 
+### 2026-10-24 · 미커밋 · Claude (서버 개발 환경 정리)
+- 추가: [functions/README.md](../functions/README.md) — 명령 표, 폴더 지도, 새 함수 더하는 순서, 지켜야 할 것(예전 앱을 깨지 않게 이름 · 필드는 더하기만)
+- 추가: 로컬 에뮬레이터로 앱까지 — 앱 `--dart-define=EMULATOR_HOST=10.0.2.2`(`core/backend/emulator.dart`, 출시 빌드는 무시 · 디버그 매니페스트에 http 허용),
+  서버 `npm run dev`(Auth · Firestore · Functions · Storage) → `npm run seed`(`scripts/seed.ts`: 테스트 계정 a · b · admin@test.dev / test1234, 예시 부탁 3건, config 3개, 공지).
+  에뮬레이터에선 실제 FCM 대신 로그만(`notify/fcm.ts`)
+- 추가: `test/unit/exports.test.ts` — 배포 함수 32개 이름 목록. 빠지면 '예전 앱이 부르면 실패', 새로 생기면 '목록에 더해 달라'로 실패. `functions/.env.example`
+- 변경: Firestore 컬렉션 이름을 `shared/paths.ts`(`C.users` …, 설명 포함)로 모으고 문자열 대신 씀. 금지 품목 · 동선 · 신고 트리거를 `notify/triggers.ts`에서
+  각 모듈의 `triggers.ts`로(`safety` · `route` · `admin`). `index.ts`를 갈래별로 묶음. 함수 이름 · 동작은 그대로
+- 변경: npm 스크립트 — `serve` → `dev`, `build:watch` · `typecheck` · `seed` 추가, `deploy:dev`가 규칙까지(`functions,firestore`)
+
 ### 2026-10-24 · 438254b · Claude (서버 함수 리팩토링)
 - 추가: `functions/src/shared/` — `callable.ts`(로그인 · App Check 껍데기, 운영자 확인은 옵션 — 5곳의 복사본을 하나로), `input.ts`(`fields` · `docId` · `ownPhotoPath` — 6곳),
   `guards.ts`(정지 확인 · 양쪽 차단 확인 · 닉네임 — 거래 · 댓글 · 제안 · 채팅 · 포인트), `kst.ts`(한국 시간 — 3곳). 테스트 `test/unit/shared.test.ts`

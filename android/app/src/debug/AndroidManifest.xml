@@ -4,4 +4,6 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- 디버그 빌드만: PC의 Firebase 에뮬레이터(http)에 붙을 수 있게 (lib/core/backend/emulator.dart) -->
+    <application android:usesCleartextTraffic="true"/>
 </manifest>

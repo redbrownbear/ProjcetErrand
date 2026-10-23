@@ -12,6 +12,7 @@ import { HttpsError } from 'firebase-functions/v2/https';
 
 import { deliver, PushSender } from '../notify/deliver';
 import { docId, fields, ownPhotoPath } from '../shared/input';
+import { C } from '../shared/paths';
 
 export const PHOTO_LIMIT = 20;
 const MAX_NOTE = 100;
@@ -34,7 +35,7 @@ export async function addTradePhoto(db: Firestore, uid: string, data: unknown, p
   }
   const note = typeof input.note === 'string' ? input.note.trim().slice(0, MAX_NOTE) : '';
 
-  const tradeRef = db.collection('trades').doc(tid);
+  const tradeRef = db.collection(C.trades).doc(tid);
   const saved = await db.runTransaction(async (tx) => {
     const trade = await tx.get(tradeRef);
     if (!trade.exists) throw new HttpsError('not-found', '거래를 찾을 수 없어요.');
@@ -46,7 +47,7 @@ export async function addTradePhoto(db: Firestore, uid: string, data: unknown, p
     const count = (trade.get('photoCount') as number | undefined) ?? 0;
     if (count >= PHOTO_LIMIT) throw new HttpsError('resource-exhausted', `사진은 거래마다 ${PHOTO_LIMIT}장까지예요.`);
     const now = Timestamp.now();
-    const ref = tradeRef.collection('photos').doc();
+    const ref = tradeRef.collection(C.photos).doc();
     tx.create(ref, { uid, role, kind, path, amount, note, createdAt: now });
     tx.update(tradeRef, { photoCount: FieldValue.increment(1), lastPhotoAt: now });
     return {

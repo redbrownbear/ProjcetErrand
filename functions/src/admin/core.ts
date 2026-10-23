@@ -7,6 +7,7 @@ import { HttpsError } from 'firebase-functions/v2/https';
 
 import { deliver, PushSender } from '../notify/deliver';
 import { docId, fields } from '../shared/input';
+import { C } from '../shared/paths';
 
 export const REPORT_RESOLUTIONS = ['dismissed', 'warned', 'suspended'] as const;
 export type ReportResolution = (typeof REPORT_RESOLUTIONS)[number];
@@ -22,11 +23,11 @@ export async function setSuspended(db: Firestore, adminUid: string, data: unknow
   if (typeof input.suspended !== 'boolean') throw new HttpsError('invalid-argument', 'suspended 값이 필요해요.');
   const reason = typeof input.reason === 'string' ? input.reason.slice(0, 200) : null;
   const now = Timestamp.now();
-  await db.collection('users').doc(uid).set(
+  await db.collection(C.users).doc(uid).set(
     { suspended: input.suspended, suspendedAt: input.suspended ? now : null, suspendReason: input.suspended ? reason : null },
     { merge: true },
   );
-  await db.collection('adminLog').add({ action: 'setSuspended', by: adminUid, uid, suspended: input.suspended, reason, at: now });
+  await db.collection(C.adminLog).add({ action: 'setSuspended', by: adminUid, uid, suspended: input.suspended, reason, at: now });
   return { uid, suspended: input.suspended };
 }
 
@@ -43,7 +44,7 @@ export async function resolveReport(db: Firestore, adminUid: string, data: unkno
   const resolution = input.resolution as ReportResolution;
   if (!REPORT_RESOLUTIONS.includes(resolution)) throw new HttpsError('invalid-argument', 'resolution 값이 올바르지 않아요.');
   const memo = typeof input.memo === 'string' ? input.memo.slice(0, 500) : null;
-  const ref = db.collection('reports').doc(reportId);
+  const ref = db.collection(C.reports).doc(reportId);
   const snap = await ref.get();
   if (!snap.exists) throw new HttpsError('not-found', '신고를 찾을 수 없어요.');
   const now = Timestamp.now();
@@ -52,7 +53,7 @@ export async function resolveReport(db: Firestore, adminUid: string, data: unkno
   if (resolution === 'suspended' && typeof target === 'string' && target) {
     await setSuspended(db, adminUid, { uid: target, suspended: true, reason: `신고 ${reportId}` });
   }
-  await db.collection('adminLog').add({ action: 'resolveReport', by: adminUid, reportId, resolution, at: now });
+  await db.collection(C.adminLog).add({ action: 'resolveReport', by: adminUid, reportId, resolution, at: now });
 
   if (push) {
     const requestId = typeof snap.get('requestId') === 'string' ? (snap.get('requestId') as string) : '';
@@ -94,7 +95,7 @@ export async function setRequestHidden(db: Firestore, adminUid: string, data: un
   if (typeof input.hidden !== 'boolean') throw new HttpsError('invalid-argument', 'hidden 값이 필요해요.');
   const hide = input.hidden;
   const reason = typeof input.reason === 'string' && input.reason.trim() ? input.reason.trim().slice(0, 200) : '운영 정책에 맞지 않아';
-  const ref = db.collection('requests').doc(requestId);
+  const ref = db.collection(C.requests).doc(requestId);
   const now = Timestamp.now();
 
   const result = await db.runTransaction(async (tx) => {
@@ -120,7 +121,7 @@ export async function setRequestHidden(db: Firestore, adminUid: string, data: un
   });
 
   if (result.changed) {
-    await db.collection('adminLog').add({ action: 'setRequestHidden', by: adminUid, requestId, hidden: hide, reason: hide ? reason : null, at: now });
+    await db.collection(C.adminLog).add({ action: 'setRequestHidden', by: adminUid, requestId, hidden: hide, reason: hide ? reason : null, at: now });
   }
   if (result.changed && hide && push && typeof result.owner === 'string' && result.owner) {
     const title = typeof result.title === 'string' && result.title ? result.title : '부탁';

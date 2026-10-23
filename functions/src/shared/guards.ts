@@ -1,8 +1,9 @@
 /** 거래 · 댓글 · 제안 함수가 공통으로 보는 사용자 상태(정지 · 차단) */
 import { DocumentSnapshot, Firestore, Transaction } from 'firebase-admin/firestore';
 import { HttpsError } from 'firebase-functions/v2/https';
+import { C } from './paths';
 
-export const userRef = (db: Firestore, uid: string) => db.collection('users').doc(uid);
+export const userRef = (db: Firestore, uid: string) => db.collection(C.users).doc(uid);
 
 /** 정지된 계정이면 거부. [who]는 문구의 주어('내' · '상대방') */
 export function assertNotSuspended(user: DocumentSnapshot, who = '내'): void {
@@ -24,7 +25,7 @@ export async function assertNotBlocked(
   b: string,
   message = '차단 관계인 사용자와는 거래할 수 없어요.',
 ): Promise<void> {
-  const block = (owner: string, target: string) => userRef(db, owner).collection('blocks').doc(target);
+  const block = (owner: string, target: string) => userRef(db, owner).collection(C.blocks).doc(target);
   const [ab, ba] = await Promise.all([tx.get(block(a, b)), tx.get(block(b, a))]);
   if (ab.exists || ba.exists) throw new HttpsError('permission-denied', message);
 }

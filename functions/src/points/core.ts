@@ -22,6 +22,7 @@ import { assertNotSuspended } from '../shared/guards';
 import { fields } from '../shared/input';
 import { kstDay } from '../shared/kst';
 import catalog from './catalog.json';
+import { C } from '../shared/paths';
 
 const DAY_MS = 86_400_000;
 
@@ -59,7 +60,7 @@ export interface PointPolicy {
 }
 
 export async function loadPointPolicy(db: Firestore): Promise<PointPolicy> {
-  const d = (await db.collection('config').doc('points').get()).data() ?? {};
+  const d = (await db.collection(C.config).doc('points').get()).data() ?? {};
   const days = d.expireDays;
   return {
     expireDays: typeof days === 'number' && Number.isInteger(days) && days > 0 ? days : 0,
@@ -67,8 +68,8 @@ export async function loadPointPolicy(db: Firestore): Promise<PointPolicy> {
   };
 }
 
-const userRef = (db: Firestore, uid: string) => db.collection('users').doc(uid);
-const ledgerRef = (db: Firestore, uid: string) => userRef(db, uid).collection('pointLedger');
+const userRef = (db: Firestore, uid: string) => db.collection(C.users).doc(uid);
+const ledgerRef = (db: Firestore, uid: string) => userRef(db, uid).collection(C.pointLedger);
 
 type Lot = { ref: DocumentReference; left: number; at: number };
 
@@ -194,7 +195,7 @@ export async function redeemPoints(db: Firestore, uid: string, data: unknown, no
       need -= use;
     }
     tx.set(ledgerRef(db, uid).doc(`spend_${couponId}`), { type: 'spend', amount: -p.points, label: `${p.name} 교환`, ref: couponId, at });
-    tx.set(userRef(db, uid).collection('coupons').doc(couponId), {
+    tx.set(userRef(db, uid).collection(C.coupons).doc(couponId), {
       id: Number(couponId),
       productId: p.id,
       brandK: p.brand,
@@ -215,7 +216,7 @@ export async function redeemPoints(db: Firestore, uid: string, data: unknown, no
 export async function useCoupon(db: Firestore, uid: string, data: unknown, now = Date.now()) {
   const id = fields(data).couponId;
   if (typeof id !== 'string' || !/^\d{1,20}$/.test(id)) throw new HttpsError('invalid-argument', 'couponId 값이 올바르지 않아요.');
-  const ref = userRef(db, uid).collection('coupons').doc(id);
+  const ref = userRef(db, uid).collection(C.coupons).doc(id);
   await db.runTransaction(async (tx) => {
     const c = await tx.get(ref);
     if (!c.exists) throw new HttpsError('not-found', '쿠폰을 찾을 수 없어요.');
@@ -230,7 +231,7 @@ export async function expirePoints(db: Firestore, now = Date.now(), limit = 500)
   const { expireDays } = await loadPointPolicy(db);
   if (!expireDays) return 0;
   const cutoff = Timestamp.fromMillis(now - expireDays * DAY_MS);
-  const old = await db.collectionGroup('pointLedger').where('type', '==', 'earn').where('at', '<', cutoff).limit(limit).get();
+  const old = await db.collectionGroup(C.pointLedger).where('type', '==', 'earn').where('at', '<', cutoff).limit(limit).get();
   let n = 0;
   for (const d of old.docs) {
     if (!((d.get('left') as number) > 0)) continue;
@@ -241,7 +242,7 @@ export async function expirePoints(db: Firestore, now = Date.now(), limit = 500)
       const left = e.get('left') as number;
       if (!(left > 0)) return false;
       const at = Timestamp.fromMillis(now);
-      tx.set(user.collection('pointLedger').doc(`expire_${d.id}`), { type: 'expire', amount: -left, label: '유효기간 지나 소멸', ref: d.id, at });
+      tx.set(user.collection(C.pointLedger).doc(`expire_${d.id}`), { type: 'expire', amount: -left, label: '유효기간 지나 소멸', ref: d.id, at });
       tx.set(d.ref, { left: 0 }, { merge: true });
       tx.set(user, { points: Math.max(0, balanceOf(u) - left), updatedAt: at }, { merge: true });
       return true;

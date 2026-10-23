@@ -14,6 +14,7 @@ import { deliver, PushSender } from '../notify/deliver';
 import { blockedMessage, findBlocked, loadPolicy } from '../safety/policy';
 import { assertNotBlocked, assertNotSuspended, nicknameOf, userRef } from '../shared/guards';
 import { docId, fields } from '../shared/input';
+import { C } from '../shared/paths';
 
 export const MAX_COMMENT = 300;
 const MAX_NOTIFY = 10;
@@ -29,7 +30,7 @@ export async function addComment(db: Firestore, uid: string, data: unknown, push
   const word = findBlocked(raw, await loadPolicy(db));
   if (word) throw new HttpsError('invalid-argument', blockedMessage(word));
 
-  const reqRef = db.collection('requests').doc(rid);
+  const reqRef = db.collection(C.requests).doc(rid);
   const { text, masked } = maskContact(raw);
 
   const saved = await db.runTransaction(async (tx) => {
@@ -39,7 +40,7 @@ export async function addComment(db: Firestore, uid: string, data: unknown, push
     const ownerUid = req.get('ownerUid') as string;
     if (ownerUid !== uid) await assertNotBlocked(tx, db, ownerUid, uid, '이 글에는 댓글을 남길 수 없어요.');
     const author = nicknameOf(me);
-    const ref = reqRef.collection('comments').doc();
+    const ref = reqRef.collection(C.comments).doc();
     tx.create(ref, { uid, author, text, masked, createdAt: Timestamp.now() });
     tx.update(reqRef, { commentCount: FieldValue.increment(1) });
     return { id: ref.id, ownerUid, author, title: (req.get('title') as string) || '부탁' };
@@ -51,7 +52,7 @@ export async function addComment(db: Firestore, uid: string, data: unknown, push
     if (saved.ownerUid !== uid) {
       to = [saved.ownerUid];
     } else {
-      const prev = await reqRef.collection('comments').orderBy('createdAt', 'desc').limit(50).get();
+      const prev = await reqRef.collection(C.comments).orderBy('createdAt', 'desc').limit(50).get();
       to = [...new Set(prev.docs.map((d) => d.get('uid') as string).filter((u) => u && u !== uid))].slice(0, MAX_NOTIFY);
     }
     await Promise.all(
