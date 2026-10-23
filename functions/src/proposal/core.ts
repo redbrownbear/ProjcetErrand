@@ -26,13 +26,14 @@ import { HttpsError } from 'firebase-functions/v2/https';
 
 import { deliver, PushSender } from '../notify/deliver';
 import { blockedMessage, findBlocked, loadPolicy } from '../safety/policy';
+import { activeUser, assertNotBlocked, nicknameOf } from '../shared/guards';
+import { docId, fields } from '../shared/input';
+import { KST_MS, kstDay } from '../shared/kst';
 
 export const MAX_PEOPLE = 15;
 export const MAX_FEE = 100_000;
 export const MAX_DAYS_AHEAD = 60;
 export type Delivery = 'each' | 'meet';
-
-const KST_MS = 9 * 3600_000;
 
 /** 한국 날짜 'YYYY-MM-DD'의 끝(23:59:59.999 KST) */
 export function dayEnd(day: string): Timestamp {
@@ -42,7 +43,7 @@ export function dayEnd(day: string): Timestamp {
 
 /** 지금의 한국 날짜 */
 export function kstToday(now = Date.now()): string {
-  return new Date(now + KST_MS).toISOString().slice(0, 10);
+  return kstDay(now);
 }
 
 function str(v: unknown, field: string, min: number, max: number): string {
@@ -65,16 +66,14 @@ const proposalRef = (db: Firestore, id: string) => db.collection('proposals').do
 const joinRef = (db: Firestore, id: string, uid: string) => proposalRef(db, id).collection('joins').doc(uid);
 const askRef = (db: Firestore, id: string, uid: string) => proposalRef(db, id).collection('asks').doc(uid);
 
+/** 정지 확인 + 닉네임 */
 async function nickname(tx: Transaction, db: Firestore, uid: string): Promise<string> {
-  const me = await tx.get(db.collection('users').doc(uid));
-  if (me.get('suspended') === true) throw new HttpsError('permission-denied', '내 계정은 지금 이용이 제한돼 있어요.');
-  const n = me.get('nickname');
-  return typeof n === 'string' && n.trim() ? n.trim().slice(0, 20) : '이웃';
+  return nicknameOf(await activeUser(tx, db, uid));
 }
 
 /** 제안 올리기. 성공하면 새 제안 id(숫자 문자열) */
 export async function createProposal(db: Firestore, uid: string, data: unknown, now = Date.now()) {
-  const input = (data ?? {}) as Record<string, unknown>;
+  const input = fields(data);
   const abroad = input.abroad === true;
   const from = str(input.from, abroad ? '도시' : '출발 지역', 1, 30);
   const to = abroad ? '' : str(input.to, '도착 지역', 1, 30);
@@ -179,7 +178,7 @@ async function notifyPromoted(db: Firestore, push: PushSender | undefined, id: s
  * 정원이 찼을 때 wait: true면 대기 예약(A30) — 자리가 나거나 제안자가 정원을 늘리면 먼저 온 순서로 자동 참여.
  */
 export async function joinProposal(db: Firestore, uid: string, data: unknown, push?: PushSender, now = Date.now()) {
-  const input = (data ?? {}) as Record<string, unknown>;
+  const input = fields(data);
   const id = pid(input.proposalId);
   const wait = input.wait === true;
   const ref = proposalRef(db, id);
@@ -191,11 +190,7 @@ export async function joinProposal(db: Firestore, uid: string, data: unknown, pu
     if (p.get('status') !== 'open') throw new HttpsError('failed-precondition', '모집이 끝난 제안이에요.');
     const end = p.get('dayEnd');
     if (end instanceof Timestamp && end.toMillis() < now) throw new HttpsError('failed-precondition', '날짜가 지난 제안이에요.');
-    const [ab, ba] = await Promise.all([
-      tx.get(db.collection('users').doc(owner).collection('blocks').doc(uid)),
-      tx.get(db.collection('users').doc(uid).collection('blocks').doc(owner)),
-    ]);
-    if (ab.exists || ba.exists) throw new HttpsError('permission-denied', '차단 관계인 사용자와는 거래할 수 없어요.');
+    await assertNotBlocked(tx, db, owner, uid);
     const jr = joinRef(db, id, uid);
     const j = await tx.get(jr);
     const was = j.exists ? j.get('status') : null;
@@ -238,7 +233,7 @@ export async function joinProposal(db: Firestore, uid: string, data: unknown, pu
 
 /** 구매 요청 · 대기 취소. 구매 요청은 모집 중일 때만, 빈자리는 맨 앞 대기자가 이어받는다 */
 export async function leaveProposal(db: Firestore, uid: string, data: unknown, push?: PushSender, now = Date.now()) {
-  const id = pid((data as Record<string, unknown> | null)?.proposalId);
+  const id = pid(fields(data).proposalId);
   const ref = proposalRef(db, id);
   const res = await db.runTransaction(async (tx) => {
     const [p, j] = await Promise.all([tx.get(ref), tx.get(joinRef(db, id, uid))]);
@@ -277,7 +272,7 @@ export async function leaveProposal(db: Firestore, uid: string, data: unknown, p
 
 /** 제안자가 정원을 늘린다(A30). 0이면 제한 없음. 대기자는 먼저 온 순서로 늘어난 자리만큼 참여한다 */
 export async function raiseProposalMax(db: Firestore, uid: string, data: unknown, push?: PushSender, now = Date.now()) {
-  const input = (data ?? {}) as Record<string, unknown>;
+  const input = fields(data);
   const id = pid(input.proposalId);
   const next = int(input.max, '모집 인원', 0, MAX_PEOPLE);
   const ref = proposalRef(db, id);
@@ -309,7 +304,7 @@ export async function raiseProposalMax(db: Firestore, uid: string, data: unknown
  * 둘 다 신청한 사람 모두에게 알린다. 대기하던 사람은 어느 쪽이든 대기가 끝난다.
  */
 export async function decideProposal(db: Firestore, uid: string, data: unknown, push?: PushSender, now = Date.now()) {
-  const input = (data ?? {}) as Record<string, unknown>;
+  const input = fields(data);
   const id = pid(input.proposalId);
   const action = input.action;
   if (action !== 'proceed' && action !== 'cancel') throw new HttpsError('invalid-argument', 'action 값이 올바르지 않아요.');
@@ -360,7 +355,7 @@ export const proposalTradeKey = (id: string) => `proposal:${id}`;
  * 한 사람당 한 건: 기다리는 중이면 내용을 고치고, 거절된 뒤엔 다시 보낼 수 있다. 수락된 뒤엔 채팅으로.
  */
 export async function askProposer(db: Firestore, uid: string, data: unknown, push?: PushSender, now = Date.now()) {
-  const input = (data ?? {}) as Record<string, unknown>;
+  const input = fields(data);
   const id = pid(input.proposalId);
   const item = str(input.item, '부탁할 물건', 1, 40);
   const note = str(input.note ?? '', '메모', 0, 200);
@@ -379,11 +374,7 @@ export async function askProposer(db: Firestore, uid: string, data: unknown, pus
     if (end instanceof Timestamp && end.toMillis() < now) throw new HttpsError('failed-precondition', '날짜가 지난 제안이에요.');
     const cap = p.get('abroad') === true ? policy.maxItemPriceSea : policy.maxItemPrice;
     if (est !== null && est > cap) throw new HttpsError('invalid-argument', `물건값은 ${cap.toLocaleString('ko-KR')}원까지예요.`);
-    const [ab, ba] = await Promise.all([
-      tx.get(db.collection('users').doc(owner).collection('blocks').doc(uid)),
-      tx.get(db.collection('users').doc(uid).collection('blocks').doc(owner)),
-    ]);
-    if (ab.exists || ba.exists) throw new HttpsError('permission-denied', '차단 관계인 사용자와는 거래할 수 없어요.');
+    await assertNotBlocked(tx, db, owner, uid);
     const ar = askRef(db, id, uid);
     const a = await tx.get(ar);
     if (a.exists && a.get('status') === 'accepted') throw new HttpsError('failed-precondition', '이미 수락된 부탁이 있어요. 채팅으로 이야기해 주세요.');
@@ -405,10 +396,9 @@ export async function askProposer(db: Firestore, uid: string, data: unknown, pus
 
 /** 제안자가 따로 온 부탁을 수락(→ 두 사람의 거래 · 채팅)하거나 거절한다 */
 export async function answerProposerAsk(db: Firestore, uid: string, data: unknown, push?: PushSender, now = Date.now()) {
-  const input = (data ?? {}) as Record<string, unknown>;
+  const input = fields(data);
   const id = pid(input.proposalId);
-  const asker = input.askerUid;
-  if (typeof asker !== 'string' || !asker || asker.includes('/') || asker.length > 128) throw new HttpsError('invalid-argument', 'askerUid 값이 올바르지 않아요.');
+  const asker = docId(input.askerUid, 'askerUid');
   if (typeof input.accept !== 'boolean') throw new HttpsError('invalid-argument', 'accept 값이 올바르지 않아요.');
   const accept = input.accept;
   const ref = proposalRef(db, id);

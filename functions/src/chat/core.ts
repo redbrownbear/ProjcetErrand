@@ -7,6 +7,8 @@ import { FieldValue, Firestore, Timestamp } from 'firebase-admin/firestore';
 import { HttpsError } from 'firebase-functions/v2/https';
 
 import { deliver, PushSender } from '../notify/deliver';
+import { assertNotSuspended, userRef } from '../shared/guards';
+import { docId, fields, ownPhotoPath } from '../shared/input';
 import { maskContact } from './mask';
 
 export const MAX_MESSAGE = 1000;
@@ -14,27 +16,11 @@ export const MAX_MESSAGE = 1000;
 export const CHAT_PHOTO_LIMIT = 30;
 
 export async function sendMessage(db: Firestore, uid: string, data: unknown, push?: PushSender) {
-  const input = (typeof data === 'object' && data !== null ? data : {}) as Record<string, unknown>;
-  const tradeId = input.tradeId;
-  if (typeof tradeId !== 'string' || !tradeId || tradeId.includes('/') || tradeId.length > 128) {
-    throw new HttpsError('invalid-argument', 'tradeId 값이 올바르지 않아요.');
-  }
+  const input = fields(data);
+  const tradeId = docId(input.tradeId, 'tradeId');
   const raw = typeof input.text === 'string' ? input.text.trim() : '';
-  const photoPath = input.photoPath;
-  if (photoPath !== undefined && photoPath !== null) {
-    // 내 폴더에 올린 파일만(남의 사진 경로를 끌어오지 못하게) — addTradePhoto와 같은 검사
-    const prefix = `trades/${tradeId}/${uid}/`;
-    if (
-      typeof photoPath !== 'string' ||
-      !photoPath.startsWith(prefix) ||
-      photoPath.length > 300 ||
-      photoPath.slice(prefix.length).includes('/') ||
-      photoPath.includes('..')
-    ) {
-      throw new HttpsError('invalid-argument', '사진 경로가 올바르지 않아요.');
-    }
-  }
-  const photo = typeof photoPath === 'string' ? photoPath : null;
+  // 사진은 내 폴더에 올린 파일만 — addTradePhoto와 같은 검사
+  const photo = input.photoPath === undefined || input.photoPath === null ? null : ownPhotoPath(input.photoPath, tradeId, uid);
   if (!raw && !photo) throw new HttpsError('invalid-argument', '메시지를 입력해 주세요.');
   if (raw.length > MAX_MESSAGE) throw new HttpsError('invalid-argument', `메시지는 ${MAX_MESSAGE}자까지예요.`);
 
@@ -42,13 +28,13 @@ export async function sendMessage(db: Firestore, uid: string, data: unknown, pus
   const { text, masked } = maskContact(raw);
 
   const sent = await db.runTransaction(async (tx) => {
-    const [trade, me] = await Promise.all([tx.get(tradeRef), tx.get(db.collection('users').doc(uid))]);
+    const [trade, me] = await Promise.all([tx.get(tradeRef), tx.get(userRef(db, uid))]);
     if (!trade.exists) throw new HttpsError('not-found', '거래를 찾을 수 없어요.');
     const requesterUid = trade.get('requesterUid') as string;
     const helperUid = trade.get('helperUid') as string;
     if (uid !== requesterUid && uid !== helperUid) throw new HttpsError('permission-denied', '이 거래의 당사자만 대화할 수 있어요.');
     if (trade.get('status') === 'cancelled') throw new HttpsError('failed-precondition', '취소된 거래에는 메시지를 보낼 수 없어요.');
-    if (me.get('suspended') === true) throw new HttpsError('permission-denied', '내 계정은 지금 이용이 제한돼 있어요.');
+    assertNotSuspended(me);
 
     if (photo && ((trade.get('chatPhotoCount') as number | undefined) ?? 0) >= CHAT_PHOTO_LIMIT) {
       throw new HttpsError('resource-exhausted', `채팅 사진은 거래마다 ${CHAT_PHOTO_LIMIT}장까지예요.`);
@@ -85,8 +71,7 @@ export async function sendMessage(db: Firestore, uid: string, data: unknown, pus
 
 /** 내가 읽었음을 표시 — 상대 메시지 개수 표시를 0으로 */
 export async function markChatRead(db: Firestore, uid: string, data: unknown) {
-  const tradeId = (data as Record<string, unknown> | null)?.tradeId;
-  if (typeof tradeId !== 'string' || !tradeId || tradeId.includes('/')) throw new HttpsError('invalid-argument', 'tradeId 값이 올바르지 않아요.');
+  const tradeId = docId(fields(data).tradeId, 'tradeId');
   const ref = db.collection('trades').doc(tradeId);
   const trade = await ref.get();
   if (!trade.exists) throw new HttpsError('not-found', '거래를 찾을 수 없어요.');

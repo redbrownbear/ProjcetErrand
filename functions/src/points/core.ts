@@ -18,16 +18,18 @@
 import { DocumentReference, Firestore, Timestamp, Transaction } from 'firebase-admin/firestore';
 import { HttpsError } from 'firebase-functions/v2/https';
 
+import { assertNotSuspended } from '../shared/guards';
+import { fields } from '../shared/input';
+import { kstDay } from '../shared/kst';
 import catalog from './catalog.json';
 
-const KST_MS = 9 * 3600_000;
 const DAY_MS = 86_400_000;
 
 export const ATTEND = catalog.attend;
 export const PRODUCTS = catalog.products;
 
-/** 한국 날짜 'YYYY-MM-DD' */
-export const kstDay = (ms: number) => new Date(ms + KST_MS).toISOString().slice(0, 10);
+/** 한국 날짜 'YYYY-MM-DD' (다른 모듈 · 테스트가 여기서도 가져다 쓴다) */
+export { kstDay };
 const prevDay = (day: string) => new Date(Date.parse(`${day}T00:00:00Z`) - DAY_MS).toISOString().slice(0, 10);
 
 export interface AttendState {
@@ -97,10 +99,6 @@ function openLedger(tx: Transaction, db: Firestore, uid: string, user: FirebaseF
 const balanceOf = (user: FirebaseFirestore.DocumentSnapshot) =>
   typeof user.get('points') === 'number' ? Math.max(0, Math.floor(user.get('points') as number)) : 0;
 
-function assertActive(user: FirebaseFirestore.DocumentSnapshot) {
-  if (user.get('suspended') === true) throw new HttpsError('permission-denied', '내 계정은 지금 이용이 제한돼 있어요.');
-}
-
 /**
  * 서버가 확인한 적립 한 건. [key]가 같으면 한 번만 준다(문서 id). 출석 · 앞으로 붙을 광고 콜백 · 제휴사 결과가 이걸 쓴다.
  * 돌려주는 값: 새로 줬으면 { amount, balance }, 이미 받은 키면 { amount: 0, balance }
@@ -115,7 +113,7 @@ export async function grant(
   return db.runTransaction(async (tx) => {
     const user = await tx.get(userRef(db, uid));
     const entry = await tx.get(ledgerRef(db, uid).doc(e.key));
-    assertActive(user);
+    assertNotSuspended(user);
     // 원장을 처음 여는 계정도 잔액은 그대로다(이전 잔액이 원장 첫 줄이 된다)
     const base = balanceOf(user);
     if (entry.exists) return { amount: 0, balance: base };
@@ -142,7 +140,7 @@ export async function grant(
 
 /** 앱이 부르는 적립. 지금은 출석(kind 'attend')만 받는다 */
 export async function earnPoints(db: Firestore, uid: string, data: unknown, now = Date.now()) {
-  const kind = (data as Record<string, unknown> | null)?.kind;
+  const kind = fields(data).kind;
   if (kind === 'ad') throw new HttpsError('failed-precondition', '광고 적립은 광고 회사의 시청 확인이 서버에 붙은 뒤 열려요.');
   if (kind !== 'attend') throw new HttpsError('failed-precondition', '이 적립은 아직 서버에서 받지 않아요.');
   const today = kstDay(now);
@@ -176,14 +174,14 @@ const couponExp = (now: number) => kstDay(now + catalog.couponDays * DAY_MS).rep
 export async function redeemPoints(db: Firestore, uid: string, data: unknown, now = Date.now()) {
   const policy = await loadPointPolicy(db);
   if (!policy.shopOpen) throw new HttpsError('failed-precondition', '포인트 교환은 상품권 제휴가 붙은 뒤 열려요.');
-  const id = (data as Record<string, unknown> | null)?.productId;
+  const id = fields(data).productId;
   const p = PRODUCTS.find((x) => x.id === id);
   if (!p) throw new HttpsError('invalid-argument', '상품을 찾을 수 없어요.');
   const couponId = String(now * 1000 + Math.floor(Math.random() * 1000));
   return db.runTransaction(async (tx) => {
     const user = await tx.get(userRef(db, uid));
     const have = await lots(tx, db, uid);
-    assertActive(user);
+    assertNotSuspended(user);
     const balance = balanceOf(user);
     if (balance < p.points) throw new HttpsError('failed-precondition', '보유 포인트가 부족해요.');
     const at = Timestamp.fromMillis(now);
@@ -215,7 +213,7 @@ export async function redeemPoints(db: Firestore, uid: string, data: unknown, no
 
 /** 쿠폰 사용 완료 표시 */
 export async function useCoupon(db: Firestore, uid: string, data: unknown, now = Date.now()) {
-  const id = (data as Record<string, unknown> | null)?.couponId;
+  const id = fields(data).couponId;
   if (typeof id !== 'string' || !/^\d{1,20}$/.test(id)) throw new HttpsError('invalid-argument', 'couponId 값이 올바르지 않아요.');
   const ref = userRef(db, uid).collection('coupons').doc(id);
   await db.runTransaction(async (tx) => {

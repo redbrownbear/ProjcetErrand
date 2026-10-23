@@ -12,6 +12,7 @@
 import { Firestore, Timestamp } from 'firebase-admin/firestore';
 
 import { deliver, PushSender } from '../notify/deliver';
+import { KST_MS, kstDay } from '../shared/kst';
 import { decode, encode } from './geohash';
 
 export interface MatchPolicy {
@@ -27,7 +28,6 @@ export const DEFAULT_MATCH: MatchPolicy = { extraMinutes: 15, dailyPushLimit: 3,
 /** 이동수단 평균 속도(km/h) — 직선거리로 우회 시간을 어림하는 데만 쓴다 */
 export const SPEED_KMH: Record<string, number> = { walk: 4.5, bike: 15, transit: 20, car: 25 };
 
-const KST = 9 * 3600 * 1000;
 
 let cache: { at: number; policy: MatchPolicy } | null = null;
 export function resetMatchCache() {
@@ -84,13 +84,13 @@ export function windowBefore(route: Record<string, unknown>, now: Date, deadline
   const [sh, sm] = w.start.split(':').map(Number);
   const [eh, em] = w.end.split(':').map(Number);
   const until = deadline ?? new Date(now.getTime() + 24 * 3600 * 1000);
-  const nowK = new Date(now.getTime() + KST);
+  const nowK = new Date(now.getTime() + KST_MS);
   for (let i = 0; i <= 7; i++) {
     const day = new Date(Date.UTC(nowK.getUTCFullYear(), nowK.getUTCMonth(), nowK.getUTCDate() + i));
     const dow = ((day.getUTCDay() + 6) % 7) + 1; // 월 1 ~ 일 7
     if (!days.includes(dow)) continue;
-    const start = new Date(day.getTime() + (sh * 60 + sm) * 60000 - KST);
-    const end = new Date(day.getTime() + (eh * 60 + em) * 60000 - KST);
+    const start = new Date(day.getTime() + (sh * 60 + sm) * 60000 - KST_MS);
+    const end = new Date(day.getTime() + (eh * 60 + em) * 60000 - KST_MS);
     if (end.getTime() <= now.getTime()) continue; // 오늘 이미 지난 시간대
     if (start.getTime() < until.getTime()) return true;
     return false; // 다음 시간대가 마감 뒤
@@ -99,10 +99,7 @@ export function windowBefore(route: Record<string, unknown>, now: Date, deadline
 }
 
 function kstHour(d: Date) {
-  return new Date(d.getTime() + KST).getUTCHours();
-}
-function kstDay(d: Date) {
-  return new Date(d.getTime() + KST).toISOString().slice(0, 10);
+  return new Date(d.getTime() + KST_MS).getUTCHours();
 }
 export function isQuiet(now: Date, p: MatchPolicy): boolean {
   const h = kstHour(now);
@@ -160,7 +157,7 @@ export async function matchRequest(
   const matched: string[] = [];
   const pushed: string[] = [];
   const quiet = isQuiet(now, policy);
-  const day = kstDay(now);
+  const day = kstDay(now.getTime());
   const title = typeof req.title === 'string' && req.title ? req.title : '부탁';
   const short = title.length > 20 ? title.slice(0, 20) + '…' : title;
 

@@ -12,16 +12,15 @@ import { HttpsError } from 'firebase-functions/v2/https';
 import { maskContact } from '../chat/mask';
 import { deliver, PushSender } from '../notify/deliver';
 import { blockedMessage, findBlocked, loadPolicy } from '../safety/policy';
+import { assertNotBlocked, assertNotSuspended, nicknameOf, userRef } from '../shared/guards';
+import { docId, fields } from '../shared/input';
 
 export const MAX_COMMENT = 300;
 const MAX_NOTIFY = 10;
 
 export async function addComment(db: Firestore, uid: string, data: unknown, push?: PushSender) {
-  const input = (typeof data === 'object' && data !== null ? data : {}) as Record<string, unknown>;
-  const rid = input.requestId;
-  if (typeof rid !== 'string' || !rid || rid.includes('/') || rid.length > 128) {
-    throw new HttpsError('invalid-argument', 'requestId 값이 올바르지 않아요.');
-  }
+  const input = fields(data);
+  const rid = docId(input.requestId, 'requestId');
   const raw = typeof input.text === 'string' ? input.text.trim() : '';
   if (!raw) throw new HttpsError('invalid-argument', '댓글을 입력해 주세요.');
   if (raw.length > MAX_COMMENT) throw new HttpsError('invalid-argument', `댓글은 ${MAX_COMMENT}자까지예요.`);
@@ -34,19 +33,12 @@ export async function addComment(db: Firestore, uid: string, data: unknown, push
   const { text, masked } = maskContact(raw);
 
   const saved = await db.runTransaction(async (tx) => {
-    const [req, me] = await Promise.all([tx.get(reqRef), tx.get(db.collection('users').doc(uid))]);
+    const [req, me] = await Promise.all([tx.get(reqRef), tx.get(userRef(db, uid))]);
     if (!req.exists) throw new HttpsError('not-found', '글을 찾을 수 없어요.');
-    if (me.get('suspended') === true) throw new HttpsError('permission-denied', '내 계정은 지금 이용이 제한돼 있어요.');
+    assertNotSuspended(me);
     const ownerUid = req.get('ownerUid') as string;
-    if (ownerUid !== uid) {
-      const [ab, ba] = await Promise.all([
-        tx.get(db.collection('users').doc(ownerUid).collection('blocks').doc(uid)),
-        tx.get(db.collection('users').doc(uid).collection('blocks').doc(ownerUid)),
-      ]);
-      if (ab.exists || ba.exists) throw new HttpsError('permission-denied', '이 글에는 댓글을 남길 수 없어요.');
-    }
-    const nickname = me.get('nickname');
-    const author = typeof nickname === 'string' && nickname.trim() ? nickname.trim().slice(0, 20) : '이웃';
+    if (ownerUid !== uid) await assertNotBlocked(tx, db, ownerUid, uid, '이 글에는 댓글을 남길 수 없어요.');
+    const author = nicknameOf(me);
     const ref = reqRef.collection('comments').doc();
     tx.create(ref, { uid, author, text, masked, createdAt: Timestamp.now() });
     tx.update(reqRef, { commentCount: FieldValue.increment(1) });

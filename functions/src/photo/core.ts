@@ -11,6 +11,7 @@ import { FieldValue, Firestore, Timestamp } from 'firebase-admin/firestore';
 import { HttpsError } from 'firebase-functions/v2/https';
 
 import { deliver, PushSender } from '../notify/deliver';
+import { docId, fields, ownPhotoPath } from '../shared/input';
 
 export const PHOTO_LIMIT = 20;
 const MAX_NOTE = 100;
@@ -18,19 +19,11 @@ const MAX_AMOUNT = 10_000_000;
 const OPEN = new Set(['matched', 'working', 'confirmation']);
 
 export async function addTradePhoto(db: Firestore, uid: string, data: unknown, push?: PushSender) {
-  const input = (typeof data === 'object' && data !== null ? data : {}) as Record<string, unknown>;
-  const tid = input.tradeId;
-  if (typeof tid !== 'string' || !tid || tid.includes('/') || tid.length > 128) {
-    throw new HttpsError('invalid-argument', 'tradeId 값이 올바르지 않아요.');
-  }
+  const input = fields(data);
+  const tid = docId(input.tradeId, 'tradeId');
   const kind = input.kind;
   if (kind !== 'proof' && kind !== 'receipt') throw new HttpsError('invalid-argument', 'kind 값이 올바르지 않아요.');
-  const path = input.path;
-  // 내 폴더에 올린 파일만 붙일 수 있다(남의 사진 경로를 끌어오지 못하게)
-  const prefix = `trades/${tid}/${uid}/`;
-  if (typeof path !== 'string' || !path.startsWith(prefix) || path.length > 300 || path.slice(prefix.length).includes('/') || path.includes('..')) {
-    throw new HttpsError('invalid-argument', '사진 경로가 올바르지 않아요.');
-  }
+  const path = ownPhotoPath(input.path, tid, uid);
   let amount: number | null = null;
   if (kind === 'receipt') {
     const a = input.amount;

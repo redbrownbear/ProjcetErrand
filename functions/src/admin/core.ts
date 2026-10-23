@@ -6,6 +6,7 @@ import { Firestore, Timestamp } from 'firebase-admin/firestore';
 import { HttpsError } from 'firebase-functions/v2/https';
 
 import { deliver, PushSender } from '../notify/deliver';
+import { docId, fields } from '../shared/input';
 
 export const REPORT_RESOLUTIONS = ['dismissed', 'warned', 'suspended'] as const;
 export type ReportResolution = (typeof REPORT_RESOLUTIONS)[number];
@@ -14,15 +15,10 @@ export function assertAdmin(token: Record<string, unknown> | undefined): void {
   if (token?.role !== 'admin') throw new HttpsError('permission-denied', '운영자만 할 수 있어요.');
 }
 
-function id(v: unknown, field: string): string {
-  if (typeof v !== 'string' || !v || v.length > 128 || v.includes('/')) throw new HttpsError('invalid-argument', `${field} 값이 올바르지 않아요.`);
-  return v;
-}
-
 /** 이용 정지·해제. 정지된 계정은 지원·수락 등 모든 거래 함수가 거부된다(errand/core.ts). */
 export async function setSuspended(db: Firestore, adminUid: string, data: unknown) {
-  const input = (data ?? {}) as Record<string, unknown>;
-  const uid = id(input.uid, 'uid');
+  const input = fields(data);
+  const uid = docId(input.uid, 'uid');
   if (typeof input.suspended !== 'boolean') throw new HttpsError('invalid-argument', 'suspended 값이 필요해요.');
   const reason = typeof input.reason === 'string' ? input.reason.slice(0, 200) : null;
   const now = Timestamp.now();
@@ -42,8 +38,8 @@ const RESOLUTION_LABEL: Record<ReportResolution, string> = { dismissed: '문제 
  * 이미 처리한 신고를 다시 처리하면 결과를 고쳐 쓴다(알림은 처음 한 번만 — 같은 eventId).
  */
 export async function resolveReport(db: Firestore, adminUid: string, data: unknown, push?: PushSender) {
-  const input = (data ?? {}) as Record<string, unknown>;
-  const reportId = id(input.reportId, 'reportId');
+  const input = fields(data);
+  const reportId = docId(input.reportId, 'reportId');
   const resolution = input.resolution as ReportResolution;
   if (!REPORT_RESOLUTIONS.includes(resolution)) throw new HttpsError('invalid-argument', 'resolution 값이 올바르지 않아요.');
   const memo = typeof input.memo === 'string' ? input.memo.slice(0, 500) : null;
@@ -93,8 +89,8 @@ export async function resolveReport(db: Firestore, adminUid: string, data: unkno
  * 되돌린 글은 onRequestWrite가 다시 검사한다(금지 품목이면 다시 내려간다).
  */
 export async function setRequestHidden(db: Firestore, adminUid: string, data: unknown, push?: PushSender) {
-  const input = (data ?? {}) as Record<string, unknown>;
-  const requestId = id(input.requestId, 'requestId');
+  const input = fields(data);
+  const requestId = docId(input.requestId, 'requestId');
   if (typeof input.hidden !== 'boolean') throw new HttpsError('invalid-argument', 'hidden 값이 필요해요.');
   const hide = input.hidden;
   const reason = typeof input.reason === 'string' && input.reason.trim() ? input.reason.trim().slice(0, 200) : '운영 정책에 맞지 않아';

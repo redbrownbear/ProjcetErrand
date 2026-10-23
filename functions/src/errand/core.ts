@@ -14,10 +14,12 @@
  *    가는 길에 여러 명 부탁을 받을 수 있어 수락해도 모집이 열려 있고, 거래마다 따로 진행·완료된다.
  *  지원서 문서 id는 언제나 **신청한 사람 uid**다(필드 이름 helperUid는 예전 그대로 = 신청자). 거래에는 applicantUid로 남긴다.
  */
-import { FieldValue, Firestore, Timestamp, Transaction } from 'firebase-admin/firestore';
+import { FieldValue, Firestore, Timestamp } from 'firebase-admin/firestore';
 import { HttpsError } from 'firebase-functions/v2/https';
 
 import { blockedMessage, findBlocked, loadPolicy } from '../safety/policy';
+import { activeUser, assertNotBlocked, nicknameOf } from '../shared/guards';
+import { docId, fields } from '../shared/input';
 import { advance, isFinished, isTradeAction, TradeRole, TradeStatus } from '../domain/tradeMachine';
 
 /** hidden: 금지 품목 · 물건값 상한에 걸려 서버가 내린 글(safety/screen.ts) */
@@ -30,15 +32,7 @@ export const LIMITS = {
   maxSpot: 20,
 } as const;
 
-
 // ── 입력 검사 ─────────────────────────────────────────────────────────────
-
-function id(v: unknown, field: string): string {
-  if (typeof v !== 'string' || v.length === 0 || v.length > 128 || v.includes('/')) {
-    throw new HttpsError('invalid-argument', `${field} 값이 올바르지 않아요.`);
-  }
-  return v;
-}
 
 function optPrice(v: unknown): number | undefined {
   if (v === undefined || v === null) return undefined;
@@ -56,33 +50,14 @@ function optMsg(v: unknown): string | undefined {
   return v.trim();
 }
 
-function obj(data: unknown): Record<string, unknown> {
-  if (typeof data !== 'object' || data === null) throw new HttpsError('invalid-argument', '요청 형식이 올바르지 않아요.');
-  return data as Record<string, unknown>;
-}
-
 // ── 공통 조회 ─────────────────────────────────────────────────────────────
 
 const paths = {
-  user: (db: Firestore, uid: string) => db.collection('users').doc(uid),
-  block: (db: Firestore, owner: string, target: string) => db.collection('users').doc(owner).collection('blocks').doc(target),
   request: (db: Firestore, rid: string) => db.collection('requests').doc(rid),
   application: (db: Firestore, rid: string, helperUid: string) =>
     db.collection('requests').doc(rid).collection('applications').doc(helperUid),
   trade: (db: Firestore, tid: string) => db.collection('trades').doc(tid),
 };
-
-async function assertActive(tx: Transaction, db: Firestore, uid: string, who = '내'): Promise<void> {
-  const snap = await tx.get(paths.user(db, uid));
-  if (snap.get('suspended') === true) {
-    throw new HttpsError('permission-denied', `${who} 계정은 지금 이용이 제한돼 있어요.`);
-  }
-}
-
-async function assertNotBlocked(tx: Transaction, db: Firestore, a: string, b: string): Promise<void> {
-  const [ab, ba] = await Promise.all([tx.get(paths.block(db, a, b)), tx.get(paths.block(db, b, a))]);
-  if (ab.exists || ba.exists) throw new HttpsError('permission-denied', '차단 관계인 사용자와는 거래할 수 없어요.');
-}
 
 /** 글쓴이가 도움을 주는 글인가(신청자가 요청자가 된다) */
 export function isGiving(mode: unknown): boolean {
@@ -96,8 +71,8 @@ function deadlinePassed(deadline: unknown, now: Timestamp): boolean {
 // ── 지원 ──────────────────────────────────────────────────────────────────
 
 export async function applyToRequest(db: Firestore, uid: string, data: unknown) {
-  const input = obj(data);
-  const rid = id(input.requestId, 'requestId');
+  const input = fields(data);
+  const rid = docId(input.requestId, 'requestId');
   const offerPrice = optPrice(input.offerPrice);
   const msg = optMsg(input.msg);
   // 가는 김에 '어! 나도': 예상 물건값·받는 곳 (일반 지원에는 없다)
@@ -130,20 +105,18 @@ export async function applyToRequest(db: Firestore, uid: string, data: unknown) 
     if (req.get('status') !== 'open' || deadlinePassed(req.get('deadline'), now)) {
       throw new HttpsError('failed-precondition', '모집이 끝난 부탁이에요.');
     }
-    const me = await tx.get(paths.user(db, uid));
-    if (me.get('suspended') === true) throw new HttpsError('permission-denied', '내 계정은 지금 이용이 제한돼 있어요.');
+    const me = await activeUser(tx, db, uid);
     await assertNotBlocked(tx, db, uid, owner);
 
     const prev = app.exists ? (app.get('status') as ApplicationStatus) : null;
     if (prev === 'pending' || prev === 'accepted') throw new HttpsError('already-exists', giving ? '이미 부탁을 보냈어요.' : '이미 지원한 부탁이에요.');
     if (prev === 'rejected') throw new HttpsError('failed-precondition', giving ? '이 글에는 다시 부탁할 수 없어요.' : '이 부탁에는 다시 지원할 수 없어요.');
 
-    const nickname = me.get('nickname');
     tx.set(appRef, {
       helperUid: uid,
       // 요청자가 '받은 지원'을 한 번에 조회할 수 있게(collectionGroup) 남기는 사본
       requesterUid: owner,
-      helperName: typeof nickname === 'string' && nickname.trim() ? nickname.trim().slice(0, 20) : '이웃',
+      helperName: nicknameOf(me),
       requestTitle: req.get('title') ?? '',
       requestId: rid,
       requestMode: req.get('mode') ?? 'ask',
@@ -160,7 +133,7 @@ export async function applyToRequest(db: Firestore, uid: string, data: unknown) 
 }
 
 export async function withdrawApplication(db: Firestore, uid: string, data: unknown) {
-  const rid = id(obj(data).requestId, 'requestId');
+  const rid = docId(fields(data).requestId, 'requestId');
   return db.runTransaction(async (tx) => {
     const now = Timestamp.now();
     const appRef = paths.application(db, rid, uid);
@@ -177,9 +150,9 @@ export async function withdrawApplication(db: Firestore, uid: string, data: unkn
 // ── 요청자: 수락 · 거절 · 모집 취소 ─────────────────────────────────────────
 
 export async function acceptApplication(db: Firestore, uid: string, data: unknown) {
-  const input = obj(data);
-  const rid = id(input.requestId, 'requestId');
-  const helperUid = id(input.helperUid, 'helperUid');
+  const input = fields(data);
+  const rid = docId(input.requestId, 'requestId');
+  const helperUid = docId(input.helperUid, 'helperUid');
 
   return db.runTransaction(async (tx) => {
     const now = Timestamp.now();
@@ -191,8 +164,8 @@ export async function acceptApplication(db: Firestore, uid: string, data: unknow
     if (req.get('status') !== 'open') throw new HttpsError('failed-precondition', '모집 중인 글이 아니에요.');
     if (!app.exists || app.get('status') !== 'pending') throw new HttpsError('failed-precondition', '수락할 수 있는 신청이 아니에요.');
     const applicant = helperUid; // 지원서 id = 신청자
-    await assertActive(tx, db, uid);
-    await assertActive(tx, db, applicant, '상대방');
+    await activeUser(tx, db, uid);
+    await activeUser(tx, db, applicant, '상대방');
     await assertNotBlocked(tx, db, uid, applicant);
     const giving = isGiving(req.get('mode'));
     if (giving) {
@@ -238,9 +211,9 @@ export async function acceptApplication(db: Firestore, uid: string, data: unknow
 }
 
 export async function rejectApplication(db: Firestore, uid: string, data: unknown) {
-  const input = obj(data);
-  const rid = id(input.requestId, 'requestId');
-  const helperUid = id(input.helperUid, 'helperUid');
+  const input = fields(data);
+  const rid = docId(input.requestId, 'requestId');
+  const helperUid = docId(input.helperUid, 'helperUid');
   return db.runTransaction(async (tx) => {
     const now = Timestamp.now();
     const reqRef = paths.request(db, rid);
@@ -256,7 +229,7 @@ export async function rejectApplication(db: Firestore, uid: string, data: unknow
 }
 
 export async function cancelRequest(db: Firestore, uid: string, data: unknown) {
-  const rid = id(obj(data).requestId, 'requestId');
+  const rid = docId(fields(data).requestId, 'requestId');
   return db.runTransaction(async (tx) => {
     const now = Timestamp.now();
     const reqRef = paths.request(db, rid);
@@ -276,8 +249,8 @@ export async function cancelRequest(db: Firestore, uid: string, data: unknown) {
 // ── 거래 단계 ─────────────────────────────────────────────────────────────
 
 export async function advanceTrade(db: Firestore, uid: string, data: unknown) {
-  const input = obj(data);
-  const tid = id(input.tradeId, 'tradeId');
+  const input = fields(data);
+  const tid = docId(input.tradeId, 'tradeId');
   if (!isTradeAction(input.action)) throw new HttpsError('invalid-argument', 'action 값이 올바르지 않아요.');
   const action = input.action;
 

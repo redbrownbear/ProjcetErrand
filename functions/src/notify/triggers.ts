@@ -2,27 +2,15 @@
  * 지원서·거래 문서가 바뀌면 알림을 보낸다(W4). 문구는 events.ts, 전달은 deliver.ts.
  */
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
-import { getMessaging } from 'firebase-admin/messaging';
 import { onDocumentCreated, onDocumentWritten } from 'firebase-functions/v2/firestore';
 
 import { triageReport } from '../admin/triage';
 import { computeRouteCells } from '../route/core';
 import { matchRequest } from '../route/match';
 import { screenRequest } from '../safety/screen';
-import { deliver, PushSender } from './deliver';
+import { deliver } from './deliver';
+import { fcm } from './fcm';
 import { applicationEvents, NotifyEvent, tradeEvents } from './events';
-
-const INVALID = new Set(['messaging/registration-token-not-registered', 'messaging/invalid-registration-token']);
-
-export const fcm: PushSender = async ({ tokens, title, body, data }) => {
-  const res = await getMessaging().sendEachForMulticast({
-    tokens,
-    notification: { title, body },
-    data,
-    android: { priority: 'high' },
-  });
-  return res.responses.flatMap((r, i) => (!r.success && r.error && INVALID.has(r.error.code) ? [tokens[i]] : []));
-};
 
 function stamp(d: Record<string, unknown> | undefined): number {
   const at = d?.updatedAt;

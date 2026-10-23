@@ -1,21 +1,12 @@
-import { getFirestore } from 'firebase-admin/firestore';
-import { HttpsError, onCall } from 'firebase-functions/v2/https';
-
-import { ENFORCE_APP_CHECK } from '../config';
-import { fcm } from '../notify/triggers';
+/** 제안하기(A15 · A29 · A30) 서버 함수. 일은 core.ts가 한다 */
+import { fcm } from '../notify/fcm';
+import { userCallable } from '../shared/callable';
 import * as core from './core';
 
-function callable(handler: (uid: string, data: unknown) => Promise<unknown>) {
-  return onCall({ enforceAppCheck: ENFORCE_APP_CHECK }, async (req) => {
-    if (!req.auth) throw new HttpsError('unauthenticated', '로그인이 필요해요.');
-    return handler(req.auth.uid, req.data);
-  });
-}
-
-export const createProposal = callable((uid, data) => core.createProposal(getFirestore(), uid, data));
-export const joinProposal = callable((uid, data) => core.joinProposal(getFirestore(), uid, data, fcm));
-export const leaveProposal = callable((uid, data) => core.leaveProposal(getFirestore(), uid, data, fcm));
-export const raiseProposalMax = callable((uid, data) => core.raiseProposalMax(getFirestore(), uid, data, fcm));
-export const decideProposal = callable((uid, data) => core.decideProposal(getFirestore(), uid, data, fcm));
-export const askProposer = callable((uid, data) => core.askProposer(getFirestore(), uid, data, fcm));
-export const answerProposerAsk = callable((uid, data) => core.answerProposerAsk(getFirestore(), uid, data, fcm));
+export const createProposal = userCallable((db, uid, data) => core.createProposal(db, uid, data));
+export const joinProposal = userCallable((db, uid, data) => core.joinProposal(db, uid, data, fcm));
+export const leaveProposal = userCallable((db, uid, data) => core.leaveProposal(db, uid, data, fcm));
+export const raiseProposalMax = userCallable((db, uid, data) => core.raiseProposalMax(db, uid, data, fcm));
+export const decideProposal = userCallable((db, uid, data) => core.decideProposal(db, uid, data, fcm));
+export const askProposer = userCallable((db, uid, data) => core.askProposer(db, uid, data, fcm));
+export const answerProposerAsk = userCallable((db, uid, data) => core.answerProposerAsk(db, uid, data, fcm));
