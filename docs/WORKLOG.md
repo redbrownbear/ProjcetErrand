@@ -149,7 +149,7 @@
 
 ## 기록
 
-### 2026-10-23 · c0a2e6b · Claude (카카오 · 네이버 로그인)
+### 2026-10-23 · c0a2e6b 외 · Claude (카카오 · 네이버 로그인)
 - 추가(서버): `socialSignIn`(`functions/src/auth/`) — 앱이 보낸 카카오 · 네이버 액세스 토큰을 그 회사 API로 확인(카카오는 토큰의 `app_id`가 `KAKAO_APP_ID`인지도),
   uid `kakao:{회원번호}` · `naver:{id}` 계정을 처음이면 만들고(이름 = 닉네임 20자, 이메일은 안 받음) 커스텀 토큰을 돌려준다. 정지(disabled) 계정 거부. 테스트 `test/unit/social.test.ts`
 - 추가(앱): 로그인 화면 위 **카카오로 시작하기 · 네이버로 시작하기**(`auth/services/social_login.dart`, 버튼 `SocialLoginButton`) — 카카오톡 있으면 카카오톡, 없으면 카카오계정.
@@ -158,6 +158,7 @@
 - 변경: 이메일 로그인 · 가입은 '테스트 계정(이메일)' 줄 아래로(그대로 동작). Android `MainActivity`를 `FlutterFragmentActivity`로(네이버 로그인 플러그인 요구),
   매니페스트에 카카오 돌아오는 주소 · 네이버 meta-data — `build.gradle.kts`가 dart-define 값을 읽어 채운다. pubspec.lock을 지금 의존성에 맞춰 다시 만듦(빠져 있던 패키지들)
 - 할 일: 위 '다음 할 일'의 카카오 · 네이버 설정 · 배포. PC에서 pull 뒤 `flutter pub get`
+- 뒤이은 커밋: `build.gradle.kts`에서 `java.util.Base64`가 Gradle의 `java` 확장으로 읽혀 빌드가 깨지던 것(import로)
 
 ### 2026-10-23 · dc84c65 · Claude (B09 포인트 서버 이전)
 - 추가(서버): `functions/src/points/` — `earnPoints`(지금은 출석만: 한국 시간 하루 한 번, 연속 · 월 누적 보너스를 서버가 계산, `users/{uid}.attend`),
