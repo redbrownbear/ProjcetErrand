@@ -1,8 +1,7 @@
-import 'dart:typed_data';
-
 import 'package:flutter/foundation.dart';
 
 import '../../../core/backend/backend.dart';
+import '../../../core/backend/live_query.dart';
 import '../../../core/backend/server_api.dart';
 import '../../errand/repositories/photo_repository.dart';
 import '../models/chat_message.dart';
@@ -19,12 +18,7 @@ class ChatRepository {
       .collection('messages')
       .orderBy('createdAt')
       .limitToLast(limit)
-      .snapshots()
-      .map((snap) => [
-            for (final d in snap.docs)
-              if (ChatMessage.fromDoc(d.id, d.data()) case final m?) m,
-          ])
-      .handleError((Object e) => debugPrint('채팅 구독 실패: $e'));
+      .live((d) => ChatMessage.fromDoc(d.id, d.data()!), label: '채팅');
 
   /// 가려진 부분이 있었으면 true
   Future<bool> send(String text) async {

@@ -14,9 +14,7 @@ class _NoProposals implements ProposalRepository {
   @override
   Stream<List<Proposal>> watch({int limit = 100}) => Stream.value(const []);
   @override
-  Stream<Set<int>> watchMyJoins() => Stream.value({});
-  @override
-  Stream<Set<int>> watchMyWaits() => Stream.value({});
+  Stream<MyJoins> watchMyJoins() => Stream.value((joined: const {}, waiting: const {}));
   @override
   dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
 }

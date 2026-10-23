@@ -15,7 +15,7 @@ import 'calendar_import_screen.dart';
 
 /// 마이 › 내 동선 (개발 To-do A08). 정기 동선 목록 · 켜기/끄기 · 고치기 · 지우기, 최대 6개.
 /// 등록한 동선은 서버가 약 1km 격자로 바꿔 '내 동선에 맞는 부탁' 추천(A13)에 쓴다. 정확한 좌표는 저장하지 않는다.
-class RouteListScreen extends StatelessWidget {
+class RouteListScreen extends StatefulWidget {
   final String uid;
   final RouteRepository? repo;
 
@@ -25,10 +25,20 @@ class RouteListScreen extends StatelessWidget {
   const RouteListScreen({super.key, required this.uid, this.repo, this.onOpenRequest, this.matches});
 
   @override
+  State<RouteListScreen> createState() => _RouteListScreenState();
+}
+
+class _RouteListScreenState extends State<RouteListScreen> {
+  // 구독은 화면이 열려 있는 동안 한 번만 연다(다시 그릴 때마다 새로 열지 않게)
+  late final RouteRepository r = widget.repo ?? RouteRepository(widget.uid);
+  late final Stream<List<CommuteRoute>> routes = r.watch();
+  late final MatchRepository matches = widget.matches ?? MatchRepository(widget.uid);
+  late final Stream<List<RouteMatch>> matchList = matches.watch();
+
+  @override
   Widget build(BuildContext context) {
-    final r = repo ?? RouteRepository(uid);
     return StreamBuilder<List<CommuteRoute>>(
-      stream: r.watch(),
+      stream: routes,
       builder: (context, snap) {
         final list = snap.data ?? const <CommuteRoute>[];
         final full = list.length >= CommuteRoute.maxRoutes;
@@ -65,7 +75,7 @@ class RouteListScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-              if (list.isNotEmpty) _MatchList(repo: matches ?? MatchRepository(uid), onOpen: onOpenRequest),
+              if (list.isNotEmpty) _MatchList(repo: matches, stream: matchList, onOpen: widget.onOpenRequest),
               const SizedBox(height: 14),
               if (snap.connectionState == ConnectionState.waiting && list.isEmpty)
                 const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator(strokeWidth: 2)))
@@ -97,13 +107,14 @@ class RouteListScreen extends StatelessWidget {
 /// 내 동선에 맞는 부탁(서버가 부탁이 올라올 때 계산해 둔 것)
 class _MatchList extends StatelessWidget {
   final MatchRepository repo;
+  final Stream<List<RouteMatch>> stream;
   final void Function(int requestId)? onOpen;
-  const _MatchList({required this.repo, this.onOpen});
+  const _MatchList({required this.repo, required this.stream, this.onOpen});
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<RouteMatch>>(
-      stream: repo.watch(),
+      stream: stream,
       builder: (context, snap) {
         final list = snap.data ?? const <RouteMatch>[];
         return Container(

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../core/backend/backend.dart';
+import '../../../core/backend/live_query.dart';
 import '../../../core/backend/server_api.dart';
 import '../models/admin_report.dart';
 
@@ -14,15 +15,13 @@ class AdminRepository {
       .collection('reports')
       .orderBy('createdAt', descending: true)
       .limit(limit)
-      .snapshots()
-      .map((snap) => [
-            for (final d in snap.docs)
-              if (AdminReport.fromDoc(d.id, d.data()) case final r?) r,
-          ])
-      .handleError((Object e) => debugPrint('신고 목록 구독 실패: $e'));
+      .live((d) => AdminReport.fromDoc(d.id, d.data()!), label: '신고 목록');
 
-  Stream<AdminUser> watchUser(String uid) =>
-      Backend.users.doc(uid).snapshots().map((d) => AdminUser.fromDoc(uid, d.data())).handleError((Object e) => debugPrint('사용자 읽기 실패: $e'));
+  Stream<AdminUser> watchUser(String uid) => Backend.users
+      .doc(uid)
+      .snapshots()
+      .map((d) => AdminUser.fromDoc(uid, d.data()))
+      .handleError((Object e) => debugPrint('사용자 읽기 실패: $e'));
 
   Stream<AdminRequest?> watchRequest(String id) => Backend.db
       .collection('requests')

@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
 
 import '../../../core/backend/backend.dart';
+import '../../../core/backend/live_query.dart';
 import '../../../core/backend/server_api.dart';
 import '../models/application.dart';
 
@@ -16,29 +16,21 @@ class TradeRepository {
   // ── 구독 ────────────────────────────────────────────────────────────────
 
   /// 내가 낸 지원 전체
-  Stream<List<Application>> watchMyApplications() => _apps(Backend.db.collectionGroup('applications').where('helperUid', isEqualTo: uid));
+  Stream<List<Application>> watchMyApplications() =>
+      _apps(Backend.db.collectionGroup('applications').where('helperUid', isEqualTo: uid));
 
   /// 내 부탁에 들어온 지원 전체(상태 무관). 화면에서 대기 중인 것만 거른다.
-  Stream<List<Application>> watchReceived() => _apps(Backend.db.collectionGroup('applications').where('requesterUid', isEqualTo: uid));
+  Stream<List<Application>> watchReceived() =>
+      _apps(Backend.db.collectionGroup('applications').where('requesterUid', isEqualTo: uid));
 
   /// 내가 요청자 또는 수행자인 거래
   Stream<List<ServerTrade>> watchTrades({required bool asRequester}) => Backend.db
       .collection('trades')
       .where(asRequester ? 'requesterUid' : 'helperUid', isEqualTo: uid)
-      .snapshots()
-      .map((snap) => [
-            for (final d in snap.docs)
-              if (ServerTrade.fromDoc(d.id, d.data()) case final t?) t,
-          ])
-      .handleError((Object e) => debugPrint('거래 구독 실패: $e'));
+      .live((d) => ServerTrade.fromDoc(d.id, d.data()!), label: '거래');
 
-  Stream<List<Application>> _apps(Query<Map<String, dynamic>> q) => q
-      .snapshots()
-      .map((snap) => [
-            for (final d in snap.docs)
-              if (Application.fromDoc(d.reference.parent.parent?.id ?? '', d.id, d.data()) case final a?) a,
-          ])
-      .handleError((Object e) => debugPrint('지원 구독 실패: $e'));
+  Stream<List<Application>> _apps(Query<Map<String, dynamic>> q) =>
+      q.live((d) => Application.fromDoc(d.reference.parent.parent?.id ?? '', d.id, d.data()!), label: '지원');
 
   // ── 서버 함수 ───────────────────────────────────────────────────────────
 

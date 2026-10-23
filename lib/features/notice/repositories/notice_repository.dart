@@ -1,6 +1,5 @@
-import 'package:flutter/foundation.dart';
-
 import '../../../core/backend/backend.dart';
+import '../../../core/backend/live_query.dart';
 import '../../../core/storage/local_store.dart';
 import '../models/notice.dart';
 
@@ -14,12 +13,7 @@ class NoticeRepository {
         .collection('notices')
         .orderBy('publishedAt', descending: true)
         .limit(limit)
-        .snapshots()
-        .map((snap) => [
-              for (final d in snap.docs)
-                if (Notice.fromDoc(d.id, d.data()) case final n?) n,
-            ])
-        .handleError((Object e) => debugPrint('공지 구독 실패: $e'));
+        .live((d) => Notice.fromDoc(d.id, d.data()!), label: '공지');
   }
 
   static DateTime? get seenAt {

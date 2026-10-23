@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
 
 import '../../../core/backend/backend.dart';
+import '../../../core/backend/live_query.dart';
 
 /// 내 동선에 맞는 부탁 한 건 (`users/{uid}/matches/{requestId}`, 서버가 만든다 — A13)
 class RouteMatch {
@@ -57,15 +57,15 @@ class MatchRepository {
     return _col
         .orderBy('createdAt', descending: true)
         .limit(30)
-        .snapshots()
-        .map((snap) {
+        .live((d) => RouteMatch.fromDoc(d.id, d.data()!), label: '동선 추천')
+        .map((list) {
+          // 마감은 시간이 지나며 바뀌니 문서를 읽을 때가 아니라 내보낼 때 거른다
           final now = DateTime.now();
           return [
-            for (final d in snap.docs)
-              if (RouteMatch.fromDoc(d.id, d.data()) case final m? when !m.expiredAt(now)) m,
+            for (final m in list)
+              if (!m.expiredAt(now)) m,
           ];
-        })
-        .handleError((Object e) => debugPrint('동선 추천 구독 실패: $e'));
+        });
   }
 
   /// 관심 없음 — 목록에서 지운다

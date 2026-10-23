@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
 
 import '../../../core/backend/backend.dart';
+import '../../../core/backend/live_query.dart';
 import '../../../core/backend/server_api.dart';
 
 /// 부탁 글 댓글 한 줄 (`requests/{id}/comments`). 서버 함수만 쓴다.
@@ -38,12 +38,7 @@ class CommentRepository {
         .collection('comments')
         .orderBy('createdAt')
         .limitToLast(200)
-        .snapshots()
-        .map((snap) => [
-              for (final d in snap.docs)
-                if (RequestComment.fromDoc(d.id, d.data()) case final c?) c,
-            ])
-        .handleError((Object e) => debugPrint('댓글 구독 실패: $e'));
+        .live((d) => RequestComment.fromDoc(d.id, d.data()!), label: '댓글');
   }
 
   /// 가려진 부분이 있었으면 true. 실패하면 [ServerException]

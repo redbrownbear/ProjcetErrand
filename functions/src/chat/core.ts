@@ -91,6 +91,9 @@ export async function markChatRead(db: Firestore, uid: string, data: unknown) {
   const trade = await ref.get();
   if (!trade.exists) throw new HttpsError('not-found', '거래를 찾을 수 없어요.');
   if (uid !== trade.get('requesterUid') && uid !== trade.get('helperUid')) throw new HttpsError('permission-denied', '이 거래의 당사자가 아니에요.');
+  // 이미 0이면 쓰지 않는다 — 거래 문서가 바뀌면 두 사람의 구독과 onTradeWrite가 모두 깨어난다
+  const unread = (trade.get('unread') as Record<string, unknown> | undefined)?.[uid];
+  if (typeof unread !== 'number' || unread === 0) return { ok: true };
   await ref.update({ [`unread.${uid}`]: 0 });
   return { ok: true };
 }

@@ -14,7 +14,7 @@ String _md(DateTime d) => '${d.month}.${d.day}';
 
 /// 마이 › 내 여행 일정 (개발 To-do A11). 나라 · 도시 · 출국일 · 귀국일을 적어 둔다.
 /// 해외 사다주기(B04)가 열리기 전까지는 모아 두기만 하고, 다른 사람에게 보이지 않는다.
-class TravelListScreen extends StatelessWidget {
+class TravelListScreen extends StatefulWidget {
   final String uid;
   final TravelRepository? repo;
 
@@ -23,11 +23,20 @@ class TravelListScreen extends StatelessWidget {
   const TravelListScreen({super.key, required this.uid, this.repo, this.today});
 
   @override
+  State<TravelListScreen> createState() => _TravelListScreenState();
+}
+
+class _TravelListScreenState extends State<TravelListScreen> {
+  // 구독은 화면이 열려 있는 동안 한 번만 연다
+  late final TravelRepository r = widget.repo ?? TravelRepository(widget.uid);
+  late final Stream<List<TravelPlan>> plans = r.watch();
+
+  @override
   Widget build(BuildContext context) {
-    final r = repo ?? TravelRepository(uid);
+    final today = widget.today;
     final now = today ?? DateTime.now();
     return StreamBuilder<List<TravelPlan>>(
-      stream: r.watch(),
+      stream: plans,
       builder: (context, snap) {
         final list = TravelPlan.sorted(snap.data ?? const <TravelPlan>[], now);
         final full = list.length >= TravelPlan.maxPlans;

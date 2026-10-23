@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
 
 import '../../../core/backend/backend.dart';
+import '../../../core/backend/live_query.dart';
 import '../models/task_item.dart';
 
 /// 공개 부탁글(`requests/{id}`)을 읽고 쓴다.
@@ -22,17 +22,8 @@ class RequestRepository {
         .where('status', isEqualTo: 'open')
         .orderBy('createdAt', descending: true)
         .limit(limit)
-        .snapshots()
-        .map((snap) {
-          final out = <TaskItem>[];
-          for (final d in snap.docs) {
-            final item = fromDoc(d.id, d.data());
-            if (item != null) out.add(item);
-          }
-          return out;
-        })
-        // 색인이 아직 없거나 권한이 막혔을 때. 화면은 예시 데이터로 계속 돈다.
-        .handleError((Object e) => debugPrint('부탁 목록 구독 실패: $e'));
+        // 색인이 아직 없거나 권한이 막혀도 화면은 예시 데이터로 계속 돈다.
+        .live((d) => fromDoc(d.id, d.data()!), label: '부탁 목록');
   }
 
   /// 새 부탁을 올린다. 공개 문서에는 대략적인 지역(`region`·`area`)만 두고,

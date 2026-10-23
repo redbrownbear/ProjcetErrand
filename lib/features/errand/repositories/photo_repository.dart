@@ -1,10 +1,9 @@
-import 'dart:typed_data';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../core/backend/backend.dart';
+import '../../../core/backend/live_query.dart';
 import '../../../core/backend/server_api.dart';
 
 /// 거래 사진 한 장 (`trades/{id}/photos`). 서버 함수 addTradePhoto만 만든다(A37).
@@ -67,12 +66,7 @@ class PhotoRepository {
         .doc(tradeId)
         .collection('photos')
         .orderBy('createdAt')
-        .snapshots()
-        .map((snap) => [
-              for (final d in snap.docs)
-                if (TradePhoto.fromDoc(d.id, d.data()) case final p?) p,
-            ])
-        .handleError((Object e) => debugPrint('거래 사진 구독 실패: $e'));
+        .live((d) => TradePhoto.fromDoc(d.id, d.data()!), label: '거래 사진');
   }
 
   /// 올리고 거래에 붙인다. 실패하면 [ServerException]

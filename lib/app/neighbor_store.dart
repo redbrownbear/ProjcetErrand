@@ -110,8 +110,7 @@ class NeighborStore extends ChangeNotifier {
   ProposalRepository? proposalRepo;
   List<Proposal> serverProposals = [];
   StreamSubscription<List<Proposal>>? _proposalSub;
-  StreamSubscription<Set<int>>? _joinSub;
-  StreamSubscription<Set<int>>? _waitSub;
+  StreamSubscription<MyJoins>? _joinSub;
 
   /// 최근 완료된 거래(A23, LIVE 보드 티커). 서버에 붙었을 때만
   List<DoneActivity> recentDone = [];
@@ -122,11 +121,9 @@ class NeighborStore extends ChangeNotifier {
     if (proposalRepo?.uid == uid) return;
     _proposalSub?.cancel();
     _joinSub?.cancel();
-    _waitSub?.cancel();
     _doneSub?.cancel();
     _proposalSub = null;
     _joinSub = null;
-    _waitSub = null;
     waiting = {};
     _doneSub = null;
     serverProposals = [];
@@ -141,12 +138,9 @@ class NeighborStore extends ChangeNotifier {
         serverProposals = list;
         notifyListeners();
       });
-      _joinSub = r.watchMyJoins().listen((ids) {
-        joined = ids;
-        notifyListeners();
-      });
-      _waitSub = r.watchMyWaits().listen((ids) {
-        waiting = ids;
+      _joinSub = r.watchMyJoins().listen((j) {
+        joined = j.joined;
+        waiting = j.waiting;
         notifyListeners();
       });
       _doneSub = (activity ?? const ActivityRepository()).watchRecent().listen((list) {
@@ -161,7 +155,6 @@ class NeighborStore extends ChangeNotifier {
   void dispose() {
     _proposalSub?.cancel();
     _joinSub?.cancel();
-    _waitSub?.cancel();
     _doneSub?.cancel();
     super.dispose();
   }

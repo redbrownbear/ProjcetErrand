@@ -43,7 +43,13 @@ describe('채팅', () => {
     assert.equal((await db.collection('users').doc('owner').collection('notifications').get()).size, 0);
 
     await chat.markChatRead(db, 'owner', { tradeId });
-    assert.equal((await db.collection('trades').doc(tradeId).get()).get('unread.owner'), 0);
+    const read = await db.collection('trades').doc(tradeId).get();
+    assert.equal(read.get('unread.owner'), 0);
+
+    // 이미 읽은 상태면 거래 문서를 다시 쓰지 않는다(두 사람의 구독 · 트리거가 깨어나지 않게)
+    await chat.markChatRead(db, 'owner', { tradeId });
+    const again = await db.collection('trades').doc(tradeId).get();
+    assert.ok(again.updateTime?.isEqual(read.updateTime!), '읽음 표시를 다시 해도 쓰지 않는다');
   });
 
   test('제3자·빈 메시지·너무 긴 메시지·취소된 거래 → 거부', async () => {

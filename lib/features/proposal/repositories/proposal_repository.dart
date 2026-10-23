@@ -2,8 +2,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../core/backend/backend.dart';
+import '../../../core/backend/live_query.dart';
 import '../../../core/backend/server_api.dart';
 import '../models/proposal.dart';
+
+/// 내가 신청한 제안 id · 대기 예약한 제안 id
+typedef MyJoins = ({Set<int> joined, Set<int> waiting});
 
 /// 신청한 이웃 한 명 (`proposals/{id}/joins/{uid}` — 제안자와 본인만 읽는다)
 class ProposalJoiner {
@@ -63,36 +67,31 @@ class ProposalRepository {
       .collection('proposals')
       .orderBy('createdAt', descending: true)
       .limit(limit)
-      .snapshots()
-      .map((snap) => [
-            for (final d in snap.docs)
-              if (Proposal.fromDoc(d.id, d.data(), myUid: uid) case final p? when !p.cancelled) p,
-          ])
-      .handleError((Object e) => debugPrint('제안 구독 실패: $e'));
+      .live(
+        (d) => switch (Proposal.fromDoc(d.id, d.data()!, myUid: uid)) {
+          final p? when !p.cancelled => p,
+          _ => null,
+        },
+        label: '제안',
+      );
 
-  /// 내가 신청 중인 제안 id
-  Stream<Set<int>> watchMyJoins() => Backend.db
+  /// 내가 신청한 제안과 대기 예약한 제안(A30) — 같은 문서들이라 구독 하나로 받는다
+  Stream<MyJoins> watchMyJoins() => Backend.db
       .collectionGroup('joins')
       .where('uid', isEqualTo: uid)
-      .snapshots()
-      .map((snap) => {
-            for (final d in snap.docs)
-              if (d.data()['status'] == 'joined')
-                if (int.tryParse('${d.data()['proposalId']}') case final id?) id,
-          })
-      .handleError((Object e) => debugPrint('내 신청 구독 실패: $e'));
-
-  /// 내가 대기 예약한 제안 id (A30). [watchMyJoins]와 같은 색인을 쓰려고 상태는 앱에서 거른다
-  Stream<Set<int>> watchMyWaits() => Backend.db
-      .collectionGroup('joins')
-      .where('uid', isEqualTo: uid)
-      .snapshots()
-      .map((snap) => {
-            for (final d in snap.docs)
-              if (d.data()['status'] == 'waiting')
-                if (int.tryParse('${d.data()['proposalId']}') case final id?) id,
-          })
-      .handleError((Object e) => debugPrint('내 대기 구독 실패: $e'));
+      .live((d) => (id: int.tryParse('${d.data()!['proposalId']}'), status: d.data()!['status']), label: '내 신청')
+      .map(
+        (list) => (
+          joined: {
+            for (final j in list)
+              if (j.status == 'joined' && j.id != null) j.id!,
+          },
+          waiting: {
+            for (final j in list)
+              if (j.status == 'waiting' && j.id != null) j.id!,
+          },
+        ),
+      );
 
   /// 내 제안에 신청한 이웃 (제안자만 읽을 수 있다)
   Stream<List<ProposalJoiner>> watchJoiners(int proposalId) => Backend.db
@@ -100,9 +99,7 @@ class ProposalRepository {
       .doc('$proposalId')
       .collection('joins')
       .where('status', isEqualTo: 'joined')
-      .snapshots()
-      .map((snap) => [for (final d in snap.docs) ProposalJoiner(d.id, '${d.data()['name'] ?? '이웃'}')])
-      .handleError((Object e) => debugPrint('신청자 구독 실패: $e'));
+      .live((d) => ProposalJoiner(d.id, '${d.data()!['name'] ?? '이웃'}'), label: '신청자');
 
   Future<void> create(Proposal p) => ServerApi.call('createProposal', p.toServer());
   Future<void> join(int id) => ServerApi.call('joinProposal', {'proposalId': '$id'});
@@ -118,14 +115,10 @@ class ProposalRepository {
   Future<void> decide(int id, String action) => ServerApi.call('decideProposal', {'proposalId': '$id', 'action': action});
 
   /// 내 제안에 따로 온 부탁 — 답을 기다리는 것 · 수락한 것 (제안자만)
-  Stream<List<ProposalAsk>> watchAsks(int proposalId) => _asks(proposalId)
-      .where('status', whereIn: const ['pending', 'accepted'])
-      .snapshots()
-      .map((snap) => [
-            for (final d in snap.docs)
-              if (ProposalAsk.fromDoc(d.id, d.data()) case final a?) a,
-          ])
-      .handleError((Object e) => debugPrint('따로 온 부탁 구독 실패: $e'));
+  Stream<List<ProposalAsk>> watchAsks(int proposalId) =>
+      _asks(proposalId)
+          .where('status', whereIn: const ['pending', 'accepted'])
+          .live((d) => ProposalAsk.fromDoc(d.id, d.data()), label: '따로 온 부탁');
 
   /// 이 제안에 내가 따로 한 부탁
   Stream<ProposalAsk?> watchMyAsk(int proposalId) => _asks(proposalId)

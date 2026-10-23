@@ -182,8 +182,15 @@ class AppSession extends ChangeNotifier {
 
   void _update(VoidCallback change) {
     if (_disposed) return;
+    _itemsCache = null;
     change();
     notifyListeners();
+  }
+
+  @override
+  void notifyListeners() {
+    _itemsCache = null;
+    super.notifyListeners();
   }
 
   void flash(String message) {
@@ -199,7 +206,21 @@ class AppSession extends ChangeNotifier {
   ///
   /// 서버에서 내려온 글에는 '내가 올렸다'는 표시가 없다(로그아웃 상태면 uid로도 못 가린다).
   /// 이 기기에 같은 id의 사본이 있으면 내 글이 확실하므로 그 표시만 옮겨 붙인다.
+  ///
+  /// 화면 한 번 그릴 때 여러 곳이 읽어서, 값이 바뀌기 전까지는 한 번 만든 목록을 그대로 돌려준다
+  /// ([notifyListeners] · [_update]가 비운다. 공개 필드를 바깥에서 바꿔 끼워도 [_itemsKey]로 알아챈다).
   List<TaskItem> get items {
+    final key = (created, _server, blocked, TaskItem.currentUid);
+    final cached = _itemsCache;
+    if (cached != null && key == _itemsKey) return cached;
+    _itemsKey = key;
+    return _itemsCache = List.unmodifiable(_buildItems());
+  }
+
+  List<TaskItem>? _itemsCache;
+  Object? _itemsKey;
+
+  List<TaskItem> _buildItems() {
     final mineIds = {for (final it in created) it.id};
     final seen = <int>{};
     final out = <TaskItem>[];
@@ -911,24 +932,36 @@ class AppSession extends ChangeNotifier {
     _tradeSubs.addAll([
       repo.watchMyApplications().listen((v) {
         _myApps = v;
-        _rebuildTrades();
+        _scheduleRebuild();
       }),
       repo.watchReceived().listen((v) {
         _received = v;
-        _rebuildTrades();
+        _scheduleRebuild();
       }),
       repo.watchTrades(asRequester: false).listen((v) {
         _helperTrades = v;
-        _rebuildTrades();
+        _scheduleRebuild();
       }),
       repo.watchTrades(asRequester: true).listen((v) {
         _requesterTrades = v;
-        _rebuildTrades();
+        _scheduleRebuild();
       }),
     ]);
   }
 
+  /// 구독 넷이 거의 동시에 값을 보낸다(앱을 켤 때 · 수락 한 번에 지원서와 거래가 함께 바뀔 때).
+  /// 하나 올 때마다 화면 전체를 다시 그리지 않고 잠깐 모았다가 한 번에 합친다.
+  Timer? _rebuildTimer;
+  static const _rebuildDelay = Duration(milliseconds: 40);
+
+  void _scheduleRebuild() {
+    if (_rebuildTimer?.isActive ?? false) return;
+    _rebuildTimer = Timer(_rebuildDelay, _rebuildTrades);
+  }
+
   void _stopTradeWatch() {
+    _rebuildTimer?.cancel();
+    _rebuildTimer = null;
     for (final sub in _tradeSubs) {
       sub.cancel();
     }
@@ -946,6 +979,8 @@ class AppSession extends ChangeNotifier {
 
   /// 서버의 지원서·거래 문서를 화면용 [trades] 하나로 합친다.
   void _rebuildTrades() {
+    if (_disposed) return;
+    final before = trades;
     final next = <int, Trade>{};
     final ids = <int, String>{};
     final byId = {for (final t in [..._helperTrades, ..._requesterTrades]) t.id: t};
@@ -1031,13 +1066,23 @@ class AppSession extends ChangeNotifier {
           if (a.isPending) a,
       ]..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
     });
-    _store.saveTrades(trades);
+    // 채팅 한 줄에도 거래 문서가 바뀌어 여기로 온다. 단계가 그대로면 이 기기 사본을 다시 쓰지 않는다
+    if (!_sameTrades(before, next)) _store.saveTrades(trades);
     _loadRelated({...next.keys, for (final d in going) d.requestId});
     // 수락된 수행자(나)는 정확한 장소를 받는다
     _loadPrivate([
       for (final a in _myApps)
         if (a.status == 'accepted' && !a.isGoing && a.requestIdInt != null) a.requestIdInt!,
     ]);
+  }
+
+  static bool _sameTrades(Map<int, Trade> a, Map<int, Trade> b) {
+    if (a.length != b.length) return false;
+    for (final e in a.entries) {
+      final o = b[e.key];
+      if (o == null || o.status != e.value.status || o.updatedAt != e.value.updatedAt) return false;
+    }
+    return true;
   }
 
   // ── 채팅 (결정 5: 최소 채팅) ────────────────────────────────────────────

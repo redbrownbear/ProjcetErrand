@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../core/backend/backend.dart';
+import '../../../core/backend/live_query.dart';
 import '../../../core/backend/server_api.dart';
 import '../models/travel_plan.dart';
 
@@ -14,13 +15,7 @@ class TravelRepository {
 
   Stream<List<TravelPlan>> watch() {
     if (!Backend.ready) return Stream<List<TravelPlan>>.value(const []);
-    return _col
-        .snapshots()
-        .map((snap) => [
-              for (final d in snap.docs)
-                if (TravelPlan.fromDoc(d.id, d.data()) case final p?) p,
-            ])
-        .handleError((Object e) => debugPrint('여행 일정 구독 실패: $e'));
+    return _col.live((d) => TravelPlan.fromDoc(d.id, d.data()!), label: '여행 일정');
   }
 
   /// 새 일정(id 없음) 또는 고친 일정. 실패하면 [ServerException]

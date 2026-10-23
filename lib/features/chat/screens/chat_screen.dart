@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -29,8 +30,33 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   late final ChatRepository repo = ChatRepository(widget.tradeId);
-  late final Stream<List<ChatMessage>> messages = repo.watch();
+  late final Stream<List<ChatMessage>> messages = repo.watch().map((list) {
+    _readWhileOpen(list);
+    return list;
+  });
   final input = TextEditingController();
+
+  /// 화면을 보고 있는 동안 상대 메시지가 오면 읽음으로 — 안 그러면 보고 있는데도 채팅 탭에 안 읽은 수가 쌓인다.
+  /// 메시지마다 서버를 부르지 않게 몇 초에 한 번으로 모은다.
+  Timer? _readTimer;
+  String? _lastPeerId;
+  bool _loaded = false;
+
+  void _readWhileOpen(List<ChatMessage> list) {
+    String? peer;
+    for (final m in list.reversed) {
+      if (m.senderUid != widget.myUid) {
+        peer = m.id;
+        break;
+      }
+    }
+    final first = !_loaded;
+    _loaded = true;
+    if (peer == null || peer == _lastPeerId) return;
+    _lastPeerId = peer;
+    if (first || (_readTimer?.isActive ?? false)) return; // 처음 열 때는 initState가 이미 읽음 처리
+    _readTimer = Timer(const Duration(seconds: 3), repo.markRead);
+  }
   bool sending = false;
   String? notice;
 
@@ -42,6 +68,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    _readTimer?.cancel();
     repo.markRead();
     input.dispose();
     super.dispose();

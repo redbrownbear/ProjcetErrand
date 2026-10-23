@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
 
 import '../../../core/backend/backend.dart';
+import '../../../core/backend/live_query.dart';
 import '../data/categories.dart';
 import '../data/countries.dart';
 
@@ -31,7 +31,14 @@ class DoneActivity {
     final at = m['at'];
     if (m['kind'] != 'done' || at is! Timestamp) return null;
     String s(String k) => m[k] is String ? m[k] as String : '';
-    return DoneActivity(id: id, mode: s('mode').isEmpty ? 'ask' : s('mode'), cat: s('cat'), area: s('area'), cc: s('cc'), at: at.toDate());
+    return DoneActivity(
+      id: id,
+      mode: s('mode').isEmpty ? 'ask' : s('mode'),
+      cat: s('cat'),
+      area: s('area'),
+      cc: s('cc'),
+      at: at.toDate(),
+    );
   }
 }
 
@@ -45,11 +52,6 @@ class ActivityRepository {
         .collection('activity')
         .orderBy('at', descending: true)
         .limit(limit)
-        .snapshots()
-        .map((snap) => [
-              for (final d in snap.docs)
-                if (DoneActivity.fromDoc(d.id, d.data()) case final a?) a,
-            ])
-        .handleError((Object e) => debugPrint('완료 기록 구독 실패: $e'));
+        .live((d) => DoneActivity.fromDoc(d.id, d.data()!), label: '완료 기록');
   }
 }

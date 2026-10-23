@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../core/backend/backend.dart';
+import '../../../core/backend/live_query.dart';
 import '../../../core/backend/server_api.dart';
 import '../models/commute_route.dart';
 
@@ -14,14 +15,7 @@ class RouteRepository {
 
   Stream<List<CommuteRoute>> watch() {
     if (!Backend.ready) return Stream<List<CommuteRoute>>.value(const []);
-    return _col
-        .orderBy('createdAt')
-        .snapshots()
-        .map((snap) => [
-              for (final d in snap.docs)
-                if (CommuteRoute.fromDoc(d.id, d.data()) case final r?) r,
-            ])
-        .handleError((Object e) => debugPrint('동선 구독 실패: $e'));
+    return _col.orderBy('createdAt').live((d) => CommuteRoute.fromDoc(d.id, d.data()!), label: '동선');
   }
 
   /// 새 동선(id 없음) 또는 고친 동선. 실패하면 [ServerException]

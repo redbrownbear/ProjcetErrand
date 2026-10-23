@@ -17,10 +17,8 @@ class _FakeRepo implements ProposalRepository {
   @override
   Stream<List<Proposal>> watch({int limit = 100}) => Stream.value(list);
   @override
-  Stream<Set<int>> watchMyJoins() => Stream.value({});
+  Stream<MyJoins> watchMyJoins() => Stream.value((joined: const {}, waiting: waits));
   Set<int> waits = {};
-  @override
-  Stream<Set<int>> watchMyWaits() => Stream.value(waits);
   @override
   Future<void> wait(int id) async => calls.add('wait:$id');
   @override
