@@ -141,7 +141,7 @@
 
 ## 기록
 
-### 2026-10-23 · 미커밋 · Claude (B09 포인트 서버 이전)
+### 2026-10-23 · dc84c65 · Claude (B09 포인트 서버 이전)
 - 추가(서버): `functions/src/points/` — `earnPoints`(지금은 출석만: 한국 시간 하루 한 번, 연속 · 월 누적 보너스를 서버가 계산, `users/{uid}.attend`),
   `redeemPoints`(잔액 확인 · 먼저 쌓인 포인트부터 차감 · 쿠폰 `users/{uid}/coupons`, 번호는 발급 제휴 전이라 빈 값 · `issuing`), `useCoupon`,
   예약 실행 `expirePoints`(매일 4시, `config/points.expireDays`가 0이면 끔). 원장 `users/{uid}/pointLedger`(적립마다 남은 양 `left`, 처음엔 기존 잔액을 '이전 잔액' 한 줄로).
