@@ -149,7 +149,7 @@
 
 ## 기록
 
-### 2026-10-24 · 미커밋 · Claude (실시간 구독 최적화 · 점검)
+### 2026-10-24 · 62615c0 · Claude (실시간 구독 최적화 · 점검)
 - 추가: `core/backend/live_query.dart`(`Query.live`) — Firestore 구독 공용 길. 스냅샷마다 문서 전체를 다시 만들지 않고 바뀐 문서(`docChanges`)만 다시 만들고,
   바뀐 게 없는 스냅샷은 내보내지 않는다. 실패는 로그만. 앱의 목록 구독 14곳(부탁 · 지원 · 거래 · 알림함 · 차단 · 채팅 · 제안 · 완료 기록 · 공지 · 동선 · 추천 · 여행 · 댓글 · 사진 · 신고)을 이걸로. 테스트 `test/live_query_test.dart`
 - 변경: 제안 '내 신청'과 '내 대기'가 같은 문서(collectionGroup `joins`)를 두 번 구독하던 것을 하나로(`watchMyJoins` → `MyJoins`, `watchMyWaits` 없앰)
