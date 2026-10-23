@@ -58,3 +58,89 @@ class AuthError extends StatelessWidget {
     child: Text(message, style: const TextStyle(color: AppColors.red, fontSize: 12.5)),
   );
 }
+
+/// 카카오 · 네이버 로그인 버튼. 색은 각 회사 버튼 안내(카카오 #FEE500 · 네이버 #03C75A)를 따른다
+class SocialLoginButton extends StatelessWidget {
+  final String label;
+  final Color background;
+  final Color foreground;
+  final Widget mark;
+  final VoidCallback? onPressed;
+
+  const SocialLoginButton({
+    super.key,
+    required this.label,
+    required this.background,
+    required this.foreground,
+    required this.mark,
+    required this.onPressed,
+  });
+
+  const SocialLoginButton.kakao({super.key, required this.onPressed})
+    : label = '카카오로 시작하기',
+      background = const Color(0xFFFEE500),
+      foreground = const Color(0xD9000000),
+      mark = const Icon(Icons.chat_bubble, size: 18, color: Color(0xFF000000));
+
+  const SocialLoginButton.naver({super.key, required this.onPressed})
+    : label = '네이버로 시작하기',
+      background = const Color(0xFF03C75A),
+      foreground = const Color(0xFFFFFFFF),
+      mark = const Text(
+        'N',
+        style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Color(0xFFFFFFFF), height: 1),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: background,
+          foregroundColor: foreground,
+          disabledBackgroundColor: background.withValues(alpha: 0.5),
+          disabledForegroundColor: foreground.withValues(alpha: 0.6),
+          padding: const EdgeInsets.symmetric(vertical: 15),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          elevation: 0,
+        ),
+        child: Row(
+          children: [
+            SizedBox(width: 24, child: Center(child: mark)),
+            Expanded(
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+              ),
+            ),
+            const SizedBox(width: 24),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 가운데 글자가 있는 가로줄
+class AuthDivider extends StatelessWidget {
+  final String label;
+  const AuthDivider(this.label, {super.key});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 22),
+    child: Row(
+      children: [
+        const Expanded(child: Divider(color: AppColors.line)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: Text(label, style: const TextStyle(fontSize: 12, color: AppColors.sub)),
+        ),
+        const Expanded(child: Divider(color: AppColors.line)),
+      ],
+    ),
+  );
+}

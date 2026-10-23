@@ -11,6 +11,7 @@ import 'core/theme/app_theme.dart';
 import 'core/theme/colors.dart';
 import 'features/auth/screens/auth_gate.dart';
 import 'features/auth/services/auth_service.dart';
+import 'features/auth/services/social_login.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -41,6 +42,8 @@ void main() async {
   } catch (e) {
     debugPrint('네이버 지도 초기화 실패: $e');
   }
+  // 카카오 로그인 SDK(키가 있을 때만). 실패해도 앱은 뜬다
+  await SocialLogin.init();
   await LocalStore.init();
   runApp(const GyeomsaApp());
 }

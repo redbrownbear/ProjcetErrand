@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/backend/backend.dart';
 import '../../profile/models/consents.dart';
+import 'social_login.dart';
 
 /// 로그인·가입. Firebase가 초기화되지 않은 환경(데스크톱·오프라인)에서도
 /// **인스턴스를 만드는 것만으로 예외가 나면 안 된다.** 그래서 플러그인 객체를
@@ -118,6 +119,7 @@ class AuthService {
     } catch (e) {
       debugPrint('로그아웃 전 정리 실패: $e');
     }
+    await SocialLogin.signOutProvider(_auth?.currentUser?.uid);
     await _auth?.signOut();
   }
 

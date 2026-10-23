@@ -23,6 +23,14 @@ class ApiKeys {
   /// 카카오 디벨로퍼스 REST API 키 — 로컬(장소) API
   static const kakaoRest = String.fromEnvironment('KAKAO_REST_KEY');
 
+  /// 카카오 로그인 — 카카오 디벨로퍼스 네이티브 앱 키. 안드로이드 매니페스트의 `kakao{키}://oauth`도 이 값으로 만든다
+  static const kakaoNative = String.fromEnvironment('KAKAO_NATIVE_KEY');
+
+  /// 네이버 로그인 — 네이버 개발자센터 애플리케이션(네이버 로그인)의 Client ID.
+  /// Client Secret(`NAVER_LOGIN_SECRET`)은 안드로이드 매니페스트로만 들어간다(네이버 SDK가 앱에 두도록 설계됨).
+  /// 검색 API(`NAVER_SEARCH_ID`)와는 다른 애플리케이션이어도 된다
+  static const naverLoginId = String.fromEnvironment('NAVER_LOGIN_ID');
+
   /// 쿠팡 파트너스 Open API (HMAC 서명)
   static const coupangAccess = String.fromEnvironment('COUPANG_ACCESS_KEY');
   static const coupangSecret = String.fromEnvironment('COUPANG_SECRET_KEY');

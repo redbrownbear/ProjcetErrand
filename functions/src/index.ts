@@ -25,3 +25,4 @@ export { addComment } from './comment/callables';
 export { addTradePhoto } from './photo/callables';
 export { answerProposerAsk, askProposer, createProposal, decideProposal, joinProposal, leaveProposal, raiseProposalMax } from './proposal/callables';
 export { earnPoints, expirePoints, redeemPoints, useCoupon } from './points/callables';
+export { socialSignIn } from './auth/callables';

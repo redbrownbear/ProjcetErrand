@@ -49,6 +49,8 @@ dependencies:
   crypto: ^3.0.7
   url_launcher: ^6.3.2
   device_calendar: ^4.3.3
+  kakao_flutter_sdk_user: ^2.0.1
+  flutter_naver_login: ^2.1.1
 
 dev_dependencies:
   flutter_test:

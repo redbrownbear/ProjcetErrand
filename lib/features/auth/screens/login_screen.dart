@@ -1,8 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/backend/server_api.dart';
 import '../../../core/theme/colors.dart';
 import '../services/auth_service.dart';
+import '../services/social_login.dart';
 import '../widgets/auth_widgets.dart';
 import 'signup_screen.dart';
 
@@ -42,6 +44,30 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) Navigator.of(context).pop();
     } on FirebaseAuthException catch (e) {
       if (mounted) setState(() => _error = AuthService.messageFor(e));
+    } on ServerUnavailable catch (e) {
+      if (mounted) setState(() => _error = '$e');
+    } catch (_) {
+      if (mounted) setState(() => _error = '문제가 발생했어요. 잠시 후 다시 시도해주세요.');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  /// 카카오 · 네이버 로그인. 창을 닫으면 아무 안내 없이 그대로 둔다
+  Future<void> _social(Future<void> Function() signIn) async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      await signIn();
+      if (mounted) Navigator.of(context).pop();
+    } on SocialCancelled {
+      // 사용자가 닫음
+    } on FirebaseAuthException catch (e) {
+      if (mounted) setState(() => _error = AuthService.messageFor(e));
+    } on ServerException catch (e) {
+      if (mounted) setState(() => _error = e.message);
     } on ServerUnavailable catch (e) {
       if (mounted) setState(() => _error = '$e');
     } catch (_) {
@@ -91,6 +117,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Text('동네에서 겸사겸사 벌어요', style: TextStyle(fontSize: 13, color: AppColors.sub)),
                     ),
                     const SizedBox(height: 32),
+                    if (SocialLogin.kakaoReady)
+                      SocialLoginButton.kakao(onPressed: _loading ? null : () => _social(SocialLogin.signInWithKakao)),
+                    if (SocialLogin.naverReady) ...[
+                      if (SocialLogin.kakaoReady) const SizedBox(height: 10),
+                      SocialLoginButton.naver(onPressed: _loading ? null : () => _social(SocialLogin.signInWithNaver)),
+                    ],
+                    // 이메일 로그인은 개발 · 테스트 계정용으로 남겨 둔다
+                    if (SocialLogin.anyReady) const AuthDivider('테스트 계정(이메일)'),
                     TextField(
                       controller: _emailCtrl,
                       keyboardType: TextInputType.emailAddress,

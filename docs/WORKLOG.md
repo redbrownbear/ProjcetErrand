@@ -28,6 +28,8 @@
   1차 출시용 서버 설계·갈래(W1~W10)는 [1차_백엔드_설계.md](1차_백엔드_설계.md). 서버 함수는 `functions/`(TypeScript, 서울 리전),
   지원·수락·거래 단계는 **서버 함수로 처리**한다(`TradeRepository` → `functions/src/errand`). 앱은 결과를 Firestore 구독으로 받는다.
   서버 함수 · 규칙 v2 · 색인은 dev(`projecterrand`)에 배포됨(2026-10-22, `onRequestWrite` 포함). 예전 앱 빌드는 지원 · 포인트 저장이 막히니 테스트 폰은 새로 빌드.
+- 로그인: **카카오 · 네이버**(서버 함수 `socialSignIn`이 토큰 확인 → 커스텀 토큰, [소셜_로그인.md](소셜_로그인.md)) + 이메일(테스트 계정용으로 남김).
+  키가 없으면 소셜 버튼은 안 보인다.
 - 지도: 네이버 지도(`flutter_naver_map`). 제휴 미션·퀴즈 API 연동 ([제휴_API_연동.md](제휴_API_연동.md)).
 - 동의: 가입 때 필수 3 · 선택 3(기본 꺼짐), 마이 › 동의 · 권한 관리. 위치 동의 없으면 위치를 읽지 않는다.
   금지 품목 · 물건값 상한은 서버가 `config/safety`로 판단(글 숨김 · 댓글/신청 거부). 실제 목록 · 금액은 법인 결정(C07 · C09) 뒤 그 문서만 고친다.
@@ -59,6 +61,10 @@
 - [ ] 포인트 서버 이전(B09) 배포 · 실기기 확인 — `firebase deploy --project dev --only functions,firestore` 뒤 로그인 계정으로 출석 → 잔액 · 달력,
       다른 기기에서 같은 계정 출석 이어짐. 광고 · 제휴 적립과 상품 교환은 서버에서 아직 닫혀 있다(아래 보류)
 
+- [ ] 카카오 · 네이버 로그인 설정 · 배포 · 실기기 확인 — 카카오 디벨로퍼스 · 네이버 개발자센터 앱 등록(키 해시 · 패키지명),
+      secrets.json 키 3개, `functions/.env.projecterrand` `KAKAO_APP_ID`, 서비스 계정 '토큰 생성자' 역할, `firebase deploy --project dev --only functions`.
+      순서는 [소셜_로그인.md › 설정](소셜_로그인.md). 확인: 첫 로그인 → 동의 화면 → 마이에 닉네임, 로그아웃 뒤 다른 계정, 취소하면 안내 없이 그대로
+
 ### 출시 준비 (구글 플레이 먼저)
 
 광고 수익(애드핏·AdMob)은 **공개 스토어 페이지가 있어야** 신청·승인된다. 그래서 출시가 먼저다.
@@ -69,7 +75,9 @@
       업로드 키(keystore)를 만들고 키 파일·비밀번호는 저장소 밖에 보관
 - [ ] 버전 — `pubspec.yaml` `version: 1.0.0+1`. 올릴 때마다 `+숫자`(versionCode) 증가
 - [ ] **회원 탈퇴(계정 삭제)** — 계정을 만드는 앱은 앱 안 + 웹 링크 두 곳에서 삭제를 요청할 수 있어야 함.
-      지금 앱에 탈퇴 기능 없음. Firebase Auth 계정 + `users/{uid}` 하위 자료 삭제 필요
+      지금 앱에 탈퇴 기능 없음. Firebase Auth 계정 + `users/{uid}` 하위 자료 삭제 필요.
+      카카오 계정은 연결 끊기(`unlink`), 네이버는 토큰 삭제도 함께
+- [ ] 출시 빌드에서 이메일(테스트 계정) 로그인을 숨길지 결정 — 지금은 카카오 · 네이버 아래 '테스트 계정(이메일)'으로 보인다
 - [ ] 개인정보처리방침 URL — 플레이 등록 필수. 수집 항목: 이메일·닉네임·위치(정밀)·활동 기록
 - [ ] 플레이 콘솔 '데이터 보안' 양식 — 위 수집 항목·Firebase 전송·광고 SDK(붙인 뒤) 기재
 - [ ] 위치 권한 — `ACCESS_FINE_LOCATION` 사용(체크인·지도). 국내는 **위치기반서비스사업 신고**
@@ -140,6 +148,16 @@
   바꾼 뒤엔 Android Studio를 완전히 종료 후 재시작.
 
 ## 기록
+
+### 2026-10-23 · 미커밋 · Claude (카카오 · 네이버 로그인)
+- 추가(서버): `socialSignIn`(`functions/src/auth/`) — 앱이 보낸 카카오 · 네이버 액세스 토큰을 그 회사 API로 확인(카카오는 토큰의 `app_id`가 `KAKAO_APP_ID`인지도),
+  uid `kakao:{회원번호}` · `naver:{id}` 계정을 처음이면 만들고(이름 = 닉네임 20자, 이메일은 안 받음) 커스텀 토큰을 돌려준다. 정지(disabled) 계정 거부. 테스트 `test/unit/social.test.ts`
+- 추가(앱): 로그인 화면 위 **카카오로 시작하기 · 네이버로 시작하기**(`auth/services/social_login.dart`, 버튼 `SocialLoginButton`) — 카카오톡 있으면 카카오톡, 없으면 카카오계정.
+  창을 닫으면 안내 없이 그대로. 로그아웃 때 SDK 로그인도 끊는다. 약관 동의는 로그인 뒤 동의 화면. 키(`KAKAO_NATIVE_KEY` · `NAVER_LOGIN_ID` · `NAVER_LOGIN_SECRET`)가 없으면 버튼을 안 그린다.
+  패키지 `kakao_flutter_sdk_user ^2.0.1` · `flutter_naver_login ^2.1.1`. 테스트 `test/social_login_test.dart`. 설정 순서 [소셜_로그인.md](소셜_로그인.md)
+- 변경: 이메일 로그인 · 가입은 '테스트 계정(이메일)' 줄 아래로(그대로 동작). Android `MainActivity`를 `FlutterFragmentActivity`로(네이버 로그인 플러그인 요구),
+  매니페스트에 카카오 돌아오는 주소 · 네이버 meta-data — `build.gradle.kts`가 dart-define 값을 읽어 채운다. pubspec.lock을 지금 의존성에 맞춰 다시 만듦(빠져 있던 패키지들)
+- 할 일: 위 '다음 할 일'의 카카오 · 네이버 설정 · 배포. PC에서 pull 뒤 `flutter pub get`
 
 ### 2026-10-23 · dc84c65 · Claude (B09 포인트 서버 이전)
 - 추가(서버): `functions/src/points/` — `earnPoints`(지금은 출석만: 한국 시간 하루 한 번, 연속 · 월 누적 보너스를 서버가 계산, `users/{uid}.attend`),
