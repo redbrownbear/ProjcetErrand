@@ -151,7 +151,7 @@
 
 ## 기록
 
-### 2026-10-24 · 미커밋 · Claude (서버 개발 환경 정리)
+### 2026-10-24 · 5b1e9ff · Claude (서버 개발 환경 정리)
 - 추가: [functions/README.md](../functions/README.md) — 명령 표, 폴더 지도, 새 함수 더하는 순서, 지켜야 할 것(예전 앱을 깨지 않게 이름 · 필드는 더하기만)
 - 추가: 로컬 에뮬레이터로 앱까지 — 앱 `--dart-define=EMULATOR_HOST=10.0.2.2`(`core/backend/emulator.dart`, 출시 빌드는 무시 · 디버그 매니페스트에 http 허용),
   서버 `npm run dev`(Auth · Firestore · Functions · Storage) → `npm run seed`(`scripts/seed.ts`: 테스트 계정 a · b · admin@test.dev / test1234, 예시 부탁 3건, config 3개, 공지).
