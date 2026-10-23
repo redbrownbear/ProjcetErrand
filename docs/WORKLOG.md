@@ -149,7 +149,7 @@
 
 ## 기록
 
-### 2026-10-23 · 미커밋 · Claude (카카오 · 네이버 로그인)
+### 2026-10-23 · c0a2e6b · Claude (카카오 · 네이버 로그인)
 - 추가(서버): `socialSignIn`(`functions/src/auth/`) — 앱이 보낸 카카오 · 네이버 액세스 토큰을 그 회사 API로 확인(카카오는 토큰의 `app_id`가 `KAKAO_APP_ID`인지도),
   uid `kakao:{회원번호}` · `naver:{id}` 계정을 처음이면 만들고(이름 = 닉네임 20자, 이메일은 안 받음) 커스텀 토큰을 돌려준다. 정지(disabled) 계정 거부. 테스트 `test/unit/social.test.ts`
 - 추가(앱): 로그인 화면 위 **카카오로 시작하기 · 네이버로 시작하기**(`auth/services/social_login.dart`, 버튼 `SocialLoginButton`) — 카카오톡 있으면 카카오톡, 없으면 카카오계정.
