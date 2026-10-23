@@ -41,7 +41,9 @@
 
 - [ ] W3 실기기 확인 — 계정 두 개로 지원 → 받은 지원 수락 → 시작 → 완료 요청 → 완료 확인, 취소·거절
 - [ ] 예산 알림 설정(Google Cloud 콘솔 › 결제 › 예산 및 알림, 50·90·100%)
-- [ ] 출시 전 운영 프로젝트 새로 만들기 → `.firebaserc`에 `prod` 추가, 앱 `google-services.json` 교체
+- [ ] 출시 전 운영 프로젝트 새로 만들기(사용자, 콘솔 · Blaze) → `.firebaserc`에 `prod` 추가, 앱 flavor dev/prod(`google-services.json` · `firebase_options` 따로, dev 앱 ID에 `.dev`),
+      `functions/.env.<프로젝트>` 분리. `projecterrand`는 개발용으로 남긴다(테스트 데이터가 쌓여 있음, 2026-10-24 정리)
+- [ ] 앱에 들어간 비밀 키(`NAVER_SEARCH_SECRET` · `COUPANG_SECRET_KEY`, `core/config/api_keys.dart`) → 서버 함수로 옮기기. 앱 안의 키는 꺼낼 수 있다
 - [ ] W4·W5 배포·실기기 확인 — 알림 권한 허용 → 지원·수락·단계 변경마다 상대 기기에 푸시와 알림함, 신고 접수, 차단 후 목록에서 사라짐.
       운영자 지정은 [1차_백엔드_설계.md › W5 운영 방법](1차_백엔드_설계.md)
 - [ ] 채팅 실기기 확인 — 수락 뒤 채팅 탭에 대화방, 메시지 주고받기, 전화번호를 쓰면 가려지는지, 상대 기기 푸시·안 읽은 수, 사진 보내기 · 크게 보기
